@@ -276,7 +276,7 @@ the Korean translation should be "제이슨 홍".
 - If the original is "gyuheon yang", the Korean translation should be "양규현".
 - If the original is "yejin kim", the Korean translation should be "김예진".
 - If the original is "화성시 부영사랑으로 709동 104호상신하길로 274번길21", the Korean translation should be "경기 화성시 상신하길로274번길 21, 부영사랑으로 709동 104호".
-- If the original is "Hwaseong-si, Gyeonggi-do "1101, Building 114, 277 Dongtan Banseok-ro", the Korean translation should be "경기 화성시 동탄반석로 277, 114동 1101호".
+- If the original is "Hwaseong-si, Gyeonggi-do \"1101, Building 114, 277 Dongtan Banseok-ro\"", the Korean translation should be "경기 화성시 동탄반석로 277, 114동 1101호".
 - If the original is "화성시 바오밥베이커리카페2 충매송면 천천리110-1", the Korean translation should be "경기 화성시 매송면 천천리 110-1, 바오밥베이커리카페2층".
 - If the original is "Gyeonggi-Do Hwaseong-Si 50 beongil 22,23,Annyeongnam-ro 22,23", the Korean translation should be "경기 화성시 안녕남로50번길 22".
 - If the original is "49 SAMSUNG 1RD 4 GIL,HWASUNG-SI,KYUNG GI-DO,KOREA 445-170", the Korean translation should be "경기 화성시 삼성1로4길 49".
@@ -320,7 +320,7 @@ Example of expected JSON output:
         // --- Helper functions ---
         const cleanStringForDisplay = (str) => {
             if (typeof str !== 'string' || !str) return '';
-            return str.replace(/[\n\\]/g, '').trim();
+            return str.replace(/[\\n\\]/g, '').trim();
         };
 
         const formatSinglePhoneNumber = (phoneNumber) => {
@@ -707,13 +707,14 @@ Example of expected JSON output:
                 const payload = {
                     contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
                     generationConfig: {
+                        temperature: 0,
                         responseMimeType: "application/json",
                         responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } }
                     }
                 };
 
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${tempApiKeyForLocalTest}`;
 
                 const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
@@ -722,7 +723,7 @@ Example of expected JSON output:
                     try {
                         const errorData = await response.json();
                         errorMsg = errorData?.error?.message || errorMsg;
-                    } catch (e) { /* ignore parsing error */ }
+                    } catch (e) { /* ignore parsing error */ } 
                     throw new Error(errorMsg);
                 }
 
