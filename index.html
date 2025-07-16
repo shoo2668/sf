@@ -681,39 +681,51 @@ Example of expected JSON output:
 
     // --- Scan, Import, Export Logic ---
     scanAndGenerateButton.addEventListener('click', async () => {
-        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
+        if (!currentFileToScan || currentFileToScan.length === 0) {
+            showMessage('스캔할 이미지를 선택해주세요.');
+            return;
+        }
         scanLoadingIndicator.style.display = 'block';
         scanProgressText.textContent = '스캔 준비 중...';
         scanErrorMessage.style.display = 'none';
-        
-        try {
-            const mergedResults = {}; 
+        scanErrorText.textContent = '';
 
-            for (let i = 0; i < currentFileToScan.length; i++) {
-                const file = currentFileToScan[i];
-                scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${currentFileToScan.length})...`;
+        const mergedResults = {};
+        const errors = [];
+
+        for (let i = 0; i < currentFileToScan.length; i++) {
+            const file = currentFileToScan[i];
+            try {
+                scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${currentFileToScan.length}): ${file.name}`;
                 const base64ImageData = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
+                    reader.onerror = (err) => reject(new Error("파일을 읽을 수 없습니다."));
                     reader.readAsDataURL(file);
                 });
 
                 const payload = {
                     contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
-                    generationConfig: { 
+                    generationConfig: {
                         responseMimeType: "application/json",
-                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
+                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } }
+                    }
                 };
-                
+
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
                 const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                 const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`${file.name}: ${errorData?.error?.message || `API 요청 실패 (상태: ${response.status})`}`);
+                    let errorMsg = `API 요청 실패 (상태: ${response.status})`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData?.error?.message || errorMsg;
+                    } catch (e) { /* ignore parsing error */ }
+                    throw new Error(errorMsg);
                 }
+
                 const result = await response.json();
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -727,61 +739,74 @@ Example of expected JSON output:
                             }
                         });
                     }
+                } else if (result.promptFeedback) {
+                    const blockReason = result.promptFeedback.blockReason;
+                    throw new Error(`API에 의해 차단됨 (${blockReason})`);
                 }
+
+            } catch (error) {
+                console.error(`'${file.name}' 파일 스캔 오류:`, error);
+                errors.push(`- ${file.name}: ${error.message}`);
             }
-
-            const allNewItems = Object.values(mergedResults);
-
-            if (allNewItems.length > 0) {
-                let newCount = 0;
-                let updateCount = 0;
-                
-                const finalItems = allNewItems.map(item => ({
-                    no: parseInt(item.no, 10),
-                    hawbNo: item.hawbNo || '',
-                    receiverAddressKorean: item.receiverAddressKorean || '',
-                    receiverAddressOriginal: cleanStringForDisplay(item.receiverAddressOriginal),
-                    companyNameKorean: item.companyNameKorean || '',
-                    companyNameOriginal: cleanStringForDisplay(item.companyNameOriginal),
-                    receiverNameKorean: item.receiverNameKorean || '',
-                    receiverNameOriginal: cleanStringForDisplay(item.receiverNameOriginal),
-                    receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
-                    status: '배송전', isHawbConfirmed: false,
-                    deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                }));
-                
-                finalItems.forEach(newItem => {
-                    const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
-                    
-                    if (existingItemIndex > -1) {
-                        deliveryItems[existingItemIndex] = newItem;
-                        updateCount++;
-                    } else {
-                        deliveryItems.push(newItem);
-                        newCount++;
-                    }
-                });
-
-                deliveryItems.sort((a, b) => a.no - b.no);
-                
-                saveDeliveryItemsToLocalStorage();
-                showMessage(`${updateCount}개의 카드가 업데이트되고 ${newCount}개의 카드가 새로 생성되었습니다.`);
-                
-            } else { showMessage(`이미지에서 유효한 정보를 찾지 못했습니다.`); }
-        } catch (error) {
-            console.error("스캔 오류:", error);
-            scanErrorText.textContent = error.message;
-            scanErrorMessage.style.display = 'block';
-        } finally {
-            scanLoadingIndicator.style.display = 'none';
-            scanProgressText.textContent = '송장 스캔 중...';
-            deliverySheetImageInput.value = '';
-            currentFileToScan = null;
-            selectedFilesDisplay.textContent = '선택된 파일 없음';
-            renderDeliveryCards();
-            updateFilterCounts();
-            updateStickyHeaderPositions();
         }
+
+        const allNewItems = Object.values(mergedResults);
+        let summaryMessage = '';
+
+        if (allNewItems.length > 0) {
+            let newCount = 0;
+            let updateCount = 0;
+
+            const finalItems = allNewItems.map(item => ({
+                no: parseInt(item.no, 10),
+                hawbNo: item.hawbNo || '',
+                receiverAddressKorean: item.receiverAddressKorean || '',
+                receiverAddressOriginal: cleanStringForDisplay(item.receiverAddressOriginal),
+                companyNameKorean: item.companyNameKorean || '',
+                companyNameOriginal: cleanStringForDisplay(item.companyNameOriginal),
+                receiverNameKorean: item.receiverNameKorean || '',
+                receiverNameOriginal: cleanStringForDisplay(item.receiverNameOriginal),
+                receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
+                status: '배송전', isHawbConfirmed: false,
+                deliveryCompletionTime: null, completionType: null, completionDetail: null,
+            }));
+
+            finalItems.forEach(newItem => {
+                const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
+                if (existingItemIndex > -1) {
+                    deliveryItems[existingItemIndex] = newItem;
+                    updateCount++;
+                } else {
+                    deliveryItems.push(newItem);
+                    newCount++;
+                }
+            });
+
+            deliveryItems.sort((a, b) => a.no - b.no);
+            saveDeliveryItemsToLocalStorage();
+            summaryMessage = `${updateCount}개 업데이트, ${newCount}개 신규 생성.`;
+        }
+
+        if (errors.length > 0) {
+            scanErrorText.innerHTML = `<strong>일부 파일 처리 중 오류 발생:</strong><br>${errors.join('<br>')}`;
+            scanErrorMessage.style.display = 'block';
+            if (summaryMessage) {
+                showMessage(summaryMessage, '작업 완료 (일부 오류)');
+            }
+        } else if (allNewItems.length > 0) {
+            showMessage(summaryMessage, '성공');
+        } else {
+            showMessage('이미지에서 유효한 정보를 찾지 못했습니다.');
+        }
+
+        scanLoadingIndicator.style.display = 'none';
+        scanProgressText.textContent = '송장 스캔 중...';
+        deliverySheetImageInput.value = '';
+        currentFileToScan = null;
+        selectedFilesDisplay.textContent = '선택된 파일 없음';
+        renderDeliveryCards();
+        updateFilterCounts();
+        updateStickyHeaderPositions();
     });
     
     exportDataButton.addEventListener('click', () => {
