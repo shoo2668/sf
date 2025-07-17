@@ -76,7 +76,7 @@
             right: 0;
             height: 100%;
             width: 40px; /* 핸들 터치 영역 확장 */
-            display: none; /* '배송중' 탭에서만 보이도록 JS로 제어 */
+            display: none; /* '배송중' 탭에서만 보이도록 JS로 제어 *
             z-index: 40;
             user-select: none;
             -webkit-user-select: none;
@@ -707,8 +707,7 @@ Example of expected JSON output:
                 };
                 
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/ge
-      mini-1.5-pro:generateContent?key=${tempApiKeyForLocalTest}`
+                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${tempApiKeyForLocalTest}`
       ;
 
                 const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
