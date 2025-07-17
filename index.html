@@ -619,9 +619,11 @@ For "receiverTelephoneNo", provide only digits.`;
                     throw new Error(`${file.name}: ${errorData?.error?.message || `API 요청 실패 (상태: ${response.status})`}`);
                 }
                 const result = await response.json();
+                console.log("Gemini API Response:", JSON.stringify(result, null, 2));
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     const cleanedText = result.candidates[0].content.parts[0].text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+                    console.log("Attempting to parse the following text as JSON:", cleanedText);
                     try {
                         const parsedData = JSON.parse(cleanedText);
                         if (Array.isArray(parsedData)) {
