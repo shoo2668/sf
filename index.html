@@ -209,42 +209,14 @@
     <script type="text/javascript">
         const GEMINI_PROMPT = `Extract the following delivery information from the provided invoice image. The output MUST be a JSON array of objects. Each object MUST contain ALL of these exact keys, even if the value is an empty string: "no", "hawbNo", "receiverAddressKorean", "receiverAddressOriginal", "companyNameKorean", "companyNameOriginal", "receiverNameKorean", "receiverNameOriginal", "receiverTelephoneNo".
 
-For "hawbNo", extract the *entire* HAWB number without any truncation or missing digits. It should include all characters and numbers present in the original HAWB number.
-
+For "hawbNo", extract the *entire* HAWB number.
 For "receiverAddressKorean", provide the Korean translation of the address.
-
-For "companyNameKorean", provide the Korean translation. **If the original company name and receiver name are identical, ensure that their Korean translations are also identical.**
-For "receiverNameKorean", provide the Korean translation and format it *accurately* as 'Lastname Firstname' (e.g., '김혜림' instead of '혜림 김'). **If the original company name and receiver name are identical, ensure that their Korean translations are also identical.**
-For "receiverAddressOriginal", provide the exact original text as scanned from the invoice image, with all line breaks (newline characters) removed, concatenating the lines. Ensure no additional spaces are introduced where line breaks were removed; combine the text as a single continuous string.
-The "receiverTelephoneNo" should contain only digits.
-If a piece of information is not found in its corresponding value should be an empty string.
-
-Example of expected JSON output:
-[
-  {
-    "no": "1",
-    "hawbNo": "SF1234567890123",
-    "receiverAddressKorean": "서울 강남구 테헤란로 123",
-    "receiverAddressOriginal": "Teheran-ro 123, Gangnam-gu, Seoul",
-    "companyNameKorean": "ABC 회사",
-    "companyNameOriginal": "ABC Company",
-    "receiverNameKorean": "홍길동",
-    "receiverNameOriginal": "Hong Gildong",
-    "receiverTelephoneNo": "01012345678"
-  },
-  {
-    "no": "2",
-    "hawbNo": "SF9876543210987",
-    "receiverAddressKorean": "부산 해운대구 센텀시티로 456",
-    "receiverAddressOriginal": "Centum City-ro 456, Haeundae-gu, Busan",
-    "companyNameKorean": "",
-    "companyNameOriginal": "",
-    "receiverNameKorean": "김철수",
-    "receiverNameOriginal": "Kim Cheolsu",
-    "receiverTelephoneNo": "01098765432"
-  }
-]
-`;
+For "receiverAddressOriginal", provide the exact original text.
+For "companyNameKorean", provide the Korean translation.
+For "companyNameOriginal", provide the exact original text.
+For "receiverNameKorean", provide the Korean translation.
+For "receiverNameOriginal", provide the exact original text.
+For "receiverTelephoneNo", provide only digits.`;
         
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
