@@ -707,9 +707,7 @@ Example of expected JSON output:
                 };
                 
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/ge
-      mini-1.5-pro:generateContent?key=${tempApiKeyForLocalTest}`
-      ;
+                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${tempApiKeyForLocalTest}`;
 
                 const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) {
