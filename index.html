@@ -718,9 +718,8 @@ Example of expected JSON output:
                 console.log("Gemini API Response:", JSON.stringify(result, null, 2));
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    const responseText = result.candidates[0].content.parts[0].text;
-                    console.log("Attempting to parse the following text as JSON:", responseText);
-                    const parsedData = JSON.parse(responseText);
+                    const cleanedText = result.candidates[0].content.parts[0].text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+                    const parsedData = JSON.parse(cleanedText);
                     if (Array.isArray(parsedData)) {
                         parsedData.forEach(item => {
                             const no = parseInt(item.no || '0', 10);
