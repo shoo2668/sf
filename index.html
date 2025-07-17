@@ -211,7 +211,7 @@
         const GEMINI_PROMPT = `Extract the following delivery information from the provided invoice image. The output MUST be a JSON array of objects. Each object MUST contain ALL of these exact keys, even if the value is an empty string: "no", "hawbNo", "receiverAddressKorean", "receiverAddressOriginal", "companyNameKorean", "companyNameOriginal", "receiverNameKorean", "receiverNameOriginal", "receiverTelephoneNo".
 
 Extract the information for each key from the image.
-For "receiverTelephoneNo", extract ONLY the phone number digits. DO NOT include any other text, addresses, or repeated information. Keep it concise.`;
+For "receiverTelephoneNo", extract ONLY the phone number digits. DO NOT include any other text, addresses, or repeated information.`;
         
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
