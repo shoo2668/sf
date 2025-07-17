@@ -266,8 +266,8 @@ For "receiverTelephoneNo", extract ONLY the phone number digits. DO NOT include 
 
         const getCleanPhoneNumber = (phoneNumber) => {
             if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
-            // Attempt to find a typical Korean phone number pattern (2-3 digits)-(3-4 digits)-(4 digits)
-            const match = phoneNumber.match(/\b(0\d{1,2}[- ]?\d{3,4}[- ]?\d{4})\b/);
+            // Extract only the first sequence of digits that looks like a phone number
+            const match = phoneNumber.match(/^\D*(\d{2,3}[- ]?\d{3,4}[- ]?\d{4})\D*/);
             if (match) {
                 return match[1].replace(/\D/g, ''); // Return only digits of the first found pattern
             }
