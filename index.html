@@ -211,76 +211,7 @@
 
 For "hawbNo", extract the *entire* HAWB number without any truncation or missing digits. It should include all characters and numbers present in the original HAWB number.
 
-For "receiverAddressKorean", provide the Korean translation and format it *accurately* in the Korean domestic **Road Name Address (도로명주소)** style. This means strictly following the order: **[시/도] [시/군/구] [읍/면/동/리] [도로명] [건물번호], [상세주소 (동/호/층/건물명/기타 식별자)]**.
-- **Crucially, when translating, pay extremely close attention to words that might be split across lines in the original image (e.g., 'DONG TAN' on one line, 'JI SEONG RO' on the next). Ensure these are reassembled correctly as single compound words in Korean (e.g., '동탄지성로' not '동 탄 지성로'). Treat hyphenated words or parts of a single address component (like a road name or building complex name) as continuous, even if separated by a line break in the source image. Also, accurately translate administrative units like 'myeon' (면) (e.g., 'Chongnam-myeon' should be '정남면', not '촌남면') and ensure correct spelling of road names and suffixes (e.g., '93BEON-GIL' should be '93번길', not '93번기').**
-- **You MUST ensure the building number (건물번호) is always present and correctly positioned directly after the road name. DO NOT OMIT THE BUILDING NUMBER.**
-- **If it's a Jibun Address (지번주소), ensure the jibun number (지번) is always present after the legal dong/ri (법정동/리). DO NOT OMIT THE JIBUN NUMBER.**
-- **Crucially, if the city/province (시/도) or district (시/군/구) is not explicitly present in the image but can be reliably inferred from the road name (e.g., '테헤란로' implies '서울 강남구', '센텀시티로' implies '부산 해운대구'), then you MUST add the inferred city/province and district at the beginning of the address. NEVER OMIT CITY/PROVINCE OR DISTRICT IF INFERABLE.**
-- **If the building number appears before the road name in the original text (e.g., '14Seja-ro442beon-길'), you must reorder it to appear after the road name (e.g., '세자로442번길 14').**
-- **The detailed address (상세주소) such as unit numbers (예: '102-2702'), floor numbers (예: '18F'), apartment/building numbers (예: '112동'), room numbers (예: '1403호'), specific identifiers (예: 'G129-3', 'PS-36', 'C-Dong'), or building names (예: 'Hyowon Bldg.', 'H-BUSINESS PARK', 'Tera Tower2 A', 'Eunma Apt.'), building/complex names (예: '부영사랑으로', '힐스테이트'), or floor numbers (예: '2층') must be placed AFTER the building number, separated by a comma. Translate building names to Korean. DO NOT OMIT ANY DETAILED ADDRESS INFORMATION. If multiple detailed address components are present, combine them accurately after the building number, separated by commas if logical (e.g., '12F 효원빌딩', '1218-C동, H비즈니스파크').**
-- **Do NOT include any postal codes, old address formats (지번주소) unless explicitly the primary address, or any irrelevant numerical/alphanumerical codes that are not part of the standard address (e.g., 'P190029 387439').**
-- **Ensure the address is a single, continuous string following the specified order and all components are translated to Korean. Be robust to minor spelling variations in road names (e.g., 'gill' should be interpreted as 'gil', 'BEOBWON-RO' as '법원로'). Specifically, for road names followed by numbers and then 'GIL' or 'GILL', combine them (e.g., 'BEOPWON-RO 9 GIL' -> '법원로9길').**
-- **CRITICAL: NEVER OMIT ANY PART OF THE ADDRESS THAT IS PRESENT AND LEGITIMATE. INCLUDE ALL RELEVANT COMPONENTS FROM THE ORIGINAL ADDRESS.**
-For example:
-- If the original is "534 Teheran-ro, Gangnam-gu, Seoul, 18F Shinhan VentureInvestment", the Korean translation should be "서울 강남구 테헤란로 534, 18F 신한벤처투자".
-- If the original is "Chungmin-ro 5", the Korean translation should be "서울 송파구 충민로 5" (assuming Songpa-gu for Chungmin-ro).
-- If the original is "Jeju-si, Halla-ro 300, 101-ho", the Korean translation should be "제주 제주시 한라로 300, 101호".
-- If the original is "Songpa-gu 14-12, Beakjegobun-ro 42-길,303", the Korean translation should be "서울 송파구 백제고분로42길 14-12, 303".
-- If the original is "seoul 503,5-13,Olympic-ro 34-길, Songpa-gu", the Korean translation should be "서울 송파구 올림픽로34길 5-13, 503".
-- If the original is "송파구 209-901오금로32길 5", the Korean translation should be "서울 송파구 오금로32길 5, 209-901".
-- If the original is "Seoul 송파구 12F, Hyowon Bldg., 97, Jungdae-ro", the Korean translation should be "서울 송파구 중대로 97, 12F 효원빌딩".
-- If the original is "District 9 Olympic-ro 35ga-길, 102-2702", the Korean translation should be "서울 송파구 올림픽로35가길 9, 102-2702".
-- If the original is "gangdong-gu 405-2201 1300, Yangjae-daero", the Korean translation should be "서울 강동구 양재대로 1300, 405-2201".
-- If the original is "Seoul Gangdong-gu 1053, Cheonho-daero Ian Kangdong Comhomesta y 1st 901", the Korean translation should be "서울 강동구 천호대로 1053, 이안 강동 컴홈스테이 1차 901".
-- If the original is "Songpa District 83 Munjeong-ro, 112dong 1403ho", the Korean translation should be "서울 송파구 문정로 83, 112동 1403호".
-- If the original is "Gangdong-gu 1300, 양재대로, 415-1904", the Korean translation should be "서울 강동구 양재대로 1300, 415-1904".
-- If the original is "Gangdong-gu 50 Arisu-ro 50-길, 104-1301", the Korean translation should be "서울 강동구 아리수로50길 50, 104-1301".
-- If the original is "Seoul 송파구 PS-36,G129-3, Building A, 201, 송파대로", the Korean translation should be "서울 송파구 송파대로 201, Building A, PS-36, G129-3".
-- If the original is "Songpagu Seockshonho suro, 12 gill 55, Mirinae Ville #402", the Korean translation should be "서울 송파구 석촌호수로12길 55, 미리내빌 #402".
-- If the original is "Seoul Songpa-Gu 1218-C-Dong,H-BUSINESS PARK,26 BEOBWON-RO 9 GIL,SONGP AGU,SEOUL,KO REA", the Korean translation should be "서울 송파구 법원로9길 26, 1218-C동, H비즈니스파크".
-- If the original is "Gangnam-gu 26-1301 (Daechi-dong, Eunma Apt.),212, Samseong-ro", the Korean translation should be "서울 강남구 삼성로 212, 은마아파트 26-1301".
-- If the original is "Seoul Songpa-Gu 1514-1515, 15F,Tera Tower2 A,201, songpa-daero", the Korean translation should be "서울 송파구 송파대로 201, 15F 테라타워2 A, 1514-1515".
-- If the original is "강동구 710동 603호상 암로79길 88 (상일동, 고덕 롯데캐슬 베네루체)", then the Korean translation should be "서울 강동구 상암로79길 88, 710동 603호".
-- If the original is "Seoul 송파구 B-1509, Hyundai i Knowledge Industrial Center 1-1,11,Beobwo n-ro 11-길,Songpa-gu,Seoul 05836,Korea)", the Korean translation should be "서울 송파구 법원로11길 11, B-1509, 현대지식산업센터1-1".
-- If the original is "Seoul Gangdong-Gu 41-21,14-GIL, SEONG NAE-RO, GANGDON G-GU, SEOUL, KOREA)", the Korean translation should be "서울 강동구 성내로14길 41-21".
-- If the original is "Seoul Gangdong-Gu 610, 549-1, Taeho-dong, Gangdong-gu, Seoul", the Korean translation should be "서울 강동구 천호동 549-1, 610".
-- If the original is "Seoul Gangdong-gu 363-23 CHONHO-DONG, KANGDON G-GU,SEOUL,KOREA", the Korean translation should be "서울 강동구 천호동 363-23".
-- If the original is "Seoul Gangdong-Gu JOIN MEDICAL CO.,LTD 143-40,3F 302 GANGDON G-DAERO", the Korean translation should be "서울 강동구 강동대로 143-40, 3F 302".
-- If the original is "Seoul Gangdong-Gu Urbaniel 1410,21, Cheonho-daero 161-길, Gangdong-gu, Seoul", the Korean translation should be "서울 강동구 천호대로161길 21, 어바니엘 1410".
-- If the original is "Seoul Songpa-Gu C1216HO, 12FL, 26, Beobwon-ro 9-gil, Songpa-gu, Seoul, Republic of Korea", the Korean translation should be "서울 송파구 법원로9길 26, C1216HO, 12FL".
-- If the original is "Bundang-gu, Seongnam-si 81, Soetgol-ro, CDA CO.,LTD", the Korean translation should be "성남 분당구 쇳골로 81, CDA CO.,LTD".
-- If the original is "성남시 서현 유스센터 4 충불정로386 번길38", the Korean translation should be "성남 분당구 불정로386번길 38, 서현유스센터 4층".
-- If the original is "Bundang-gu, Seongnam-si 227-2802,54,Junganggongwon-ro)", the Korean translation should be "성남 분당구 중앙공원로54, 227-2802".
-- If the original is "Gyeonggi-Do Bundang-Gu, Seongnam-Si 227-2802,54,Junganggongwon-ro", the Korean translation should be "성남 분당구 중앙공원로54, 227-2802".
-- If the original is "Gyeonggi-Do Bundang-Gu, Seongnam-Si 1F, 105, 4-11, NAEJEONG-RO 17 BEON-GIL NAEJEONG-RO 17BEON-GIL 1F, 105, 4-11", the Korean translation should be "성남 분당구 내정로17번길 4-11, 1F 105".
-- If the original is "227-2802,54,Junganggongwon-ro", the Korean translation should be "성남 분당구 중앙공원로54, 227-2802".
-- If the original is "1F, 105, 4-11, NAEJEONG-RO 17 BEON-GIL NAEJEONG-RO 17BEON-GIL 1F, 105, 4-11", the Korean translation should be "성남 분당구 내정로17번길 4-11, 1F 105".
-- If the original is "송파구 문정동 123-45", the Korean translation should be "서울 송파구 문정동 123-45".
-- If the original is "강원도 홍천군 홍천읍 하오안리 123", the Korean translation should be "강원 홍천군 홍천읍 하오안리 123".
-- If the original is "부산 동래구 온천동 123-1", the Korean translation should be "부산 동래구 온천동 123-1".
-- If the original is "Gyeonggi-do Hwaseong-Si 8-46, JEONGMUNS ONGSAN-RO, 93BEON-GIL, YANGGAM-MYEON, HWASEONG-SI, GYEONGGI-DO, SOUTH KOREA", the Korean translation should be "경기 화성시 양감면 정문송산로93번길 8-46".
-- If the original is "Gyeonggi-Do Hwaseong-si 20, Udeung-길, Hyangnam-eup, Hwaseong-si, Gyeonggi-do, Republic of Korea", the Korean translation should be "경기 화성시 향남읍 우등길 20".
-- If the original is "Gyeonggi-Do Hwaseong-Si 16 Eunhaengnamu-Ro,62Beongil, Hwaseong", the Korean translation should be "경기 화성시 은행나무로62번길 16".
-- If the original is "순번 23, 경기 화성시 행정동로 83, 809-204", the Korean translation should be "경기 화성시 행정동로 83, 809-204".
-- If the original is "순번 6 주소: 경기 화성시 봉담읍 주석로 962-15", the Korean translation should be "경기 화성시 봉담읍 주석로 962-15".
-- If the original is "Gyeonggi-Do Hwaseong-Si 26-6,GEONBAE-길,BONGDAM-EUP,HWASEONG-SI, GYEONGGI-DO, REPIBLIC OF KOREA, HWASEONG-SI 26-6", the Korean translation should be "경기 화성시 봉담읍 건배길 26-6".
-- If the original is "Gyeonggi-do Hwaseong-si 14Seja-ro442beon-길", the Korean translation should be "경기 화성시 세자로442번길 14".
-- If the original is "Gyeonggi-Do Hwaseong-Si 923-5, Gumuncheon-ri", the Korean translation should be "경기 화성시 구문천리 923-5".
-- If the original is "Sun-Ho Kwon", the Korean translation should be "권순호".
-- If the original is "LEE WOONGGI", the Korean translation should be "이웅기".
-- If the original is "Samuel lee", the Korean translation should be "사무엘 리".
-- If the original is "Gap seok, Ko", the Korean translation should be "고갑석".
-- If the original is "Jason Hong",
-the Korean translation should be "제이슨 홍".
-- If the original is "SungKyun Lee", the Korean translation should be "이성균".
-- If the original is "gyuheon yang", the Korean translation should be "양규현".
-- If the original is "yejin kim", the Korean translation should be "김예진".
-- If the original is "화성시 부영사랑으로 709동 104호상신하길로 274번길21", the Korean translation should be "경기 화성시 상신하길로274번길 21, 부영사랑으로 709동 104호".
-- If the original is "Hwaseong-si, Gyeonggi-do "1101, Building 114, 277 Dongtan Banseok-ro", the Korean translation should be "경기 화성시 동탄반석로 277, 114동 1101호".
-- If the original is "화성시 바오밥베이커리카페2 충매송면 천천리110-1", the Korean translation should be "경기 화성시 매송면 천천리 110-1, 바오밥베이커리카페2층".
-- If the original is "Gyeonggi-Do Hwaseong-Si 50 beongil 22,23,Annyeongnam-ro 22,23", the Korean translation should be "경기 화성시 안녕남로50번길 22".
-- If the original is "49 SAMSUNG 1RD 4 GIL,HWASUNG-SI,KYUNG GI-DO,KOREA 445-170", the Korean translation should be "경기 화성시 삼성1로4길 49".
-
+For "receiverAddressKorean", provide the Korean translation of the address.
 
 For "companyNameKorean", provide the Korean translation. **If the original company name and receiver name are identical, ensure that their Korean translations are also identical.**
 For "receiverNameKorean", provide the Korean translation and format it *accurately* as 'Lastname Firstname' (e.g., '김혜림' instead of '혜림 김'). **If the original company name and receiver name are identical, ensure that their Korean translations are also identical.**
