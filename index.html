@@ -715,7 +715,7 @@ Example of expected JSON output:
                     throw new Error(`${file.name}: ${errorData?.error?.message || `API 요청 실패 (상태: ${response.status})`}`);
                 }
                 const result = await response.json();
-                console.log("Gemini API Response:", result);
+                console.log("Gemini API Response:", JSON.stringify(result, null, 2));
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
