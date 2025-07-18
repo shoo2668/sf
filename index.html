@@ -427,10 +427,32 @@ For "receiverTelephoneNo":
             return query;
         };
 
+        const getClipboardTextForAddress = (fullKoreanAddress) => {
+            if (!fullKoreanAddress || typeof fullKoreanAddress !== 'string') return '';
+
+            const addressParts = fullKoreanAddress.split(',');
+            const baseAddress = addressParts[0].trim();
+            const detailedAddress = addressParts.length > 1 ? addressParts[1].trim() : '';
+
+            // Case 1: Detailed address contains a 'dong-ho' pattern (e.g., 238-503호, 319동 307호)
+            const dongHoMatch = detailedAddress.match(/(\d+동\s*\d+호|\d+-\d+호|\d+-\d+)/);
+            if (dongHoMatch && dongHoMatch[1]) {
+                return dongHoMatch[1].replace(/호$/, '').trim(); // '호' 제거
+            }
+
+            // Case 2: No 'dong-ho' pattern in detailed address, or no detailed address
+            // Return road name + building number from baseAddress, excluding city/province/district
+            let cleanedBaseAddress = baseAddress;
+            cleanedBaseAddress = cleanedBaseAddress.replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|도)?\s*/, '').trim();
+            cleanedBaseAddress = cleanedBaseAddress.replace(/^([가-힣]+(?:시|군|구))\s+/, '').trim();
+            cleanedBaseAddress = cleanedBaseAddress.replace(/^([가-힣]+(?:읍|면))\s+/, '').trim();
+
+            return cleanedBaseAddress;
+        };
+
         const openNaverMap = (address, no) => {
             const addressForMapSearch = getMapSearchQuery(address);
-            const addressParts = address.split(',');
-            const textToCopy = `${no}. ${addressParts.length > 1 ? addressParts[1].trim() : addressParts[0].trim()}`; // 콤마 뒷부분 또는 전체 주소 클립보드 복사
+            const textToCopy = `${no}. ${getClipboardTextForAddress(address)}`;
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
             textarea.style.position = 'fixed';
