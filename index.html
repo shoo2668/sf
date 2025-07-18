@@ -434,17 +434,20 @@ For "receiverTelephoneNo":
             const baseAddress = addressParts[0].trim();
             const detailedAddress = addressParts.length > 1 ? addressParts[1].trim() : '';
 
-            // Case 1: Detailed address contains a 'dong-ho' pattern (e.g., 238-503호, 319동 307호)
-            // Updated regex to capture dong and ho numbers, and handle various formats
-            // It should capture "X동 Y호" or "X-Y호" or "X-Y"
-            const hyphenatedDongHoMatch = detailedAddress.match(/(\d+-\d+)/); // Captures "X-Y"
-            const dongHoMatch = detailedAddress.match(/(\d+)(?:동)?\s*(\d+)(?:호)?/); // Captures "X" and "Y" from "X동 Y호"
-
+            // Case 1: Detailed address contains a hyphenated dong-ho pattern (e.g., 238-503, 206-1602)
+            const hyphenatedDongHoMatch = detailedAddress.match(/(\d+-\d+)/);
             if (hyphenatedDongHoMatch && hyphenatedDongHoMatch[1]) {
-                return hyphenatedDongHoMatch[1]; // Already in X-Y format
-            } else if (dongHoMatch && dongHoMatch[1] && dongHoMatch[2]) {
-                // If "X동 Y호" format, convert to "X-Y"
-                return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
+                return hyphenatedDongHoMatch[1];
+            }
+
+            // Case 2: Detailed address contains a "X동 Y호" pattern (e.g., 319동 307호)
+            // This regex specifically looks for a number followed by '동', then another number followed by '호'
+            const specificDongHoMatch = detailedAddress.match(/(\d+)동\s*(
+```} 307호)
+            // This regex specifically looks for a number followed by '동', then another number followed by '호'
+            const specificDongHoMatch = detailedAddress.match(/(\d+)동\s*(\d+)호/);
+            if (specificDongHoMatch && specificDongHoMatch[1] && specificDongHoMatch[2]) {
+                return `${specificDongHoMatch[1]}-${specificDongHoMatch[2]}`;
             }
 
             // Case 2: No 'dong-ho' pattern in detailed address, or no detailed address
