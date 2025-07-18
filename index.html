@@ -328,59 +328,6 @@ For "receiverTelephoneNo":
             }
             return '';
         };
-        
-        const formatAddressForMapSearch = (address) => {
-            if (!address || typeof address !== 'string') return '';
-            let cleanedAddress = address.trim();
-
-            // Attempt to find the road name and building number pattern
-            // This regex is designed to capture the core address part for map search
-            // It looks for a sequence of Korean characters (road name), followed by a number,
-            // optionally followed by a hyphen and another number.
-            // It also tries to keep the city/district part if present at the beginning.
-            const roadNamePattern = /([가-힣\s]+(?:로|길|대로|번길)\s*\d+(?:-\d+)?)/;
-            const match = cleanedAddress.match(roadNamePattern);
-
-            if (match && match[1]) {
-                // If a road name and building number pattern is found,
-                // try to extract the city/district part before it.
-                const cityDistrictPart = cleanedAddress.substring(0, cleanedAddress.indexOf(match[1])).trim();
-                return `${cityDistrictPart} ${match[1]}`.trim();
-            }
-
-            // Fallback for Jibun addresses or if no clear road name pattern is found
-            // Try to find the part before the first comma, assuming it separates base from detail
-            const firstCommaIndex = cleanedAddress.indexOf(',');
-            if (firstCommaIndex !== -1) {
-                return cleanedAddress.substring(0, firstCommaIndex).trim();
-            }
-
-            // If no comma or road name pattern, return the cleaned address as is (might be a simple jibun address)
-            return cleanedAddress;
-        };
-        
-        const extractClipboardAddressPart = (fullAddress) => {
-            if (!fullAddress || typeof fullAddress !== 'string') return '';
-
-            // Find the part after the road name and building number
-            const roadNamePattern = /([가-힣\s]+(?:로|길|대로|번길)\s*\d+(?:-\d+)?)/;
-            const match = fullAddress.match(roadNamePattern);
-
-            if (match && match[1]) {
-                const detailedPart = fullAddress.substring(fullAddress.indexOf(match[1]) + match[1].length).trim();
-                // Remove leading comma if present
-                return detailedPart.startsWith(',') ? detailedPart.substring(1).trim() : detailedPart;
-            }
-
-            // Fallback: if no clear road name pattern, take the part after the first comma
-            const firstCommaIndex = fullAddress.indexOf(',');
-            if (firstCommaIndex !== -1) {
-                return fullAddress.substring(firstCommaIndex + 1).trim();
-            }
-
-            // If no detailed part found, return empty string
-            return '';
-        };
 
         const isValidAddressForMap = (address) => {
             if (!address || address.trim().length === 0 || !/\d/.test(address)) return false;
@@ -533,7 +480,7 @@ For "receiverTelephoneNo":
                             `}
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${data.status === '완료' ? 'style="display:none;"' : ''}>
-                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between"><p class="text-base text-blue-600 font-semibold">${data.receiverAddressKorean.split(',')[0].trim()}</p><button data-action="open-naver-map" data-address="${data.receiverAddressKorean}" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button></div>${data.receiverAddressKorean.split(',').length > 1 ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressKorean.split(',')[1].trim()})</p>` : ''}${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between"><p class="text-base text-blue-600 font-semibold">${data.receiverAddressKorean.split(',')[0].trim()}</p><button data-action="open-naver-map" data-address="${data.receiverAddressKorean}" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button></div>${data.receiverAddressKorean.split(',').length > 1 ? `<p class="text-xs text-gray-500 ml-1">${data.receiverAddressKorean.split(',')[1].trim()}</p>` : ''}${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
                             <div><p class="text-sm font-medium text-gray-700">회사명:</p><p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.companyNameOriginal})</p>` : ''}</div>
                             <div><p class="text-sm font-medium text-gray-700">이름:</p><p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverNameOriginal})</p>` : ''}</div>
                             <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
