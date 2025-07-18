@@ -210,7 +210,13 @@
     <script type="text/javascript">
         const GEMINI_PROMPT = `Extract the following delivery information from the provided invoice image. The output MUST be a JSON array of objects. Each object MUST contain ALL of these exact keys, even if the value is an empty string: "no", "hawbNo", "receiverAddressKorean", "receiverAddressOriginal", "companyNameKorean", "companyNameOriginal", "receiverNameKorean", "receiverNameOriginal", "receiverTelephoneNo".
 
-For "receiverAddressKorean", "companyNameKorean", and "receiverNameKorean":
+For "receiverAddressKorean":
+- Extract the address starting from the city/county/district level (시/군/구/읍/면/동/리), including road names and detailed addresses.
+- Exclude country names (e.g., '대한민국') and provincial names (e.g., '경기도', '충청남도').
+- If the original text in the image is not in Korean, provide a Korean translation following this format.
+- IMPORTANT: This field MUST contain a valid Korean address or its translation. DO NOT return an empty string or "N/A" if a translation can be provided.
+
+For "companyNameKorean", and "receiverNameKorean":
 - If the original text in the image is already in Korean, extract it as is.
 - If the original text in the image is NOT in Korean (e.g., English), provide a Korean translation.
 - IMPORTANT: These fields MUST contain a valid Korean value or its translation. DO NOT return an empty string or "N/A" if a translation can be provided.
