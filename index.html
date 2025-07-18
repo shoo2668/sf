@@ -696,7 +696,7 @@ For "receiverTelephoneNo":
                 const finalItems = allNewItems.map(item => ({
                     no: parseInt(item.no, 10),
                     hawbNo: item.hawbNo || '',
-                    receiverAddressKorean: item.receiverAddressKorean || '',
+                    receiverAddressKorean: (item.receiverAddressKorean || '').replace(/[()]/g, '').trim(),
                     receiverAddressOriginal: cleanStringForDisplay(item.receiverAddressOriginal),
                     companyNameKorean: item.companyNameKorean || '',
                     companyNameOriginal: cleanStringForDisplay(item.companyNameOriginal),
