@@ -442,8 +442,7 @@ For "receiverTelephoneNo":
 
             // Case 2: Detailed address contains a "X동 Y호" pattern (e.g., 319동 307호)
             // This regex specifically looks for a number followed by '동', then another number followed by '호'
-            const specificDongHoMatch = detailedAddress.match(/(\d+)동\s*(
-```} 307호)
+            const specificDongHoMatch = detailedAddress.match(/(\d+)동\s*(\d+)호/);} 307호)
             // This regex specifically looks for a number followed by '동', then another number followed by '호'
             const specificDongHoMatch = detailedAddress.match(/(\d+)동\s*(\d+)호/);
             if (specificDongHoMatch && specificDongHoMatch[1] && specificDongHoMatch[2]) {
