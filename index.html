@@ -313,35 +313,57 @@ For "receiverTelephoneNo":
             return '';
         };
         
-        const formatAddressForClipboard = (address) => {
+        const formatAddressForMapSearch = (address) => {
             if (!address || typeof address !== 'string') return '';
-            let cleanedAddress = address.trim().replace(/떡정골로/g, "떡전골로");
-            
-            let tempAddress = cleanedAddress;
-            tempAddress = tempAddress.replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|도)?\s*/, '').trim();
-            tempAddress = tempAddress.replace(/^([가-힣]+(?:시|군|구))\s+/, '').trim();
-            tempAddress = tempAddress.replace(/^([가-힣]+(?:읍|면))\s+/, '').trim();
-            cleanedAddress = tempAddress;
+            let cleanedAddress = address.trim();
 
+            // Attempt to find the road name and building number pattern
+            // This regex is designed to capture the core address part for map search
+            // It looks for a sequence of Korean characters (road name), followed by a number,
+            // optionally followed by a hyphen and another number.
+            // It also tries to keep the city/district part if present at the beginning.
+            const roadNamePattern = /([가-힣\s]+(?:로|길|대로|번길)\s*\d+(?:-\d+)?)/;
+            const match = cleanedAddress.match(roadNamePattern);
+
+            if (match && match[1]) {
+                // If a road name and building number pattern is found,
+                // try to extract the city/district part before it.
+                const cityDistrictPart = cleanedAddress.substring(0, cleanedAddress.indexOf(match[1])).trim();
+                return `${cityDistrictPart} ${match[1]}`.trim();
+            }
+
+            // Fallback for Jibun addresses or if no clear road name pattern is found
+            // Try to find the part before the first comma, assuming it separates base from detail
             const firstCommaIndex = cleanedAddress.indexOf(',');
             if (firstCommaIndex !== -1) {
-                cleanedAddress = cleanedAddress.substring(0, firstCommaIndex).trim();
+                return cleanedAddress.substring(0, firstCommaIndex).trim();
             }
-            return cleanedAddress.replace(/\s+/g, ' ').trim();
+
+            // If no comma or road name pattern, return the cleaned address as is (might be a simple jibun address)
+            return cleanedAddress;
         };
         
         const extractClipboardAddressPart = (fullAddress) => {
             if (!fullAddress || typeof fullAddress !== 'string') return '';
-            let matchDongHo = fullAddress.match(/(\d+동\s*\d+호)/);
-            if (matchDongHo?.[1]) return matchDongHo[1].trim();
 
-            const commaIndex = fullAddress.indexOf(',');
-            if (commaIndex !== -1) {
-                const detailedAddressPart = fullAddress.substring(commaIndex + 1).trim();
-                let matchHyphenUnitInDetailed = detailedAddressPart.match(/(\b\d{1,4}-\d{1,4}\b)(?:호)?(?!\S)/);
-                if (matchHyphenUnitInDetailed?.[1]) return matchHyphenUnitInDetailed[1].trim();
+            // Find the part after the road name and building number
+            const roadNamePattern = /([가-힣\s]+(?:로|길|대로|번길)\s*\d+(?:-\d+)?)/;
+            const match = fullAddress.match(roadNamePattern);
+
+            if (match && match[1]) {
+                const detailedPart = fullAddress.substring(fullAddress.indexOf(match[1]) + match[1].length).trim();
+                // Remove leading comma if present
+                return detailedPart.startsWith(',') ? detailedPart.substring(1).trim() : detailedPart;
             }
-            return formatAddressForClipboard(fullAddress);
+
+            // Fallback: if no clear road name pattern, take the part after the first comma
+            const firstCommaIndex = fullAddress.indexOf(',');
+            if (firstCommaIndex !== -1) {
+                return fullAddress.substring(firstCommaIndex + 1).trim();
+            }
+
+            // If no detailed part found, return empty string
+            return '';
         };
 
         const isValidAddressForMap = (address) => {
@@ -431,7 +453,7 @@ For "receiverTelephoneNo":
             updateFilterCounts();
         };
         const openNaverMap = (address, no) => {
-            const addressForMapSearch = formatAddressForClipboard(address);
+            const addressForMapSearch = formatAddressForMapSearch(address);
             const textToCopy = `${no}. ${extractClipboardAddressPart(address)}`;
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
