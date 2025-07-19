@@ -636,7 +636,7 @@ For "receiverTelephoneNo":
         formData.append('prompt', GEMINI_PROMPT);
 
         try {
-            const response = await fetch('http://localhost:3000/api/scan', {
+            const response = await fetch('https://asia-northeast3-sfexpress-ec9e1.cloudfunctions.net/scanApi', {
                 method: 'POST',
                 body: formData
             });
