@@ -349,8 +349,32 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         };
 
         const isValidAddressForMap = (address) => {
-            // 주소 문자열이 비어있지만 않으면 무조건 활성화
             return !!(address && address.trim().length > 0);
+        };
+
+        const extractMapSearchQuery = (address) => {
+            if (!address) return '';
+
+            // 1. 도로명 주소 패턴 (최우선)
+            const roadAddrMatch = address.match(/([가-힣\d]+(?:로|길|대로|번길))\s*([\d\-]+)/);
+            if (roadAddrMatch) {
+                return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
+            }
+
+            // 2. 지번 주소 패턴
+            const jibunAddrMatch = address.match(/([가-힣\d]+(?:동|리))\s*([\d\-]+)/);
+            if (jibunAddrMatch) {
+                return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
+            }
+            
+            // 3. 동/리 이름만
+            const dongRiMatch = address.match(/([가-힣\d]+(?:동|리))/);
+            if (dongRiMatch) {
+                return dongRiMatch[1].trim();
+            }
+
+            // 4. 위 패턴 모두 없을 시 안전한 폴백
+            return address.trim();
         };
 
         // --- Global state and DOM elements ---
@@ -360,7 +384,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const filterCategories = ['배송준비', '전체', '배송전', '배송중', '완료'];
         let filterScrollPositions = {};
         let currentFileToScan = null;
-        let failedFileObjects = []; // 실패한 파일 객체(데이터)를 저장하는 배열
+        let failedFileObjects = []; 
         let currentSignatureItemNo = null;
         let onConfirmCallback = null;
 
@@ -420,7 +444,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             confirmationModal.style.display = 'none'; 
             onConfirmCallback = null; 
             confirmCancelButton.style.display = ''; 
-            // 기본 버튼 텍스트로 복원
             confirmOkButton.textContent = '확인';
             confirmCancelButton.textContent = '취소';
         };
@@ -460,20 +483,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         };
         
         const openNaverMap = (address, no) => {
-            let addressForMapSearch = address.trim();
-            const commaIndex = addressForMapSearch.indexOf(',');
-
-            if (commaIndex !== -1) {
-                addressForMapSearch = addressForMapSearch.substring(0, commaIndex).trim();
-            } else {
-                addressForMapSearch = addressForMapSearch.replace(/\s+[\d\-]+[동호]?$/, '').trim();
-                addressForMapSearch = addressForMapSearch.replace(/\s+\d{1,4}-\d{1,4}$/, '').trim();
-            }
-
-            if (addressForMapSearch.length === 0) {
-                addressForMapSearch = address.trim();
-            }
-
+            const addressForMapSearch = extractMapSearchQuery(address);
             const textToCopy = `${no}. ${extractClipboardAddressPart(address)}`;
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
@@ -635,15 +645,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     });
 
     // --- Scan, Import, Export Logic ---
-
-    /**
-     * 주어진 파일 목록을 스캔하고 배송 카드를 생성하는 핵심 함수.
-     * @param {FileList|File[]} filesToScan - 스캔할 파일 객체의 배열.
-     * @returns {Promise<{newCount: number, updateCount: number, failedFiles: string[]}>} - 생성, 업데이트된 카드 수와 실패한 파일 이름 목록을 포함하는 객체.
-     */
     async function performScan(filesToScan) {
         const mergedResults = {};
-        const failedFileNames = [];
+        const failedFileObjectsForRetry = [];
         
         for (let i = 0; i < filesToScan.length; i++) {
             const file = filesToScan[i];
@@ -669,9 +673,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                 const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) {
-                    throw new Error(`API 요청 실패 (상태: ${response.status})`);
-                }
+                if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
                 const result = await response.json();
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -680,22 +682,14 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                         parsedData.forEach(item => {
                             const no = parseInt(item.no || '0', 10);
                             const hawbNo = item.hawbNo || '';
-                            if (no > 0 && hawbNo.trim() !== '') {
-                                mergedResults[no] = item;
-                            }
+                            if (no > 0 && hawbNo.trim() !== '') { mergedResults[no] = item; }
                         });
-                    } else {
-                        // 성공 응답이지만 내용이 없는 경우 (조용한 실패)
-                        throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다.");
-                    }
-                } else {
-                    // 성공 응답이지만 내용이 없는 경우 (조용한 실패)
-                    throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다.");
-                }
+                    } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
+                } else { throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다."); }
             } catch (error) {
                 console.error(`파일 스캔 오류 (${file.name}):`, error);
-                failedFileNames.push(file.name);
-                continue; // 실패 시 다음 파일로 계속 진행
+                failedFileObjectsForRetry.push(file);
+                continue;
             }
         }
 
@@ -728,37 +722,31 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     newCount++;
                 }
             });
-
             deliveryItems.sort((a, b) => a.no - b.no);
             saveDeliveryItemsToLocalStorage();
         }
-
-        return { newCount, updateCount, failedFiles: failedFileNames };
+        return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
 
     scanAndGenerateButton.addEventListener('click', async () => {
-        if (!currentFileToScan || currentFileToScan.length === 0) {
-            showMessage('스캔할 이미지를 선택해주세요.');
-            return;
-        }
+        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
         
         scanLoadingIndicator.style.display = 'block';
         scanErrorMessage.style.display = 'none';
-        failedFileObjects = []; // 재시도를 위해 실패 파일 목록 초기화
+        failedFileObjects = []; 
 
         try {
             const initialFiles = Array.from(currentFileToScan);
             const result = await performScan(initialFiles);
 
             if (result.failedFiles.length === 0) {
-                // 모두 성공
                 showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다.`);
             } else {
-                // 일부 실패
-                failedFileObjects = initialFiles.filter(file => result.failedFiles.includes(file.name));
+                failedFileObjects = result.failedFiles;
                 const successCount = initialFiles.length - failedFileObjects.length;
+                const failedFileNames = failedFileObjects.map(f => f.name);
                 
-                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공.\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${result.failedFiles.join('\n- ')}`;
+                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공.\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
 
                 const onRetry = async () => {
                     scanLoadingIndicator.style.display = 'block';
@@ -771,14 +759,12 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     if (retryResult.failedFiles.length === 0) {
                         showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
                     } else {
-                        showMessage(`재시도 후에도 ${retryResult.failedFiles.length}개 파일이 여전히 실패했습니다.`, '재시도 일부 실패');
+                        const stillFailingNames = retryResult.failedFiles.map(f => f.name);
+                        showMessage(`재시도 후에도 아래 ${stillFailingNames.length}개 파일이 실패했습니다.\n- ${stillFailingNames.join('\n- ')}`, '재시도 일부 실패');
                     }
-
                     renderDeliveryCards();
                     updateFilterCounts();
-                    updateStickyHeaderPositions();
                 };
-
                 openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
             }
         } catch (error) {
@@ -797,19 +783,11 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     });
     
     exportDataButton.addEventListener('click', () => {
-        if (deliveryItems.length === 0) {
-            showMessage("저장할 데이터가 없습니다.");
-            return;
-        }
+        if (deliveryItems.length === 0) { showMessage("저장할 데이터가 없습니다."); return; }
         try {
             const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${year}-${month}-${day}`;
-            
+            const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
             const fileName = `SF-${formattedDate}.json`;
-
             const dataStr = JSON.stringify(deliveryItems, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -830,19 +808,13 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const file = event.target.files[0];
         if (!file) return;
 
-        openConfirmationModal(
-            `'${file.name}' 파일의 데이터로 현재 목록을 모두 덮어씁니다. 계속하시겠습니까?`,
-            () => {
+        openConfirmationModal( `'${file.name}' 파일의 데이터로 현재 목록을 모두 덮어씁니다. 계속하시겠습니까?`, () => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const importedData = JSON.parse(e.target.result);
-                        if (!Array.isArray(importedData)) {
-                            throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
-                        }
-                        if (importedData.length > 0 && typeof importedData[0].no === 'undefined') {
-                            throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
-                        }
+                        if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
+                        if (importedData.length > 0 && typeof importedData[0].no === 'undefined') throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
                         deliveryItems = importedData;
                         saveDeliveryItemsToLocalStorage();
                         updateFilterCounts();
@@ -855,10 +827,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                         importDataInput.value = '';
                     }
                 };
-                reader.onerror = () => {
-                    showMessage("파일을 읽는 데 실패했습니다.", "오류");
-                    importDataInput.value = '';
-                };
+                reader.onerror = () => { showMessage("파일을 읽는 데 실패했습니다.", "오류"); importDataInput.value = ''; };
                 reader.readAsText(file);
             }
         );
@@ -942,7 +911,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         };
 
         const updateHandleOnScroll = () => {
-            if (isDragging) return; // ✨ 드래그 중에는 이 함수가 절대 작동하지 않도록 함
+            if (isDragging) return; 
 
             headerHeight = filterButtonsContainer.offsetTop + filterButtonsContainer.offsetHeight;
             const currentScroll = window.scrollY;
