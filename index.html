@@ -327,23 +327,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return '';
         };
         
-        const formatAddressForClipboard = (address) => {
-            if (!address || typeof address !== 'string') return '';
-            let cleanedAddress = address.trim().replace(/떡정골로/g, "떡전골로");
-            
-            let tempAddress = cleanedAddress;
-            tempAddress = tempAddress.replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|도)?\s*/, '').trim();
-            tempAddress = tempAddress.replace(/^([가-힣]+(?:시|군|구))\s+/, '').trim();
-            tempAddress = tempAddress.replace(/^([가-힣]+(?:읍|면))\s+/, '').trim();
-            cleanedAddress = tempAddress;
-
-            const firstCommaIndex = cleanedAddress.indexOf(',');
-            if (firstCommaIndex !== -1) {
-                cleanedAddress = cleanedAddress.substring(0, firstCommaIndex).trim();
-            }
-            return cleanedAddress.replace(/\s+/g, ' ').trim();
-        };
-        
         const extractClipboardAddressPart = (fullAddress) => {
             if (!fullAddress || typeof fullAddress !== 'string') return '';
             let matchDongHo = fullAddress.match(/(\d+동\s*\d+호)/);
@@ -354,15 +337,21 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 const detailedAddressPart = fullAddress.substring(commaIndex + 1).trim();
                 let matchHyphenUnitInDetailed = detailedAddressPart.match(/(\b\d{1,4}-\d{1,4}\b)(?:호)?(?!\S)/);
                 if (matchHyphenUnitInDetailed?.[1]) return matchHyphenUnitInDetailed[1].trim();
+                return detailedAddressPart;
             }
-            return formatAddressForClipboard(fullAddress);
+            
+            // 쉼표가 없을 때, 동호수 패턴을 찾아서 반환
+            const unitMatch = fullAddress.match(/\s(\d{1,5}-\d{1,5}|\d+[동호])$/);
+            if(unitMatch) {
+                return unitMatch[1].trim();
+            }
+
+            return fullAddress;
         };
 
         const isValidAddressForMap = (address) => {
-            if (!address || address.trim().length === 0 || !/\d/.test(address)) return false;
-            const isRoadNameAddress = /로|길|대로|번길/.test(address);
-            const isJibunAddress = /(동|리|읍|면)\s*\d+([\-\s]\d+)?/.test(address) || /^\d+([\-\s]\d+)*$/.test(address);
-            return isRoadNameAddress || isJibunAddress;
+            // 주소 문자열이 비어있지만 않으면 무조건 활성화
+            return !!(address && address.trim().length > 0);
         };
 
         // --- Global state and DOM elements ---
@@ -445,7 +434,22 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             updateFilterCounts();
         };
         const openNaverMap = (address, no) => {
-            const addressForMapSearch = formatAddressForClipboard(address);
+            let addressForMapSearch = address.trim();
+            const commaIndex = addressForMapSearch.indexOf(',');
+
+            if (commaIndex !== -1) {
+                // 쉼표가 있으면, 쉼표 앞부분을 검색어로 사용
+                addressForMapSearch = addressForMapSearch.substring(0, commaIndex).trim();
+            } else {
+                // 쉼표가 없으면, 끝에 있는 상세주소 패턴(예: 101-2503, 202호)을 제거 시도
+                addressForMapSearch = addressForMapSearch.replace(/\s+[\d\-동호]+$/, '').trim();
+            }
+
+            // 만약 위 과정에서 모든 문자열이 사라졌다면, 안전하게 원본 주소 사용
+            if (addressForMapSearch.length === 0) {
+                addressForMapSearch = address.trim();
+            }
+
             const textToCopy = `${no}. ${extractClipboardAddressPart(address)}`;
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
