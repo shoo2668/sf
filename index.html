@@ -736,7 +736,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             showMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
-        } catch (error) {
+        } catch (error) => {
             showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
         }
     });
