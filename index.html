@@ -424,15 +424,41 @@ For "receiverTelephoneNo":
             return query;
         };
 
-        const getClipboardTextForAddress = (fullKoreanAddress) => {
+        const getClipboardTextForAddress = (fullKoreanAddress, no) => {
             if (!fullKoreanAddress || typeof fullKoreanAddress !== 'string') return '';
+            
             const addressParts = fullKoreanAddress.split(',');
-            return addressParts.length > 1 ? addressParts[1].trim() : addressParts[0].trim();
+            const mainAddress = addressParts[0].trim();
+            const detailAddress = addressParts.length > 1 ? addressParts[1].trim() : null;
+
+            if (detailAddress) {
+                // 동-호수 패턴 (예: "717동 1103호", "508-2401")
+                const dongHoPattern = /(\d+동\s*\d+호|\d+-\d+)/;
+                const match = detailAddress.match(dongHoPattern);
+                
+                if (match) {
+                    // "고덕롯데캐슬 717동 1103호" -> "717동 1103호"
+                    // "508-2401" -> "508-2401"
+                    return `${no}. ${match[0].replace(/\s/g, '')}`;
+                }
+            }
+
+            // 법원로 128
+            const roadNamePattern = /([가-힣A-Za-z·-]+\s*\d*길?\s*\d+-?\d*)/;
+            const roadMatch = mainAddress.match(roadNamePattern);
+            if (roadMatch) {
+                 // "서울 송파구 법원로 128" -> "법원로 128"
+                 const addressOnly = mainAddress.split(' ').slice(2).join(' ');
+                 return `${no}. ${addressOnly || mainAddress}`;
+            }
+
+            // 기본적으로는 상세주소 또는 전체주소 반환
+            return `${no}. ${detailAddress || mainAddress}`;
         };
 
         const openNaverMap = (address, no) => {
             const addressForMapSearch = getMapSearchQuery(address);
-            const textToCopy = `${no}. ${getClipboardTextForAddress(address)}`;
+            const textToCopy = getClipboardTextForAddress(address, no);
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
             textarea.style.position = 'fixed';
@@ -593,43 +619,46 @@ For "receiverTelephoneNo":
 
     // --- Scan, Import, Export Logic ---
     scanAndGenerateButton.addEventListener('click', async () => {
-        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
+        if (!currentFileToScan || currentFileToScan.length === 0) {
+            showMessage('스캔할 이미지를 선택해주세요.');
+            return;
+        }
         scanLoadingIndicator.style.display = 'block';
         scanProgressText.textContent = '스캔 준비 중...';
         scanErrorMessage.style.display = 'none';
-        
+
+        const formData = new FormData();
+        for (let i = 0; i < currentFileToScan.length; i++) {
+            formData.append('images', currentFileToScan[i]);
+        }
+        formData.append('prompt', GEMINI_PROMPT);
+
         try {
-            const mergedResults = {}; 
+            const response = await fetch('http://localhost:3000/api/scan', {
+                method: 'POST',
+                body: formData
+            });
 
-            for (let i = 0; i < currentFileToScan.length; i++) {
-                const file = currentFileToScan[i];
-                scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${currentFileToScan.length})...`;
-                const base64ImageData = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `서버 요청 실패 (상태: ${response.status})`);
+            }
 
-                const payload = {
-                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
-                    generationConfig: { 
-                        responseMimeType: "application/json",
-                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
-                };
-                
-                const tempApiKeyForLocalTest = "AIzaSyBCBUz343UBlM1IxY3UICQIX79oew2WbEs";
-                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+            const results = await response.json();
+            const mergedResults = {};
+            let hasErrors = false;
+            let errorMessages = [];
 
-                const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`${file.name}: ${errorData?.error?.message || `API 요청 실패 (상태: ${response.status})`}`);
+            results.forEach(result => {
+                if (result.error) {
+                    hasErrors = true;
+                    errorMessages.push(`${result.fileName}: ${result.error.error?.message || JSON.stringify(result.error)}`);
+                    return; // 다음 결과로 넘어감
                 }
-                const result = await response.json();
-
-                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    const cleanedText = result.candidates[0].content.parts[0].text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+                
+                const content = result.data?.candidates?.[0]?.content;
+                if (content?.parts?.[0]?.text) {
+                    const cleanedText = content.parts[0].text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
                     try {
                         const parsedData = JSON.parse(cleanedText);
                         if (Array.isArray(parsedData)) {
@@ -637,15 +666,20 @@ For "receiverTelephoneNo":
                                 const no = parseInt(item.no || '0', 10);
                                 const hawbNo = item.hawbNo || '';
                                 if (no > 0 && hawbNo.trim() !== '') {
+                                    // 동일한 'no'가 있으면 덮어쓰기 (나중에 스캔한 파일이 우선)
                                     mergedResults[no] = item;
                                 }
                             });
                         }
                     } catch (parseError) {
-                        console.error(`Skipping file due to JSON parsing error: ${file.name}. Details:`, parseError);
+                        console.error(`Skipping file due to JSON parsing error: ${result.fileName}. Details:`, parseError);
                         console.error("Problematic text from API:", cleanedText);
                     }
                 }
+            });
+
+            if (hasErrors) {
+                 throw new Error(errorMessages.join('\n'));
             }
 
             const allNewItems = Object.values(mergedResults);
@@ -653,7 +687,7 @@ For "receiverTelephoneNo":
             if (allNewItems.length > 0) {
                 let newCount = 0;
                 let updateCount = 0;
-                
+
                 const finalItems = allNewItems.map(item => ({
                     no: parseInt(item.no, 10),
                     hawbNo: item.hawbNo || '',
@@ -664,13 +698,15 @@ For "receiverTelephoneNo":
                     receiverNameKorean: item.receiverNameKorean || '',
                     receiverNameOriginal: cleanStringForDisplay(item.receiverNameOriginal),
                     receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
-                    status: '배송전', isHawbConfirmed: false,
-                    deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                    status: '배송전',
+                    isHawbConfirmed: false,
+                    deliveryCompletionTime: null,
+                    completionType: null,
+                    completionDetail: null,
                 }));
-                
+
                 finalItems.forEach(newItem => {
                     const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
-                    
                     if (existingItemIndex > -1) {
                         deliveryItems[existingItemIndex] = newItem;
                         updateCount++;
@@ -681,11 +717,12 @@ For "receiverTelephoneNo":
                 });
 
                 deliveryItems.sort((a, b) => a.no - b.no);
-                
                 saveDeliveryItemsToLocalStorage();
                 showMessage(`${updateCount}개의 카드가 업데이트되고 ${newCount}개의 카드가 새로 생성되었습니다.`);
-                
-            } else { showMessage(`이미지에서 유효한 정보를 찾지 못했습니다.`); }
+            } else {
+                showMessage(`이미지에서 유효한 정보를 찾지 못했습니다.`);
+            }
+
         } catch (error) {
             console.error("스캔 오류:", error);
             scanErrorText.textContent = error.message;
