@@ -935,8 +935,19 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         try {
             setupDelegatedEventListeners();
             setupQuickScroll();
-            const storedItems = localStorage.getItem('deliveryItems');
-            if (storedItems) deliveryItems = JSON.parse(storedItems).sort((a, b) => a.no - b.no);
+            try {
+    const storedItems = localStorage.getItem('deliveryItems');
+    if (storedItems) {
+        const parsedItems = JSON.parse(storedItems);
+        if (Array.isArray(parsedItems)) {
+            deliveryItems = parsedItems.sort((a, b) => a.no - b.no);
+        }
+    }
+} catch (e) {
+    console.warn("로컬 저장된 데이터 오류. 초기화합니다.");
+    localStorage.removeItem('deliveryItems');
+}
+
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
