@@ -736,7 +736,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             showMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
-        } catch (error) => {
+        } catch (error) {
             showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
         }
     });
@@ -935,19 +935,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         try {
             setupDelegatedEventListeners();
             setupQuickScroll();
-            try {
-    const storedItems = localStorage.getItem('deliveryItems');
-    if (storedItems) {
-        const parsedItems = JSON.parse(storedItems);
-        if (Array.isArray(parsedItems)) {
-            deliveryItems = parsedItems.sort((a, b) => a.no - b.no);
-        }
-    }
-} catch (e) {
-    console.warn("로컬 저장된 데이터 오류. 초기화합니다.");
-    localStorage.removeItem('deliveryItems');
-}
-
+            const storedItems = localStorage.getItem('deliveryItems');
+            if (storedItems) deliveryItems = JSON.parse(storedItems).sort((a, b) => a.no - b.no);
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
