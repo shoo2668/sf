@@ -207,45 +207,6 @@
     </div>
 
     <script type="text/javascript">
-        const GEMINI_PROMPT = `Extract the following delivery information from the provided invoice image. The output should be a JSON array of objects. Each object must contain these exact keys: "no", "hawbNo", "receiverAddressKorean", "receiverAddressOriginal", "companyNameKorean", "companyNameOriginal", "receiverNameKorean", "receiverNameOriginal", "receiverTelephoneNo".
-
-For "hawbNo", extract the *entire* HAWB number without any truncation or missing digits.
-
-For "receiverAddressKorean", provide the Korean translation and format it *accurately* in the Korean domestic **Road Name Address (도로명주소)** style.
-- **CRITICAL RULES FOR ADDRESS TRANSLATION:**
-  1.  **Translate all address components explicitly present in the image.** Your primary goal is to be faithful to the source text.
-  2.  **SAFE INFERENCE IS ALLOWED:** If a City/Province (시/도, e.g., '서울', '경기') is missing but can be reliably inferred from a District (시/군/구, e.g., '송파구', '분당구') present in the text, you MUST add the inferred City/Province. This is the ONLY type of inference permitted.
-  3.  **DANGEROUS INFERENCE IS FORBIDDEN:** You MUST NOT invent, guess, or add any other part of the address (like road names, building numbers, or building names) that is not explicitly written on the invoice.
-- Follow the Korean address order: **[시/도] [시/군/구] [읍/면/동/리] [도로명] [건물번호], [상세주소 (동/호/층/기타)]**.
-- Pay attention to words split across lines (e.g., 'DONG TAN' 'JI SEONG RO' -> '동탄지성로').
-- Place the detailed address (unit numbers, building names, etc.) after the building number, separated by a comma.
-
-For "receiverAddressOriginal", provide the exact original text as scanned from the invoice, with line breaks removed.
-
-For other fields ("companyNameKorean", "receiverNameKorean", "receiverTelephoneNo"), translate or format as requested. If info is not found, use an empty string.
-
-**EXAMPLES ILLUSTRATING THE CRITICAL RULES:**
-- If the original is "Songpagu Olympicro 102-408":
-  - The correct Korean translation is "서울 송파구 올림픽로 102, 408호".
-  - **Reasoning:** '서울' was correctly inferred from 'Songpagu'. All other parts were present and translated directly.
-- If the original is "Songpagu Jamsil the sharp starpark 101-2503":
-  - The correct Korean translation is "서울 송파구 잠실 더샵 스타파크 101-2503".
-  - **Reasoning:** '서울' was correctly inferred. Crucially, you **MUST NOT** add a road name like '올림픽로35길 104' because it was not in the original text. This would be a forbidden invention.
-- If the original is "Bundang-gu, 54, Junganggongwon-ro":
-    - The correct Korean translation is "성남 분당구 중앙공원로 54".
-    - **Reasoning:** '성남' was correctly inferred from 'Bundang-gu'.
-- If the original is "Hwaseong-si, Gyeonggi-do, 14, Sejaro442beon-gil":
-    - The correct Korean translation is "경기 화성시 세자로442번길 14".
-    - **Reasoning:** All parts were already present, so no inference was needed.
-`;
-        
-        const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-
-        // --- Helper functions ---
-        const cleanStringForDisplay = (str) => {
-            if (typeof str !== 'string' || !str) return '';
-            return str.replace(/[\n\\]/g, '').trim();
-        };
         const GEMINI_PROMPT = `Your task is to extract delivery information from an invoice and convert the address into a standard Korean "Road Name Address" (도로명주소). Your primary goal is accuracy and faithfulness to the source text.
 
 **Core Instruction:**
@@ -279,6 +240,58 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 - \`receiverAddressOriginal\` must be the raw, concatenated text from the image.
 - \`receiverTelephoneNo\` must contain only digits.
 - Empty strings for missing fields.`;
+        
+        const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+
+        // --- Helper functions ---
+        const cleanStringForDisplay = (str) => {
+            if (typeof str !== 'string' || !str) return '';
+            return str.replace(/[\n\\]/g, '').trim();
+        };
+
+        const formatSinglePhoneNumber = (phoneNumber) => {
+            if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
+            let cleaned = phoneNumber.replace(/\D/g, '');
+
+            if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
+            else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('8201') && cleaned.length > 4 && cleaned[4] !== '0') { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('82') && cleaned.length > 2) { cleaned = '0' + cleaned.substring(2); }
+            else if (cleaned.length >= 7 && cleaned.length <= 11 && !cleaned.startsWith('0')) { cleaned = '0' + cleaned; }
+            
+            if (cleaned.startsWith('010') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            if (cleaned.startsWith('02')) {
+                if (cleaned.length === 9) return cleaned.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
+                if (cleaned.length === 10) return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
+            }
+            if (cleaned.startsWith('031') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            if (cleaned.startsWith('070') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            if (cleaned.length === 10) return cleaned.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+            if (cleaned.length === 9) return cleaned.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
+            if (cleaned.length === 8) return cleaned.replace(/(\d{4})(\d{4})/, '$1-$2');
+            if (cleaned.length === 7) return cleaned.replace(/(\d{3})(\d{4})/, '$1-$2');
+
+            return cleaned;
+        };
+
+        const formatPhoneNumberForDisplay = (phoneNumber) => {
+            if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
+            const rangeMatch = phoneNumber.match(/^(\d+)-(\d+)$/);
+            if (rangeMatch) {
+                const baseNumber = rangeMatch[1];
+                const suffix = rangeMatch[2];
+                if (baseNumber.length >= suffix.length) {
+                    const num1 = formatSinglePhoneNumber(baseNumber);
+                    const num2Raw = baseNumber.substring(0, baseNumber.length - suffix.length) + suffix;
+                    const num2 = formatSinglePhoneNumber(num2Raw);
+                    return `${num1} / ${num2}`;
+                }
+            }
+            return formatSinglePhoneNumber(phoneNumber.replace(/\D/g, ''));
+        };
+
         const getCleanPhoneNumber = (phoneNumber) => {
             if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
             const rangeMatch = phoneNumber.match(/^(\d+)-(\d+)$/);
