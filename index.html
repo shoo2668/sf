@@ -246,50 +246,39 @@ For other fields ("companyNameKorean", "receiverNameKorean", "receiverTelephoneN
             if (typeof str !== 'string' || !str) return '';
             return str.replace(/[\n\\]/g, '').trim();
         };
+        const GEMINI_PROMPT = `Your task is to extract delivery information from an invoice and convert the address into a standard Korean "Road Name Address" (도로명주소). Your primary goal is accuracy and faithfulness to the source text.
 
-        const formatSinglePhoneNumber = (phoneNumber) => {
-            if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
-            let cleaned = phoneNumber.replace(/\D/g, '');
+**Core Instruction:**
+Combine the address parts found in the image into the correct Korean address format.
+The standard format is: \`[시/도] [시/군/구] [도로명] [건물번호], [상세주소]\`.
 
-            if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
-            else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
-            else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
-            else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
-            else if (cleaned.startsWith('8201') && cleaned.length > 4 && cleaned[4] !== '0') { cleaned = '010' + cleaned.substring(4); }
-            else if (cleaned.startsWith('82') && cleaned.length > 2) { cleaned = '0' + cleaned.substring(2); }
-            else if (cleaned.length >= 7 && cleaned.length <= 11 && !cleaned.startsWith('0')) { cleaned = '0' + cleaned; }
-            
-            if (cleaned.startsWith('010') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
-            if (cleaned.startsWith('02')) {
-                if (cleaned.length === 9) return cleaned.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
-                if (cleaned.length === 10) return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
-            }
-            if (cleaned.startsWith('031') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
-            if (cleaned.startsWith('070') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
-            if (cleaned.length === 10) return cleaned.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-            if (cleaned.length === 9) return cleaned.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
-            if (cleaned.length === 8) return cleaned.replace(/(\d{4})(\d{4})/, '$1-$2');
-            if (cleaned.length === 7) return cleaned.replace(/(\d{3})(\d{4})/, '$1-$2');
+**Mandatory Rules:**
+1.  **NO HALLUCINATION:** You MUST NOT invent or add any address parts that are not explicitly written in the source text. Your only source of truth is the image.
+2.  **INTELLIGENT ASSEMBLY:** You must intelligently identify address components (road name, building number, unit numbers) and assemble them in the correct order. Use your knowledge of the Korean address system to determine which number is the building number and which is the detailed unit number.
+3.  **SAFE INFERENCE ONLY:** If a district (e.g., '강남구', '해운대구') is present without a city, you must prepend the corresponding city (e.g., '서울', '부산'). This is the only permitted type of inference.
 
-            return cleaned;
-        };
+**Execution Examples:**
 
-        const formatPhoneNumberForDisplay = (phoneNumber) => {
-            if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
-            const rangeMatch = phoneNumber.match(/^(\d+)-(\d+)$/);
-            if (rangeMatch) {
-                const baseNumber = rangeMatch[1];
-                const suffix = rangeMatch[2];
-                if (baseNumber.length >= suffix.length) {
-                    const num1 = formatSinglePhoneNumber(baseNumber);
-                    const num2Raw = baseNumber.substring(0, baseNumber.length - suffix.length) + suffix;
-                    const num2 = formatSinglePhoneNumber(num2Raw);
-                    return `${num1} / ${num2}`;
-                }
-            }
-            return formatSinglePhoneNumber(phoneNumber.replace(/\D/g, ''));
-        };
+*   **Scenario 1: Scattered Parts**
+    *   **Source Text contains:** \`Gangdong-gu\`, \`Seoul\`, \`56-7\`, \`Cheonho-daero 168na-gil\`, \`202\`
+    *   **Correct \`receiverAddressKorean\`:** "서울 강동구 천호대로168나길 56-7, 202"
+    *   **Logic:** You identified \`Cheonho-daero 168na-gil\` as the road, recognized \`56-7\` is the building number that should follow it, and treated \`202\` as the detailed part. You correctly assembled these pieces.
 
+*   **Scenario 2: Missing Road Name**
+    *   **Source Text contains:** \`Songpagu\`, \`Jamsil the sharp starpark\`, \`101-2503\`
+    *   **Correct \`receiverAddressKorean\`:** "서울 송파구 잠실 더샵 스타파크 101-2503"
+    *   **Logic:** You correctly inferred '서울' from '송파구'. Since no road name was provided, you correctly did not invent one. You used the building name as the main address component.
+
+*   **Scenario 3: Building Number before Road Name**
+    *   **Source Text contains:** \`Gyeonggi-do\`, \`Hwaseong-si\`, \`14\`, \`Seja-ro442beon-gil\`
+    *   **Correct \`receiverAddressKorean\`:** "경기 화성시 세자로442번길 14"
+    *   **Logic:** You correctly identified that \`14\` is the building number and placed it *after* the road name, following the standard Korean format.
+
+**Output JSON Format:**
+Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`receiverAddressKorean\`, \`receiverAddressOriginal\`, \`companyNameKorean\`, \`companyNameOriginal\`, \`receiverNameKorean\`, \`receiverNameOriginal\`, \`receiverTelephoneNo\`.
+- \`receiverAddressOriginal\` must be the raw, concatenated text from the image.
+- \`receiverTelephoneNo\` must contain only digits.
+- Empty strings for missing fields.`;
         const getCleanPhoneNumber = (phoneNumber) => {
             if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
             const rangeMatch = phoneNumber.match(/^(\d+)-(\d+)$/);
