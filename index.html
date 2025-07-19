@@ -241,6 +241,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 - \`receiverTelephoneNo\` must contain only digits.
 - Empty strings for missing fields.`;
         
+        // ⚠️ 아래에 발급받은 카카오 REST API 키를 붙여넣으세요.
+        const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
+
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
         // --- Helper functions ---
@@ -354,27 +357,24 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         const extractMapSearchQuery = (address) => {
             if (!address) return '';
+            let cleanAddress = address.trim();
 
-            // 1. 도로명 주소 패턴 (최우선)
-            const roadAddrMatch = address.match(/([가-힣\d]+(?:로|길|대로|번길))\s*([\d\-]+)/);
+            const roadAddrMatch = cleanAddress.match(/([가-힣\d]+(?:로|길|대로|번길))\s*([\d\-]+)/);
             if (roadAddrMatch) {
                 return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
             }
 
-            // 2. 지번 주소 패턴
-            const jibunAddrMatch = address.match(/([가-힣\d]+(?:동|리))\s*([\d\-]+)/);
+            const jibunAddrMatch = cleanAddress.match(/([가-힣\d]+(?:동|리))\s*([\d\-]+)/);
             if (jibunAddrMatch) {
                 return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
             }
             
-            // 3. 동/리 이름만
-            const dongRiMatch = address.match(/([가-힣\d]+(?:동|리))/);
+            const dongRiMatch = cleanAddress.match(/([가-힣\d]+(?:동|리))/);
             if (dongRiMatch) {
                 return dongRiMatch[1].trim();
             }
 
-            // 4. 위 패턴 모두 없을 시 안전한 폴백
-            return address.trim();
+            return cleanAddress;
         };
 
         // --- Global state and DOM elements ---
@@ -645,6 +645,46 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     });
 
     // --- Scan, Import, Export Logic ---
+    async function validateAddressWithKakao(geminiAddress) {
+        if (!KAKAO_API_KEY || !geminiAddress) return geminiAddress;
+
+        const parts = geminiAddress.split(',');
+        const mainAddress = parts[0].trim();
+        const detailAddress = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
+        
+        try {
+            const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(mainAddress)}`, {
+                headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
+            });
+            if (!response.ok) return geminiAddress; // 카카오 API 실패 시 원본 주소 반환
+
+            const data = await response.json();
+            if (data.documents && data.documents.length > 0) {
+                const firstResult = data.documents[0];
+                const correctedAddress = (firstResult.road_address?.address_name || firstResult.address?.address_name).trim();
+                
+                // 떡전골로/발안리 같은 오타 교정
+                let finalAddress = geminiAddress.replace(mainAddress, correctedAddress);
+                
+                // 건물번호 순서 교정
+                if (firstResult.road_address && detailAddress) {
+                    const buildingName = firstResult.road_address.building_name;
+                    // 상세주소와 건물명이 비슷하면, 상세주소를 건물명 뒤로 옮긴다.
+                    if (buildingName && detailAddress.includes(buildingName)) {
+                        finalAddress = `${correctedAddress}, ${detailAddress}`;
+                    } else if (!correctedAddress.endsWith(detailAddress) && !buildingName) {
+                        finalAddress = `${correctedAddress}, ${detailAddress}`;
+                    }
+                }
+                return finalAddress;
+            }
+            return geminiAddress; // 검색 결과 없으면 원본 주소 반환
+        } catch (error) {
+            console.error("카카오 주소 검증 API 오류:", error);
+            return geminiAddress; // 네트워크 오류 등 발생 시 원본 주소 반환
+        }
+    }
+
     async function performScan(filesToScan) {
         const mergedResults = {};
         const failedFileObjectsForRetry = [];
@@ -679,11 +719,14 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                     if (Array.isArray(parsedData) && parsedData.length > 0) {
-                        parsedData.forEach(item => {
+                        scanProgressText.textContent = `주소 검증 중 (${i + 1}/${filesToScan.length})...`;
+                        for (const item of parsedData) {
                             const no = parseInt(item.no || '0', 10);
-                            const hawbNo = item.hawbNo || '';
-                            if (no > 0 && hawbNo.trim() !== '') { mergedResults[no] = item; }
-                        });
+                            if (no > 0) {
+                                const validatedAddress = await validateAddressWithKakao(item.receiverAddressKorean);
+                                mergedResults[no] = { ...item, receiverAddressKorean: validatedAddress };
+                            }
+                        }
                     } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
                 } else { throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다."); }
             } catch (error) {
