@@ -207,10 +207,6 @@
     </div>
 
     <script type="text/javascript">
-        // --- (중요) API 설정 ---
-        // 아래 따옴표 안에 본인의 Gemini API 키를 넣어주세요.
-        const GEMINI_API_KEY = "YOUR_API_KEY_HERE"; 
-
         const GEMINI_PROMPT = `Extract the following delivery information from the provided invoice image. The output should be a JSON array of objects. Each object must contain these exact keys: "no", "hawbNo", "receiverAddressKorean", "receiverAddressOriginal", "companyNameKorean", "companyNameOriginal", "receiverNameKorean", "receiverNameOriginal", "receiverTelephoneNo".
 
 For "hawbNo", extract the *entire* HAWB number without any truncation or missing digits. It should include all characters and numbers present in the original HAWB number.
@@ -685,27 +681,17 @@ Example of expected JSON output:
 
     // --- Scan, Import, Export Logic ---
     scanAndGenerateButton.addEventListener('click', async () => {
-        if (!currentFileToScan || currentFileToScan.length === 0) {
-            showMessage('스캔할 이미지를 선택해주세요.');
-            return;
-        }
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === "AIzaSyBCBUz343UBlM1IxY3UICQIX79oew2WbEs") {
-            showMessage('API 키가 설정되지 않았습니다. 코드의 GEMINI_API_KEY 변수를 수정해주세요.');
-            return;
-        }
-
+        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
         scanLoadingIndicator.style.display = 'block';
         scanProgressText.textContent = '스캔 준비 중...';
         scanErrorMessage.style.display = 'none';
-
+        
         try {
-            const mergedResults = {};
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const mergedResults = {}; 
 
             for (let i = 0; i < currentFileToScan.length; i++) {
                 const file = currentFileToScan[i];
                 scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${currentFileToScan.length})...`;
-
                 const base64ImageData = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -714,32 +700,23 @@ Example of expected JSON output:
                 });
 
                 const payload = {
-                    contents: [{
-                        role: "user",
-                        parts: [
-                            { text: GEMINI_PROMPT },
-                            { inlineData: { mimeType: file.type, data: base64ImageData } }
-                        ]
-                    }],
-                    generationConfig: {
+                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
+                    generationConfig: { 
                         temperature: 0,
                         responseMimeType: "application/json",
-                    }
+                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
                 };
+                
+                const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
+                const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    const errorMessage = errorData?.error?.message || `API 요청 실패 (상태: ${response.status})`;
-                    throw new Error(`${file.name}: ${errorMessage}`);
+                    throw new Error(`${file.name}: ${errorData?.error?.message || `API 요청 실패 (상태: ${response.status})`}`);
                 }
                 const result = await response.json();
-                
+
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                     if (Array.isArray(parsedData)) {
@@ -751,8 +728,6 @@ Example of expected JSON output:
                             }
                         });
                     }
-                } else {
-                     throw new Error(`${file.name}: API에서 유효한 응답을 받지 못했습니다.`);
                 }
             }
 
