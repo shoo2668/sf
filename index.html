@@ -209,31 +209,34 @@
     <script type="text/javascript">
         const GEMINI_PROMPT = `Extract the following delivery information from the provided invoice image. The output should be a JSON array of objects. Each object must contain these exact keys: "no", "hawbNo", "receiverAddressKorean", "receiverAddressOriginal", "companyNameKorean", "companyNameOriginal", "receiverNameKorean", "receiverNameOriginal", "receiverTelephoneNo".
 
-For "hawbNo", extract the *entire* HAWB number without any truncation or missing digits. It should include all characters and numbers present in the original HAWB number.
+For "hawbNo", extract the *entire* HAWB number without any truncation or missing digits.
 
 For "receiverAddressKorean", provide the Korean translation and format it *accurately* in the Korean domestic **Road Name Address (도로명주소)** style.
-- **CRITICAL RULE: Translate ONLY the address components explicitly present in the image. DO NOT add, infer, or guess any missing parts of the address (like city, district, road name, or building number) that are not written on the invoice. If a component is missing from the image, it must be missing from the output.**
+- **CRITICAL RULES FOR ADDRESS TRANSLATION:**
+  1.  **Translate all address components explicitly present in the image.** Your primary goal is to be faithful to the source text.
+  2.  **SAFE INFERENCE IS ALLOWED:** If a City/Province (시/도, e.g., '서울', '경기') is missing but can be reliably inferred from a District (시/군/구, e.g., '송파구', '분당구') present in the text, you MUST add the inferred City/Province. This is the ONLY type of inference permitted.
+  3.  **DANGEROUS INFERENCE IS FORBIDDEN:** You MUST NOT invent, guess, or add any other part of the address (like road names, building numbers, or building names) that is not explicitly written on the invoice.
 - Follow the Korean address order: **[시/도] [시/군/구] [읍/면/동/리] [도로명] [건물번호], [상세주소 (동/호/층/기타)]**.
-- Pay extremely close attention to words that might be split across lines (e.g., 'DONG TAN' on one line, 'JI SEONG RO' on the next). Reassemble them correctly as single compound words in Korean (e.g., '동탄지성로').
-- Ensure the building number (건물번호) is positioned directly after the road name.
-- The detailed address (상세주소) such as unit numbers ('102-2702'), building names ('Tera Tower2 A'), or floor numbers ('2층') must be placed AFTER the building number, separated by a comma. Translate building names to Korean.
+- Pay attention to words split across lines (e.g., 'DONG TAN' 'JI SEONG RO' -> '동탄지성로').
+- Place the detailed address (unit numbers, building names, etc.) after the building number, separated by a comma.
 
-For "receiverAddressOriginal", provide the exact original text as scanned from the invoice image, with all line breaks removed, concatenating the lines.
+For "receiverAddressOriginal", provide the exact original text as scanned from the invoice, with line breaks removed.
 
-For "companyNameKorean", provide the Korean translation.
-For "receiverNameKorean", provide the Korean translation and format it as 'Lastname Firstname' (e.g., '김혜림').
-The "receiverTelephoneNo" should contain only digits.
-If a piece of information is not found, its corresponding value should be an empty string.
+For other fields ("companyNameKorean", "receiverNameKorean", "receiverTelephoneNo"), translate or format as requested. If info is not found, use an empty string.
 
-Example of the CRITICAL RULE:
-- If the original is "Songpagu Jamsil the sharp starpark 101-2503", the Korean translation should be "송파구 잠실 더샵 스타파크 101-2503". **DO NOT add '올림픽로35길 104' or any other inferred information.**
-- If the original is "Bundang-gu, 54, Junganggongwon-ro", the Korean translation should be "분당구 중앙공원로 54". **DO NOT add '성남시' unless 'Seongnam-si' is present in the original text.**
-- If the original is "Hwaseong-si, Gyeonggi-do, 14, Sejaro442beon-gil", the Korean translation should be "경기 화성시 세자로442번길 14". This is correct because all parts were present.
-
---- PREVIOUS EXAMPLES FOR FORMATTING REFERENCE (but still obey the critical rule) ---
-- "534 Teheran-ro, Gangnam-gu, Seoul, 18F Shinhan VentureInvestment" -> "서울 강남구 테헤란로 534, 18F 신한벤처투자"
-- "Songpa-gu 14-12, Beakjegobun-ro 42-길,303" -> "서울 송파구 백제고분로42길 14-12, 303"
-- "Hwaseong-si, 1101, Building 114, 277 Dongtan Banseok-ro" -> "경기 화성시 동탄반석로 277, 114동 1101호"
+**EXAMPLES ILLUSTRATING THE CRITICAL RULES:**
+- If the original is "Songpagu Olympicro 102-408":
+  - The correct Korean translation is "서울 송파구 올림픽로 102, 408호".
+  - **Reasoning:** '서울' was correctly inferred from 'Songpagu'. All other parts were present and translated directly.
+- If the original is "Songpagu Jamsil the sharp starpark 101-2503":
+  - The correct Korean translation is "서울 송파구 잠실 더샵 스타파크 101-2503".
+  - **Reasoning:** '서울' was correctly inferred. Crucially, you **MUST NOT** add a road name like '올림픽로35길 104' because it was not in the original text. This would be a forbidden invention.
+- If the original is "Bundang-gu, 54, Junganggongwon-ro":
+    - The correct Korean translation is "성남 분당구 중앙공원로 54".
+    - **Reasoning:** '성남' was correctly inferred from 'Bundang-gu'.
+- If the original is "Hwaseong-si, Gyeonggi-do, 14, Sejaro442beon-gil":
+    - The correct Korean translation is "경기 화성시 세자로442번길 14".
+    - **Reasoning:** All parts were already present, so no inference was needed.
 `;
         
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
