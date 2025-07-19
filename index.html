@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>배송 시트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            scroll-behavior: auto !important; /* JS로 부드러운 스크롤을 제어하기 위해 기본 스크롤 동작을 즉시로 변경 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding-bottom: 80px;
+            overscroll-behavior-y: contain;
+        }
+        .signature-modal, .confirmation-modal, .suggestion-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 1rem;
+        }
+        .signature-modal-content, .confirmation-modal-content, .suggestion-modal-content {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 28rem;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #2563eb;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
+        .animate-slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
+        #delivery-cards-container {
+            transition: transform 0.1s ease-out;
+            will-change: transform;
+        }
+        #filter-buttons-container, #search-bar-container {
+            position: fixed;
+            left: 0;
+            width: 100vw;
+            will-change: transform, top;
+        }
+        /* ✨ 퀵-스크롤 핸들 스타일 시작 ✨ */
+        #quick-scroll-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 40px; /* 핸들 터치 영역 확장 */
+            display: none; /* '배송중' 탭에서만 보이도록 JS로 제어 */
+            z-index: 40;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #quick-scroll-handle {
+            position: absolute;
+            right: 8px; /* 오른쪽 여백 확보 */
+            top: 50%;
+            width: 24px; /* 핸들 두께 */
+            height: 50px; /* 핸들 길이 */
+            background-color: rgba(0, 0, 0, 0.25);
+            border-radius: 12px;
+            cursor: grab;
+            transition: background-color 0.2s; /* 드래그 중이 아닐때만 top 전환 효과 적용 */
+        }
+        #quick-scroll-handle:not(.active) {
+            transition: background-color 0.2s, top 0.15s ease-out;
+        }
+        #quick-scroll-handle.active {
+            background-color: rgba(37, 99, 235, 0.7); /* 활성화 시 파란색으로 변경 */
+            cursor: grabbing;
+        }
+        #quick-scroll-bubble {
+            position: absolute;
+            right: 50px; /* 핸들 왼쪽으로 충분히 이동 */
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 10px 20px;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: white;
+            font-size: 1.5rem; /* 글자 크기 증가 */
+            font-weight: 700;  /* 폰트 굵게 */
+            border-radius: 16px;
+            display: none;
+            pointer-events: none; /* 버블이 터치를 방해하지 않도록 */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        #quick-scroll-handle.active ~ #quick-scroll-bubble {
+             transition: none; /* 드래그 중에는 부드러운 효과 제거 */
+        }
+        /* ✨ 퀵-스크롤 핸들 스타일 끝 ✨ */
+    </style>
+</head>
+<body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
+    <div id="search-bar-container" class="z-30">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg w-full min-w-[320px] p-4">
+            <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
+            <div class="flex space-x-2 flex-nowrap">
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-2/5 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
+                <button id="searchButton" class="w-3/10 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
+                <button id="resetButton" class="w-3/10 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="filter-buttons-container" class="z-20">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg w-full min-w-[320px] p-4">
+            <div class="flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
+                <button data-filter="배송준비" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 whitespace-nowrap"><span>배송준비</span></button>
+                <button data-filter="전체" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>전체</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-전체">0</span></button>
+                <button data-filter="배송전" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송전</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송전">0</span></button>
+                <button data-filter="배송중" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송중</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송중">0</span></button>
+                <button data-filter="완료" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>완료</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-완료">0</span></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="data-management-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">데이터 내보내기/가져오기</h3>
+            <div class="flex space-x-2">
+                <button id="exportDataButton" class="w-1/2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">데이터 파일로 저장</button>
+                <label for="importDataInput" class="w-1/2 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center cursor-pointer">파일에서 불러오기</label>
+                <input type="file" id="importDataInput" class="hidden" accept=".json"/>
+            </div>
+        </div>
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
+            <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
+        </div>
+    </div>
+
+    <div id="scan-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
+        <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+            <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
+            <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 py-2 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">사진 선택</label>
+            <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
+        </div>
+        <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
+        <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
+            <div class="spinner mx-auto mb-2"></div>
+            <p id="scan-progress-text">송장 스캔 중...</p>
+        </div>
+        <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
+    </div>
+
+    <div id="delivery-cards-container" class="max-w-md mx-auto"></div>
+    
+    <div id="quick-scroll-container">
+        <div id="quick-scroll-handle"></div>
+        <div id="quick-scroll-bubble">1</div>
+    </div>
+
+    <div id="signature-modal" class="signature-modal" style="display: none;">
+        <div class="signature-modal-content">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">서명 입력</h2>
+            <div class="signature-input-container">
+                <textarea id="signature-text-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="여기에 서명 내용을 입력하세요."></textarea>
+            </div>
+            <div class="flex justify-end space-x-2 mt-4">
+                <button id="clearSignature" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">지우기</button>
+                <button id="cancelSignature" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium hover:bg-red-600">취소</button>
+                <button id="saveSignature" class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="confirmation-modal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800" id="confirmation-modal-title">확인</h2>
+            <p class="text-base text-gray-700 mb-6" id="confirmation-modal-message"></p>
+            <div class="flex justify-between space-x-2 mt-4">
+                <button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
+                <button id="confirmOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        const GEMINI_PROMPT = `Extract the following delivery information from the provided invoice image. The output should be a JSON array of objects. Each object must contain these exact keys: "no", "hawbNo", "receiverAddressKorean", "receiverAddressOriginal", "companyNameKorean", "companyNameOriginal", "receiverNameKorean", "receiverNameOriginal", "receiverTelephoneNo".
+
+For "hawbNo", extract the *entire* HAWB number without any truncation or missing digits. It should include all characters and numbers present in the original HAWB number.
+
+For "receiverAddressKorean", provide the Korean translation and format it *accurately* in the Korean domestic **Road Name Address (도로명주소)** style. This means strictly following the order: **[시/도] [시/군/구] [읍/면/동/리] [도로명] [건물번호], [상세주소 (동/호/층/건물명/기타 식별자)]**.
+- **Crucially, when translating, pay extremely close attention to words that might be split across lines in the original image (e.g., 'DONG TAN' on one line, 'JI SEONG RO' on the next). Ensure these are reassembled correctly as single compound words in Korean (e.g., '동탄지성로' not '동 탄 지성로'). Treat hyphenated words or parts of a single address component (like a road name or building complex name) as continuous, even if separated by a line break in the source image. Also, accurately translate administrative units like 'myeon' (면) (e.g., 'Chongnam-myeon' should be '정남면', not '촌남면') and ensure correct spelling of road names and suffixes (e.g., '93BEON-GIL' should be '93번길', not '93번기').**
+- **You MUST ensure the building number (건물번호) is always present and correctly positioned directly after the road name. DO NOT OMIT THE BUILDING NUMBER.**
+- **If it's a Jibun Address (지번주소), ensure the jibun number (지번) is always present after the legal dong/ri (법정동/리). DO NOT OMIT THE JIBUN NUMBER.**
+- **Crucially, if the city/province (시/도) or district (시/군/구) is not explicitly present in the image but can be reliably inferred from the road name (e.g., '테헤란로' implies '서울 강남구', '센텀시티로' implies '부산 해운대구'), then you MUST add the inferred city/province and district at the beginning of the address. NEVER OMIT CITY/PROVINCE OR DISTRICT IF INFERABLE.**
+- **If the building number appears before the road name in the original text (e.g., '14Seja-ro442beon-길'), you must reorder it to appear after the road name (e.g., '세자로442번길 14').**
+- **The detailed address (상세주소) such as unit numbers (예: '102-2702'), floor numbers (예: '18F'), apartment/building numbers (예: '112동'), room numbers (예: '1403호'), specific identifiers (예: 'G129-3', 'PS-36', 'C-Dong'), or building names (예: 'Hyowon Bldg.', 'H-BUSINESS PARK', 'Tera Tower2 A', 'Eunma Apt.'), building/complex names (예: '부영사랑으로', '힐스테이트'), or floor numbers (예: '2층') must be placed AFTER the building number, separated by a comma. Translate building names to Korean. DO NOT OMIT ANY DETAILED ADDRESS INFORMATION. If multiple detailed address components are present, combine them accurately after the building number, separated by commas if logical (e.g., '12F 효원빌딩', '1218-C동, H비즈니스파크').**
+- **Do NOT include any postal codes, old address formats (지번주소) unless explicitly the primary address, or any irrelevant numerical/alphanumerical codes that are not part of the standard address (e.g., 'P190029 387439').**
+- **Ensure the address is a single, continuous string following the specified order and all components are translated to Korean. Be robust to minor spelling variations in road names (e.g., 'gill' should be interpreted as 'gil', 'BEOBWON-RO' as '법원로'). Specifically, for road names followed by numbers and then 'GIL' or 'GILL', combine them (e.g., 'BEOPWON-RO 9 GIL' -> '법원로9길').**
+- **CRITICAL: NEVER OMIT ANY PART OF THE ADDRESS THAT IS PRESENT AND LEGITIMATE. INCLUDE ALL RELEVANT COMPONENTS FROM THE ORIGINAL ADDRESS.**
+For example:
+- If the original is "534 Teheran-ro, Gangnam-gu, Seoul, 18F Shinhan VentureInvestment", the Korean translation should be "서울 강남구 테헤란로 534, 18F 신한벤처투자".
+- If the original is "Chungmin-ro 5", the Korean translation should be "서울 송파구 충민로 5" (assuming Songpa-gu for Chungmin-ro).
+- If the original is "Jeju-si, Halla-ro 300, 101-ho", the Korean translation should be "제주 제주시 한라로 300, 101호".
+- If the original is "Songpa-gu 14-12, Beakjegobun-ro 42-길,303", the Korean translation should be "서울 송파구 백제고분로42길 14-12, 303".
+- If the original is "seoul 503,5-13,Olympic-ro 34-길, Songpa-gu", the Korean translation should be "서울 송파구 올림픽로34길 5-13, 503".
+- If the original is "송파구 209-901오금로32길 5", the Korean translation should be "서울 송파구 오금로32길 5, 209-901".
+- If the original is "Seoul 송파구 12F, Hyowon Bldg., 97, Jungdae-ro", the Korean translation should be "서울 송파구 중대로 97, 12F 효원빌딩".
+- If the original is "District 9 Olympic-ro 35ga-길, 102-2702", the Korean translation should be "서울 송파구 올림픽로35가길 9, 102-2702".
+- If the original is "gangdong-gu 405-2201 1300, Yangjae-daero", the Korean translation should be "서울 강동구 양재대로 1300, 405-2201".
+- If the original is "Seoul Gangdong-gu 1053, Cheonho-daero Ian Kangdong Comhomesta y 1st 901", the Korean translation should be "서울 강동구 천호대로 1053, 이안 강동 컴홈스테이 1차 901".
+- If the original is "Songpa District 83 Munjeong-ro, 112dong 1403ho", the Korean translation should be "서울 송파구 문정로 83, 112동 1403호".
+- If the original is "Gangdong-gu 1300, 양재대로, 415-1904", the Korean translation should be "서울 강동구 양재대로 1300, 415-1904".
+- If the original is "Gangdong-gu 50 Arisu-ro 50-길, 104-1301", the Korean translation should be "서울 강동구 아리수로50길 50, 104-1301".
+- If the original is "Seoul 송파구 PS-36,G129-3, Building A, 201, 송파대로", the Korean translation should be "서울 송파구 송파대로 201, Building A, PS-36, G129-3".
+- If the original is "Songpagu Seockshonho suro, 12 gill 55, Mirinae Ville #402", the Korean translation should be "서울 송파구 석촌호수로12길 55, 미리내빌 #402".
+- If the original is "Seoul Songpa-Gu 1218-C-Dong,H-BUSINESS PARK,26 BEOBWON-RO 9 GIL,SONGP AGU,SEOUL,KO REA", the Korean translation should be "서울 송파구 법원로9길 26, 1218-C동, H비즈니스파크".
+- If the original is "Gangnam-gu 26-1301 (Daechi-dong, Eunma Apt.),212, Samseong-ro", the Korean translation should be "서울 강남구 삼성로 212, 은마아파트 26-1301".
+- If the original is "Seoul Songpa-Gu 1514-1515, 15F,Tera Tower2 A,201, songpa-daero", the Korean translation should be "서울 송파구 송파대로 201, 15F 테라타워2 A, 1514-1515".
+- If the original is "강동구 710동 603호상 암로79길 88 (상일동, 고덕 롯데캐슬 베네루체)", then the Korean translation should be "서울 강동구 상암로79길 88, 710동 603호".
+- If the original is "Seoul 송파구 B-1509, Hyundai i Knowledge Industrial Center 1-1,11,Beobwo n-ro 11-길,Songpa-gu,Seoul 05836,Korea)", the Korean translation should be "서울 송파구 법원로11길 11, B-1509, 현대지식산업센터1-1".
+- If the original is "Seoul Gangdong-Gu 41-21,14-GIL, SEONG NAE-RO, GANGDON G-GU, SEOUL, KOREA)", the Korean translation should be "서울 강동구 성내로14길 41-21".
+- If the original is "Seoul Gangdong-Gu 610, 549-1, Taeho-dong, Gangdong-gu, Seoul", the Korean translation should be "서울 강동구 천호동 549-1, 610".
+- If the original is "Seoul Gangdong-gu 363-23 CHONHO-DONG, KANGDON G-GU,SEOUL,KOREA", the Korean translation should be "서울 강동구 천호동 363-23".
+- If the original is "Seoul Gangdong-Gu JOIN MEDICAL CO.,LTD 143-40,3F 302 GANGDON G-DAERO", the Korean translation should be "서울 강동구 강동대로 143-40, 3F 302".
+- If the original is "Seoul Gangdong-Gu Urbaniel 1410,21, Cheonho-daero 161-길, Gangdong-gu, Seoul", the Korean translation should be "서울 강동구 천호대로161길 21, 어바니엘 1410".
+- If the original is "Seoul Songpa-Gu C1216HO, 12FL, 26, Beobwon-ro 9-gil, Songpa-gu, Seoul, Republic of Korea", the Korean translation should be "서울 송파구 법원로9길 26, C1216HO, 12FL".
+- If the original is "Bundang-gu, Seongnam-si 81, Soetgol-ro, CDA CO.,LTD", the Korean translation should be "성남 분당구 쇳골로 81, CDA CO.,LTD".
+- If the original is "성남시 서현 유스센터 4 충불정로386 번길38", the Korean translation should be "성남 분당구 불정로386번길 38, 서현유스센터 4층".
+- If the original is "Bundang-gu, Seongnam-si 227-2802,54,Junganggongwon-ro)", the Korean translation should be "성남 분당구 중앙공원로54, 227-2802".
+- If the original is "Gyeonggi-Do Bundang-Gu, Seongnam-Si 227-2802,54,Junganggongwon-ro", the Korean translation should be "성남 분당구 중앙공원로54, 227-2802".
+- If the original is "Gyeonggi-Do Bundang-Gu, Seongnam-Si 1F, 105, 4-11, NAEJEONG-RO 17 BEON-GIL NAEJEONG-RO 17BEON-GIL 1F, 105, 4-11", the Korean translation should be "성남 분당구 내정로17번길 4-11, 1F 105".
+- If the original is "227-2802,54,Junganggongwon-ro", the Korean translation should be "성남 분당구 중앙공원로54, 227-2802".
+- If the original is "1F, 105, 4-11, NAEJEONG-RO 17 BEON-GIL NAEJEONG-RO 17BEON-GIL 1F, 105, 4-11", the Korean translation should be "성남 분당구 내정로17번길 4-11, 1F 105".
+- If the original is "송파구 문정동 123-45", the Korean translation should be "서울 송파구 문정동 123-45".
+- If the original is "강원도 홍천군 홍천읍 하오안리 123", the Korean translation should be "강원 홍천군 홍천읍 하오안리 123".
+- If the original is "부산 동래구 온천동 123-1", the Korean translation should be "부산 동래구 온천동 123-1".
+- If the original is "Gyeonggi-do Hwaseong-Si 8-46, JEONGMUNS ONGSAN-RO, 93BEON-GIL, YANGGAM-MYEON, HWASEONG-SI, GYEONGGI-DO, SOUTH KOREA", the Korean translation should be "경기 화성시 양감면 정문송산로93번길 8-46".
+- If the original is "Gyeonggi-Do Hwaseong-si 20, Udeung-길, Hyangnam-eup, Hwaseong-si, Gyeonggi-do, Republic of Korea", the Korean translation should be "경기 화성시 향남읍 우등길 20".
+- If the original is "Gyeonggi-Do Hwaseong-Si 16 Eunhaengnamu-Ro,62Beongil, Hwaseong", the Korean translation should be "경기 화성시 은행나무로62번길 16".
+- If the original is "순번 23, 경기 화성시 행정동로 83, 809-204", the Korean translation should be "경기 화성시 행정동로 83, 809-204".
+- If the original is "순번 6 주소: 경기 화성시 봉담읍 주석로 962-15", the Korean translation should be "경기 화성시 봉담읍 주석로 962-15".
+- If the original is "Gyeonggi-Do Hwaseong-Si 26-6,GEONBAE-길,BONGDAM-EUP,HWASEONG-SI, GYEONGGI-DO, REPIBLIC OF KOREA, HWASEONG-SI 26-6", the Korean translation should be "경기 화성시 봉담읍 건배길 26-6".
+- If the original is "Gyeonggi-do Hwaseong-si 14Seja-ro442beon-길", the Korean translation should be "경기 화성시 세자로442번길 14".
+- If the original is "Gyeonggi-Do Hwaseong-Si 923-5, Gumuncheon-ri", the Korean translation should be "경기 화성시 구문천리 923-5".
+- If the original is "Sun-Ho Kwon", the Korean translation should be "권순호".
+- If the original is "LEE WOONGGI", the Korean translation should be "이웅기".
+- If the original is "Samuel lee", the Korean translation should be "사무엘 리".
+- If the original is "Gap seok, Ko", the Korean translation should be "고갑석".
+- If the original is "Jason Hong",
+the Korean translation should be "제이슨 홍".
+- If the original is "SungKyun Lee", the Korean translation should be "이성균".
+- If the original is "gyuheon yang", the Korean translation should be "양규현".
+- If the original is "yejin kim", the Korean translation should be "김예진".
+- If the original is "화성시 부영사랑으로 709동 104호상신하길로 274번길21", the Korean translation should be "경기 화성시 상신하길로274번길 21, 부영사랑으로 709동 104호".
+- If the original is "Hwaseong-si, Gyeonggi-do "1101, Building 114, 277 Dongtan Banseok-ro", the Korean translation should be "경기 화성시 동탄반석로 277, 114동 1101호".
+- If the original is "화성시 바오밥베이커리카페2 충매송면 천천리110-1", the Korean translation should be "경기 화성시 매송면 천천리 110-1, 바오밥베이커리카페2층".
+- If the original is "Gyeonggi-Do Hwaseong-Si 50 beongil 22,23,Annyeongnam-ro 22,23", the Korean translation should be "경기 화성시 안녕남로50번길 22".
+- If the original is "49 SAMSUNG 1RD 4 GIL,HWASUNG-SI,KYUNG GI-DO,KOREA 445-170", the Korean translation should be "경기 화성시 삼성1로4길 49".
+
+
+For "companyNameKorean", provide the Korean translation. **If the original company name and receiver name are identical, ensure that their Korean translations are also identical.**
+For "receiverNameKorean", provide the Korean translation and format it *accurately* as 'Lastname Firstname' (e.g., '김혜림' instead of '혜림 김'). **If the original company name and receiver name are identical, ensure that their Korean translations are also identical.**
+For "receiverAddressOriginal", provide the exact original text as scanned from the invoice image, with all line breaks (newline characters) removed, concatenating the lines. Ensure no additional spaces are introduced where line breaks were removed; combine the text as a single continuous string.
+The "receiverTelephoneNo" should contain only digits.
+If a piece of information is not found in its corresponding value should be an empty string.
+
+Example of expected JSON output:
+[
+  {
+    "no": "1",
+    "hawbNo": "SF1234567890123",
+    "receiverAddressKorean": "서울 강남구 테헤란로 123",
+    "receiverAddressOriginal": "Teheran-ro 123, Gangnam-gu, Seoul",
+    "companyNameKorean": "ABC 회사",
+    "companyNameOriginal": "ABC Company",
+    "receiverNameKorean": "홍길동",
+    "receiverNameOriginal": "Hong Gildong",
+    "receiverTelephoneNo": "01012345678"
+  },
+  {
+    "no": "2",
+    "hawbNo": "SF9876543210987",
+    "receiverAddressKorean": "부산 해운대구 센텀시티로 456",
+    "receiverAddressOriginal": "Centum City-ro 456, Haeundae-gu, Busan",
+    "companyNameKorean": "",
+    "companyNameOriginal": "",
+    "receiverNameKorean": "김철수",
+    "receiverNameOriginal": "Kim Cheolsu",
+    "receiverTelephoneNo": "01098765432"
+  }
+]
+`;
+        
+        const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+
+        // --- Helper functions ---
+        const cleanStringForDisplay = (str) => {
+            if (typeof str !== 'string' || !str) return '';
+            return str.replace(/[\n\\]/g, '').trim();
+        };
+
+        const formatSinglePhoneNumber = (phoneNumber) => {
+            if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
+            let cleaned = phoneNumber.replace(/\D/g, '');
+
+            if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
+            else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('8201') && cleaned.length > 4 && cleaned[4] !== '0') { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('82') && cleaned.length > 2) { cleaned = '0' + cleaned.substring(2); }
+            else if (cleaned.length >= 7 && cleaned.length <= 11 && !cleaned.startsWith('0')) { cleaned = '0' + cleaned; }
+            
+            if (cleaned.startsWith('010') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            if (cleaned.startsWith('02')) {
+                if (cleaned.length === 9) return cleaned.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
+                if (cleaned.length === 10) return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
+            }
+            if (cleaned.startsWith('031') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            if (cleaned.startsWith('070') && cleaned.length === 11) return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            if (cleaned.length === 10) return cleaned.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+            if (cleaned.length === 9) return cleaned.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
+            if (cleaned.length === 8) return cleaned.replace(/(\d{4})(\d{4})/, '$1-$2');
+            if (cleaned.length === 7) return cleaned.replace(/(\d{3})(\d{4})/, '$1-$2');
+
+            return cleaned;
+        };
+
+        const formatPhoneNumberForDisplay = (phoneNumber) => {
+            if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
+            const rangeMatch = phoneNumber.match(/^(\d+)-(\d+)$/);
+            if (rangeMatch) {
+                const baseNumber = rangeMatch[1];
+                const suffix = rangeMatch[2];
+                if (baseNumber.length >= suffix.length) {
+                    const num1 = formatSinglePhoneNumber(baseNumber);
+                    const num2Raw = baseNumber.substring(0, baseNumber.length - suffix.length) + suffix;
+                    const num2 = formatSinglePhoneNumber(num2Raw);
+                    return `${num1} / ${num2}`;
+                }
+            }
+            return formatSinglePhoneNumber(phoneNumber.replace(/\D/g, ''));
+        };
+
+        const getCleanPhoneNumber = (phoneNumber) => {
+            if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
+            const rangeMatch = phoneNumber.match(/^(\d+)-(\d+)$/);
+            if (rangeMatch) phoneNumber = rangeMatch[1];
+            
+            let cleaned = phoneNumber.replace(/\D/g, '');
+
+            if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
+            else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('8201') && cleaned.length > 4 && cleaned[4] !== '0') { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('82') && cleaned.length > 2) { cleaned = '0' + cleaned.substring(2); }
+            else if (cleaned.length >= 7 && cleaned.length <= 11 && !cleaned.startsWith('0')) { cleaned = '0' + cleaned; }
+
+            return cleaned;
+        };
+
+        const formatHawbNoForDisplay = (hawbNo) => {
+            if (!hawbNo || hawbNo.length < 4) return hawbNo;
+            const prefix = hawbNo.substring(0, hawbNo.length - 4);
+            const suffix = hawbNo.substring(hawbNo.length - 4);
+            return `${prefix} ${suffix}`;
+        };
+
+        const formatCompletionTime = (dateTimeString) => {
+            if (!dateTimeString) return '';
+            const parts = dateTimeString.split(' ');
+            if (parts.length >= 4) {
+                const [hour, minute] = parts[3].split(':');
+                return `${hour}:${minute}`;
+            }
+            return '';
+        };
+        
+        const formatAddressForClipboard = (address) => {
+            if (!address || typeof address !== 'string') return '';
+            let cleanedAddress = address.trim().replace(/떡정골로/g, "떡전골로");
+            
+            let tempAddress = cleanedAddress;
+            tempAddress = tempAddress.replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|도)?\s*/, '').trim();
+            tempAddress = tempAddress.replace(/^([가-힣]+(?:시|군|구))\s+/, '').trim();
+            tempAddress = tempAddress.replace(/^([가-힣]+(?:읍|면))\s+/, '').trim();
+            cleanedAddress = tempAddress;
+
+            const firstCommaIndex = cleanedAddress.indexOf(',');
+            if (firstCommaIndex !== -1) {
+                cleanedAddress = cleanedAddress.substring(0, firstCommaIndex).trim();
+            }
+            return cleanedAddress.replace(/\s+/g, ' ').trim();
+        };
+        
+        const extractClipboardAddressPart = (fullAddress) => {
+            if (!fullAddress || typeof fullAddress !== 'string') return '';
+            let matchDongHo = fullAddress.match(/(\d+동\s*\d+호)/);
+            if (matchDongHo?.[1]) return matchDongHo[1].trim();
+
+            const commaIndex = fullAddress.indexOf(',');
+            if (commaIndex !== -1) {
+                const detailedAddressPart = fullAddress.substring(commaIndex + 1).trim();
+                let matchHyphenUnitInDetailed = detailedAddressPart.match(/(\b\d{1,4}-\d{1,4}\b)(?:호)?(?!\S)/);
+                if (matchHyphenUnitInDetailed?.[1]) return matchHyphenUnitInDetailed[1].trim();
+            }
+            return formatAddressForClipboard(fullAddress);
+        };
+
+        const isValidAddressForMap = (address) => {
+            if (!address || address.trim().length === 0 || !/\d/.test(address)) return false;
+            const isRoadNameAddress = /로|길|대로|번길/.test(address);
+            const isJibunAddress = /(동|리|읍|면)\s*\d+([\-\s]\d+)?/.test(address) || /^\d+([\-\s]\d+)*$/.test(address);
+            return isRoadNameAddress || isJibunAddress;
+        };
+
+        // --- Global state and DOM elements ---
+        let deliveryItems = [];
+        let searchTerm = '';
+        let activeFilter = '전체';
+        const filterCategories = ['배송준비', '전체', '배송전', '배송중', '완료'];
+        let filterScrollPositions = {};
+        let currentFileToScan = null;
+        let currentSignatureItemNo = null;
+        let onConfirmCallback = null;
+
+        const searchBarContainer = document.getElementById('search-bar-container');
+        const invoiceNumberInput = document.getElementById('invoiceNumber');
+        const searchButton = document.getElementById('searchButton');
+        const resetButton = document.getElementById('resetButton');
+        const filterButtonsContainer = document.getElementById('filter-buttons-container');
+        const deliveryCardsContainer = document.getElementById('delivery-cards-container');
+        const deliverySheetImageInput = document.getElementById('deliverySheetImage');
+        const scanAndGenerateButton = document.getElementById('scanAndGenerateButton');
+        const scanLoadingIndicator = document.getElementById('scan-loading-indicator');
+        const scanErrorMessage = document.getElementById('scan-error-message');
+        const scanErrorText = document.getElementById('scan-error-text');
+        const scanSectionContainer = document.getElementById('scan-section-container');
+        const clearAllCardsButton = document.getElementById('clearAllCardsButton');
+        const dataManagementContainer = document.getElementById('data-management-container');
+        const exportDataButton = document.getElementById('exportDataButton');
+        const importDataInput = document.getElementById('importDataInput');
+        const scanProgressText = document.getElementById('scan-progress-text');
+        const selectedFilesDisplay = document.getElementById('selected-files-display');
+        const signatureModal = document.getElementById('signature-modal');
+        const signatureTextInput = document.getElementById('signature-text-input');
+        const clearSignatureBtn = document.getElementById('clearSignature');
+        const cancelSignatureBtn = document.getElementById('cancelSignature');
+        const saveSignatureBtn = document.getElementById('saveSignature');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const confirmationModalTitle = document.getElementById('confirmation-modal-title');
+        const confirmationModalMessage = document.getElementById('confirmation-modal-message');
+        const confirmOkButton = document.getElementById('confirmOkButton');
+        const confirmCancelButton = document.getElementById('confirmCancelButton');
+
+        // --- Modal & Core Logic Functions ---
+        const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
+        const closeSignatureModal = () => { signatureModal.style.display = 'none'; currentSignatureItemNo = null; };
+        const saveSignature = () => {
+            if (currentSignatureItemNo === null) return;
+            const signatureText = signatureTextInput.value.trim();
+            if (signatureText === '') { showMessage('서명 내용을 입력해주세요.'); return; }
+            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+            handleStatusChange(currentSignatureItemNo, '완료', currentTime, '서명', signatureText);
+            closeSignatureModal();
+            showMessage('서명이 성공적으로 저장되었습니다.', '성공');
+        };
+        const openConfirmationModal = (message, onOk) => { confirmationModalTitle.textContent = '확인'; confirmationModalMessage.textContent = message; confirmCancelButton.style.display = ''; onConfirmCallback = onOk; confirmationModal.style.display = 'flex'; };
+        const closeConfirmationModal = () => { confirmationModal.style.display = 'none'; onConfirmCallback = null; confirmCancelButton.style.display = ''; };
+        const showMessage = (message, title = '알림') => { confirmationModalTitle.textContent = title; confirmationModalMessage.textContent = message; confirmCancelButton.style.display = 'none'; onConfirmCallback = closeConfirmationModal; confirmationModal.style.display = 'flex'; };
+        
+        confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
+        confirmCancelButton.addEventListener('click', closeConfirmationModal);
+        clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
+        cancelSignatureBtn.addEventListener('click', closeSignatureModal);
+        saveSignatureBtn.addEventListener('click', saveSignature);
+
+        const saveDeliveryItemsToLocalStorage = () => {
+            localStorage.setItem('deliveryItems', JSON.stringify(deliveryItems));
+            localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
+        };
+        const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
+            deliveryItems = deliveryItems.map(item => item.no === itemNo ? { ...item, status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail, isHawbConfirmed: newStatus !== '배송전' } : item);
+            saveDeliveryItemsToLocalStorage();
+            renderDeliveryCards();
+            updateFilterCounts();
+        };
+        const handleCheckboxToggleAndResetSearch = (itemNo, newCheckboxState) => {
+            deliveryItems = deliveryItems.map(item => item.no === itemNo ? { ...item, isHawbConfirmed: newCheckboxState, status: newCheckboxState ? '배송중' : '배송전', deliveryCompletionTime: newCheckboxState ? item.deliveryCompletionTime : null, completionType: newCheckboxState ? item.completionType : null, completionDetail: newCheckboxState ? item.completionDetail : null } : item);
+            saveDeliveryItemsToLocalStorage();
+            searchTerm = '';
+            invoiceNumberInput.value = '';
+            renderDeliveryCards();
+            updateFilterCounts();
+        };
+        const openNaverMap = (address, no) => {
+            const addressForMapSearch = formatAddressForClipboard(address);
+            const textToCopy = `${no}. ${extractClipboardAddressPart(address)}`;
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = 0;
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try { document.execCommand('copy'); }
+            catch (err) { console.error('클립보드 복사 실패:', err); showMessage('클립보드 복사에 실패했습니다.', '복사 실패'); }
+            document.body.removeChild(textarea);
+            window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
+        };
+        const highlightHawbNo = (hawbNo, term) => {
+            if (!hawbNo) return '';
+            const formattedHawbNo = formatHawbNoForDisplay(hawbNo);
+            if (!term || !formattedHawbNo.includes(term)) return formattedHawbNo;
+            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return formattedHawbNo.split(new RegExp(`(${escapedTerm})`, 'gi')).map(part => part.toLowerCase() === term.toLowerCase() ? `<span class="bg-yellow-200 rounded px-0.5">${part}</span>` : part).join('');
+        };
+        
+        // --- Render function ---
+        const renderDeliveryCards = (animationClass = '') => {
+            let currentFilteredData = deliveryItems;
+            if (activeFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
+
+            if (searchTerm) {
+                const cleanedSearchTerm = searchTerm.replace(/\D/g, '');
+                currentFilteredData = currentFilteredData.filter(item => item.hawbNo?.replace(/\D/g, '').includes(cleanedSearchTerm));
+            }
+            if (activeFilter !== '전체') {
+                currentFilteredData = currentFilteredData.filter(item => item.status === activeFilter);
+            }
+
+            deliveryCardsContainer.classList.remove('animate-slide-in-left', 'animate-slide-in-right');
+            deliveryCardsContainer.style.animation = '';
+
+            if (currentFilteredData.length === 0) {
+                deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 px-4">해당하는 항목이 없습니다.</p>';
+                return;
+            }
+
+            deliveryCardsContainer.innerHTML = currentFilteredData.map(data => {
+                const isMapButtonActive = isValidAddressForMap(data.receiverAddressKorean);
+                return `
+                    <div class="${data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white')} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
+                        <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
+                            ${data.status !== '완료' ? `
+                                <div class="flex items-center space-x-2 w-full justify-between">
+                                    <h3 class="text-3xl font-semibold text-red-500">${data.no}</h3>
+                                    <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
+                                    <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded"/>
+                                </div>
+                            ` : `
+                                <div class="text-xl font-semibold text-gray-700 text-left w-full">
+                                    <span class="text-red-500 text-2xl mr-8">${data.no}</span>
+                                    ${data.completionType === '서명' && data.completionDetail ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>` : data.completionType === '본인확인' ? `${data.completionType} (${data.completionDetail})` : `${data.completionType || ''}`}
+                                    <span class="ml-4">${formatCompletionTime(data.deliveryCompletionTime)}</span>
+                                </div>
+                            `}
+                        </div>
+                        <div class="space-y-3" data-details-container="${data.no}" ${data.status === '완료' ? 'style="display:none;"' : ''}>
+                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between"><p class="text-base text-blue-600 font-semibold">${data.receiverAddressKorean}</p><button data-action="open-naver-map" data-address="${data.receiverAddressKorean}" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button></div>${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">회사명:</p><p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.companyNameOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">이름:</p><p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverNameOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
+                            ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium hover:bg-red-600">되돌리기</button></div>` : ''}
+                        </div>
+                        ${data.status === '배송중' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-between space-x-2"><button data-action="identity-verification" data-no="${data.no}" class="w-2/5 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="w-2/5 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="w-1/5 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
+                        ${data.status === '완료' ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        if (animationClass) {
+            deliveryCardsContainer.style.transform = 'translateX(0px)';
+            deliveryCardsContainer.classList.add(animationClass);
+            setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); deliveryCardsContainer.style.animation = ''; }, 300);
+        }
+    };
+
+    // --- UI Update & Event Listener Setup ---
+    const updateFilterCounts = () => {
+        document.getElementById('count-전체').textContent = deliveryItems.length;
+        document.getElementById('count-배송전').textContent = deliveryItems.filter(item => item.status === '배송전').length;
+        document.getElementById('count-배송중').textContent = deliveryItems.filter(item => item.status === '배송중').length;
+        document.getElementById('count-완료').textContent = deliveryItems.filter(item => item.status === '완료').length;
+    };
+    
+    const quickScrollContainer = document.getElementById('quick-scroll-container');
+    const quickScrollHandle = document.getElementById('quick-scroll-handle');
+    const quickScrollBubble = document.getElementById('quick-scroll-bubble');
+    
+    const updateStickyHeaderPositions = () => {
+        requestAnimationFrame(() => {
+            let topOffset = 0;
+            const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
+            
+            searchBarContainer.classList.toggle('hidden', !isSearchVisible);
+            if (isSearchVisible) {
+                searchBarContainer.style.top = `${topOffset}px`; 
+                topOffset += searchBarContainer.offsetHeight;
+            }
+            
+            filterButtonsContainer.style.top = `${topOffset}px`;
+            topOffset += filterButtonsContainer.offsetHeight;
+            document.body.style.paddingTop = `${topOffset}px`;
+
+            const isScanVisible = activeFilter === '배송준비';
+            scanSectionContainer.classList.toggle('hidden', !isScanVisible);
+            dataManagementContainer.classList.toggle('hidden', !isScanVisible);
+
+            const deliveryInProgressCount = deliveryItems.filter(item => item.status === '배송중').length;
+            quickScrollContainer.style.display = (activeFilter === '배송중' && deliveryInProgressCount > 0) ? 'block' : 'none';
+        });
+    };
+    
+    filterButtonsContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-filter]');
+        if (!button || button.dataset.filter === activeFilter) return;
+
+        filterScrollPositions[activeFilter] = window.scrollY;
+        activeFilter = button.dataset.filter;
+
+        filterButtonsContainer.querySelectorAll('button').forEach(btn => {
+            const isActive = btn.dataset.filter === activeFilter;
+            btn.classList.remove('bg-blue-500', 'text-white', 'shadow', 'bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+            if (isActive) {
+                btn.classList.add('bg-blue-500', 'text-white', 'shadow');
+            } else {
+                btn.classList.add('bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+            }
+        });
+
+        renderDeliveryCards();
+        updateStickyHeaderPositions();
+        button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
+    });
+
+    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.replace(/\D/g, ''); renderDeliveryCards(); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+    resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
+    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.replace(/\D/g, ''); renderDeliveryCards(); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+
+    deliverySheetImageInput.addEventListener('change', (event) => {
+        currentFileToScan = event.target.files;
+        selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
+    });
+    
+    clearAllCardsButton.addEventListener('click', () => {
+        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
+            deliveryItems = [];
+            saveDeliveryItemsToLocalStorage();
+            renderDeliveryCards();
+            updateFilterCounts();
+            showMessage("모든 카드가 삭제되었습니다.");
+        });
+    });
+
+    // --- Scan, Import, Export Logic ---
+    scanAndGenerateButton.addEventListener('click', async () => {
+        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
+        scanLoadingIndicator.style.display = 'block';
+        scanProgressText.textContent = '스캔 준비 중...';
+        scanErrorMessage.style.display = 'none';
+        
+        try {
+            const mergedResults = {}; 
+
+            for (let i = 0; i < currentFileToScan.length; i++) {
+                const file = currentFileToScan[i];
+                scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${currentFileToScan.length})...`;
+                const base64ImageData = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
+                    generationConfig: { 
+                        temperature: 0,
+                        responseMimeType: "application/json",
+                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
+                };
+                
+                const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+
+                const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`${file.name}: ${errorData?.error?.message || `API 요청 실패 (상태: ${response.status})`}`);
+                }
+                const result = await response.json();
+
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                    if (Array.isArray(parsedData)) {
+                        parsedData.forEach(item => {
+                            const no = parseInt(item.no || '0', 10);
+                            const hawbNo = item.hawbNo || '';
+                            if (no > 0 && hawbNo.trim() !== '') {
+                                mergedResults[no] = item;
+                            }
+                        });
+                    }
+                }
+            }
+
+            const allNewItems = Object.values(mergedResults);
+
+            if (allNewItems.length > 0) {
+                let newCount = 0;
+                let updateCount = 0;
+                
+                const finalItems = allNewItems.map(item => ({
+                    no: parseInt(item.no, 10),
+                    hawbNo: item.hawbNo || '',
+                    receiverAddressKorean: item.receiverAddressKorean || '',
+                    receiverAddressOriginal: cleanStringForDisplay(item.receiverAddressOriginal),
+                    companyNameKorean: item.companyNameKorean || '',
+                    companyNameOriginal: cleanStringForDisplay(item.companyNameOriginal),
+                    receiverNameKorean: item.receiverNameKorean || '',
+                    receiverNameOriginal: cleanStringForDisplay(item.receiverNameOriginal),
+                    receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
+                    status: '배송전', isHawbConfirmed: false,
+                    deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                }));
+                
+                finalItems.forEach(newItem => {
+                    const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
+                    
+                    if (existingItemIndex > -1) {
+                        deliveryItems[existingItemIndex] = newItem;
+                        updateCount++;
+                    } else {
+                        deliveryItems.push(newItem);
+                        newCount++;
+                    }
+                });
+
+                deliveryItems.sort((a, b) => a.no - b.no);
+                
+                saveDeliveryItemsToLocalStorage();
+                showMessage(`${updateCount}개의 카드가 업데이트되고 ${newCount}개의 카드가 새로 생성되었습니다.`);
+                
+            } else { showMessage(`이미지에서 유효한 정보를 찾지 못했습니다.`); }
+        } catch (error) {
+            console.error("스캔 오류:", error);
+            scanErrorText.textContent = error.message;
+            scanErrorMessage.style.display = 'block';
+        } finally {
+            scanLoadingIndicator.style.display = 'none';
+            scanProgressText.textContent = '송장 스캔 중...';
+            deliverySheetImageInput.value = '';
+            currentFileToScan = null;
+            selectedFilesDisplay.textContent = '선택된 파일 없음';
+            renderDeliveryCards();
+            updateFilterCounts();
+            updateStickyHeaderPositions();
+        }
+    });
+    
+    exportDataButton.addEventListener('click', () => {
+        if (deliveryItems.length === 0) {
+            showMessage("저장할 데이터가 없습니다.");
+            return;
+        }
+        try {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
+            
+            const fileName = `SF-${formattedDate}.json`;
+
+            const dataStr = JSON.stringify(deliveryItems, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
+        } catch (error) {
+            showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
+        }
+    });
+
+    importDataInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        openConfirmationModal(
+            `'${file.name}' 파일의 데이터로 현재 목록을 모두 덮어씁니다. 계속하시겠습니까?`,
+            () => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (!Array.isArray(importedData)) {
+                            throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
+                        }
+                        if (importedData.length > 0 && typeof importedData[0].no === 'undefined') {
+                            throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
+                        }
+                        deliveryItems = importedData;
+                        saveDeliveryItemsToLocalStorage();
+                        updateFilterCounts();
+                        updateStickyHeaderPositions();
+                        renderDeliveryCards();
+                        showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
+                    } catch (error) {
+                        showMessage(`파일을 불러오는 중 오류가 발생했습니다: ${error.message}`, "오류");
+                    } finally {
+                        importDataInput.value = '';
+                    }
+                };
+                reader.onerror = () => {
+                    showMessage("파일을 읽는 데 실패했습니다.", "오류");
+                    importDataInput.value = '';
+                };
+                reader.readAsText(file);
+            }
+        );
+    });
+
+    // --- Swipe & Initial Load ---
+    let touchStartX = 0, touchStartY = 0;
+    document.body.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, { passive: true });
+    document.body.addEventListener('touchmove', e => { if (Math.abs(e.touches[0].clientX - touchStartX) > 10 && Math.abs(e.touches[0].clientX - touchStartX) > Math.abs(e.touches[0].clientY - touchStartY)) e.preventDefault(); }, { passive: false });
+    document.body.addEventListener('touchend', e => {
+        const swipeDistanceX = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(swipeDistanceX) > 50 && Math.abs(swipeDistanceX) > Math.abs(e.changedTouches[0].clientY - touchStartY)) {
+            const currentIndex = filterCategories.indexOf(activeFilter);
+            const direction = swipeDistanceX > 0 ? -1 : 1;
+            const newIndex = Math.max(0, Math.min(filterCategories.length - 1, currentIndex + direction));
+            if (newIndex !== currentIndex) filterButtonsContainer.querySelector(`[data-filter="${filterCategories[newIndex]}"]`)?.click();
+        }
+    });
+    
+    // ✨ 퀵-스크롤 핸들 로직 ("디지털 다이얼" 최종 버전) ✨
+    const setupQuickScroll = () => {
+        let isDragging = false;
+        let cardElementsCache = [];
+        let cardPositionsCache = [];
+        let lastScrolledIndex = -1;
+        let headerHeight = 0;
+
+        const onDragStart = (e) => {
+            e.preventDefault();
+            isDragging = true;
+            quickScrollHandle.classList.add('active');
+            quickScrollBubble.style.display = 'block';
+            
+            cardElementsCache = Array.from(deliveryCardsContainer.querySelectorAll('[data-no]'));
+            if (cardElementsCache.length === 0) { onDragEnd(); return; }
+            
+            headerHeight = filterButtonsContainer.offsetTop + filterButtonsContainer.offsetHeight;
+            cardPositionsCache = cardElementsCache.map(card => card.offsetTop - headerHeight);
+            
+            onDrag(e);
+        };
+        
+        const onDragEnd = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            quickScrollHandle.classList.remove('active');
+            quickScrollBubble.style.display = 'none';
+            lastScrolledIndex = -1;
+        };
+
+        const onDrag = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const clientY = e.clientY || e.touches[0].clientY;
+            
+            const usableScreenHeight = window.innerHeight / 2;
+            const usableScreenTop = window.innerHeight / 2;
+            let percentage = (clientY - usableScreenTop) / usableScreenHeight;
+            percentage = Math.max(0, Math.min(1, percentage));
+
+            const targetIndex = Math.floor(percentage * (cardElementsCache.length - 1) + 0.5);
+
+            const handleHeight = quickScrollHandle.offsetHeight;
+            let handleTop = clientY - (handleHeight / 2);
+            handleTop = Math.max(0, Math.min(window.innerHeight - handleHeight, handleTop));
+            quickScrollHandle.style.top = `${handleTop}px`;
+            quickScrollBubble.style.top = `${handleTop + (handleHeight / 2)}px`;
+
+            if (targetIndex !== -1 && cardElementsCache[targetIndex]) {
+                quickScrollBubble.textContent = cardElementsCache[targetIndex].dataset.no;
+
+                if (targetIndex !== lastScrolledIndex) {
+                    const targetPosition = cardPositionsCache[targetIndex];
+                    window.scrollTo({ top: targetPosition, behavior: 'auto' });
+                    
+                    if (navigator.vibrate) navigator.vibrate(20); 
+                    lastScrolledIndex = targetIndex;
+                }
+            }
+        };
+
+        const updateHandleOnScroll = () => {
+            if (isDragging) return; // ✨ 드래그 중에는 이 함수가 절대 작동하지 않도록 함
+
+            headerHeight = filterButtonsContainer.offsetTop + filterButtonsContainer.offsetHeight;
+            const currentScroll = window.scrollY;
+            
+            cardPositionsCache = Array.from(deliveryCardsContainer.querySelectorAll('[data-no]')).map(card => card.offsetTop - headerHeight);
+            if(cardPositionsCache.length === 0) return;
+
+            let closestIndex = 0;
+            for(let i=0; i<cardPositionsCache.length; i++) {
+                if (cardPositionsCache[i] <= currentScroll + 1) {
+                    closestIndex = i;
+                } else {
+                    break;
+                }
+            }
+            
+            const percentage = cardPositionsCache.length > 1 ? closestIndex / (cardPositionsCache.length - 1) : 0;
+            
+            const usableScreenHeight = window.innerHeight / 2;
+            const usableScreenTop = window.innerHeight / 2;
+            const handleHeight = quickScrollHandle.offsetHeight;
+
+            let handleTop = usableScreenTop + (percentage * usableScreenHeight);
+            handleTop = handleTop - (handleHeight / 2);
+            handleTop = Math.max(0, Math.min(window.innerHeight - handleHeight, handleTop));
+            
+            quickScrollHandle.style.top = `${handleTop}px`;
+        };
+
+        quickScrollContainer.addEventListener('mousedown', onDragStart);
+        quickScrollContainer.addEventListener('touchstart', onDragStart, { passive: false });
+
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('touchmove', onDrag, { passive: false });
+        
+        window.addEventListener('mouseup', onDragEnd);
+        window.addEventListener('touchend', onDragEnd);
+        
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+             clearTimeout(scrollTimeout);
+             scrollTimeout = setTimeout(updateHandleOnScroll, 100);
+        });
+    };
+
+    const setupDelegatedEventListeners = () => {
+        deliveryCardsContainer.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-action]');
+            if (!button) return;
+            const action = button.dataset.action;
+            const itemNo = parseInt(button.dataset.no);
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) return;
+            
+            switch (action) {
+                case 'open-naver-map': if (!button.disabled) openNaverMap(button.dataset.address, itemNo); else showMessage('유효하지 않은 주소입니다.'); break;
+                case 'identity-verification': 
+                    openConfirmationModal(`HAWB ${item.hawbNo} 본인확인 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '본인확인', item.receiverNameKorean)); 
+                    break;
+                case 'front-door-delivery': 
+                    openConfirmationModal(`HAWB ${item.hawbNo} 문앞배송 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '문앞배송')); 
+                    break;
+                case 'sign-delivery': openSignatureModal(itemNo); break;
+                case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
+                case 'toggle-details': const details = document.querySelector(`[data-details-container="${itemNo}"]`); if (details) { details.style.display = details.style.display === 'none' ? '' : 'none'; button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; } break;
+            }
+        });
+        deliveryCardsContainer.addEventListener('change', (event) => {
+            const checkbox = event.target.closest('[data-action="toggle-hawb-confirm"]');
+            if (checkbox) handleCheckboxToggleAndResetSearch(parseInt(checkbox.dataset.no), checkbox.checked);
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            setupDelegatedEventListeners();
+            setupQuickScroll();
+            const storedItems = localStorage.getItem('deliveryItems');
+            if (storedItems) deliveryItems = JSON.parse(storedItems).sort((a, b) => a.no - b.no);
+            const storedScroll = localStorage.getItem('filterScrollPositions');
+            if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
+            updateFilterCounts();
+
+            const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
+            if (initialBtn) {
+                initialBtn.click();
+            }
+
+        } catch (error) {
+            console.error("초기화 오류:", error);
+            document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
+        }
+    });
+</script>
+</body>
+</html>
