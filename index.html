@@ -186,20 +186,6 @@
         <div id="quick-scroll-bubble">1</div>
     </div>
 
-    <div id="sort-buttons-container" class="fixed bottom-8 right-4 flex flex-col space-y-2 z-40 hidden">
-        <button id="sort-by-number-btn" class="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-            </svg>
-        </button>
-        <button id="sort-by-distance-btn" class="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        </button>
-    </div>
-
     <div id="signature-modal" class="signature-modal" style="display: none;">
         <div class="signature-modal-content">
             <h2 class="text-xl font-semibold mb-4 text-gray-800">서명 입력</h2>
@@ -702,14 +688,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 if (itemIndex > -1) {
                     deliveryItems[itemIndex].receiverAddressKorean = newAddress;
                     
-                    const coords = await geocodeAddress(newAddress);
-                    if (coords) {
-                        deliveryItems[itemIndex].lat = coords.lat;
-                        deliveryItems[itemIndex].lng = coords.lng;
-                    } else {
-                        console.warn(`주소 수정 후 좌표 변환 실패: ${newAddress}`);
-                    }
-                    
                     saveDeliveryItemsToLocalStorage();
                     renderDeliveryCards(); 
                     showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
@@ -808,30 +786,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 currentFilteredData = currentFilteredData.filter(item => item.status === activeFilter);
             }
 
-            if (activeFilter === '배송중') {
-                if (activeSortOrder === 'no') {
-                    currentFilteredData.sort((a, b) => a.no - b.no);
-                } else if (activeSortOrder === 'distance') {
-                    try {
-                        const userPos = await getCurrentUserPosition();
-                        currentFilteredData.forEach(item => {
-                            if (item.lat && item.lng && userPos) {
-                                item.distance = calculateDistance(userPos.lat, userPos.lng, item.lat, item.lng);
-                            } else {
-                                item.distance = Infinity;
-                            }
-                        });
-                        currentFilteredData.sort((a, b) => a.distance - b.distance);
-                    } catch (error) {
-                        showMessage('위치 정보를 가져올 수 없어 순번 순으로 정렬합니다.');
-                        activeSortOrder = 'no';
-                        updateSortButtonUI();
-                        currentFilteredData.sort((a, b) => a.no - b.no);
-                    }
-                }
-            } else {
-                 currentFilteredData.sort((a, b) => a.no - b.no);
-            }
+            currentFilteredData.sort((a, b) => a.no - b.no);
 
             deliveryCardsContainer.classList.remove('animate-slide-in-left', 'animate-slide-in-right');
             deliveryCardsContainer.style.animation = '';
@@ -917,7 +872,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
             const deliveryInProgressCount = deliveryItems.filter(item => item.status === '배송중').length;
             quickScrollContainer.style.display = (activeFilter === '배송중' && deliveryInProgressCount > 0) ? 'block' : 'none';
-            sortButtonsContainer.classList.toggle('hidden', activeFilter !== '배송중' || deliveryInProgressCount === 0);
         });
     };
     
@@ -1039,8 +993,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
                     generationConfig: { 
                         temperature: 0,
-                        responseMimeType: "application/json",
-                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" }, "receiverAddressComponents": { "type": "ARRAY", "items": { "type": "STRING" } } } } }
+                        responseMimeType: "application/json"
                     } 
                 };
                 
@@ -1065,14 +1018,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                                 scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${file.name})...`;
                                 const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
                                 
-                                const coords = await geocodeAddress(validatedAddress);
-                                
                                 tempMergedResults.set(no, { 
                                     ...geminiItem, 
                                     receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, 
-                                    receiverAddressComponents: geminiItem.receiverAddressComponents || [],
-                                    lat: coords ? coords.lat : null,
-                                    lng: coords ? coords.lng : null
+                                    receiverAddressComponents: geminiItem.receiverAddressComponents || []
                                 });
                             }
                         } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
@@ -1104,9 +1053,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                receiverAddressComponents: item.receiverAddressComponents || [],
-                lat: item.lat || null,
-                lng: item.lng || null
+                receiverAddressComponents: item.receiverAddressComponents || []
             }));
             
             finalItems.forEach(newItem => {
@@ -1354,8 +1301,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20250720.2330`;
-        versionChangelog.textContent = `거리순 정렬 기능 오류 수정 및 최종 적용`;
+        versionText.textContent = `v0.20250720.2340`;
+        versionChangelog.textContent = `거리순 정렬 기능 추가 이전으로 롤백`;
     };
 
     const setupDelegatedEventListeners = () => {
