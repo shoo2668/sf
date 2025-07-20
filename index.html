@@ -223,7 +223,7 @@
     </div>
 
     <script type="text/javascript">
-        const GEMINI_PROMPT = `You are a specialized Korean address formatting expert. Your primary goal is to parse and reconstruct addresses from invoice images with the highest possible accuracy, following specific structural rules.
+        const GEMINI_PROMPT = `Your task is to extract delivery information from an invoice and convert the address into a standard Korean "Road Name Address" (도로명주소). Your primary goal is to parse and reconstruct addresses from invoice images with the highest possible accuracy, following specific structural rules.
 
 **Primary Duty: Correctly identify the Building Number (건물번호) and the Detailed Address (상세주소) based on their characteristics and position relative to the Road Name or District Name.**
 
@@ -445,7 +445,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         let failedFileObjects = []; 
         let currentSignatureItemNo = null;
         let onConfirmCallback = null;
-        let currentAddressSelectionItemNo = null; // 현재 주소 선택 모달이 열린 카드 번호
+        let currentAddressSelectionItemNo = null; 
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -529,15 +529,14 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             }
 
             addressOptionsContainer.innerHTML = '';
-            let defaultSelectedAddress = item.receiverAddressKorean; // 현재 카드의 주소를 기본 선택값으로
+            let defaultSelectedAddress = item.receiverAddressKorean; 
 
             const uniqueAddresses = [...new Set(item.alternativeAddresses)];
-            // 현재 주소가 후보에 없거나 맨 앞에 있지 않으면 맨 앞으로 이동
             if (!uniqueAddresses.includes(defaultSelectedAddress)) {
-                uniqueAddresses.unshift(defaultSelectedAddress);
+                uniqueAddresses.unshift(defaultSelectedAddress); 
             } else {
-                uniqueAddresses.splice(uniqueAddresses.indexOf(defaultSelectedAddress), 1);
-                uniqueAddresses.unshift(defaultSelectedAddress);
+                uniqueAddresses.splice(uniqueAddresses.indexOf(defaultSelectedAddress), 1); 
+                uniqueAddresses.unshift(defaultSelectedAddress); 
             }
             
             uniqueAddresses.forEach((addr, index) => {
@@ -838,7 +837,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     }
 
     async function performScan(filesToScan) {
-        const mergedResults = {};
+        const tempMergedResults = new Map(); // 각 no별로 임시 결과를 저장할 Map
         const failedFileObjectsForRetry = [];
         
         for (let i = 0; i < filesToScan.length; i++) {
@@ -879,42 +878,54 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                             }
                         } catch (parseError) {
                             console.warn(`Gemini JSON 파싱 실패 (시도 ${j+1}, 파일 ${file.name}):`, parseError);
-                            // JSON 파싱 실패해도 다음 시도 진행
                         }
                     }
                 } 
 
-                const rawGeminiAddresses = allGeminiResultsForFile.map(item => item.receiverAddressKorean);
-                const uniqueGeminiAddresses = [...new Set(rawGeminiAddresses.filter(Boolean))]; // 비어있는 문자열 제거
+                // 파일 내의 각 송장 정보별로 주소 후보를 관리
+                const itemsFromFile = {}; // 현재 파일에서 추출된 모든 송장 정보 (no를 키로)
+                
+                // 1. 모든 Gemini 결과물에서 각 송장(no)별 주소 후보 수집
+                for (const geminiItem of allGeminiResultsForFile) {
+                    const no = parseInt(geminiItem.no || '0', 10);
+                    if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') continue; // 유효하지 않은 송장 정보는 건너뛰기
 
-                const validatedAddresses = [];
-                if (uniqueGeminiAddresses.length > 0) {
-                    scanProgressText.textContent = `주소 검증 중 (${i + 1}/${filesToScan.length}, ${uniqueGeminiAddresses.length}개 후보)...`;
-                    for (const addr of uniqueGeminiAddresses) {
-                        const validatedAddr = await validateAddressWithKakao(addr);
-                        if (validatedAddr) { // 검증된 주소가 유효할 경우만 추가
-                            validatedAddresses.push(validatedAddr);
-                        }
+                    if (!itemsFromFile[no]) {
+                        itemsFromFile[no] = { ...geminiItem, alternativeAddresses: [] };
+                    }
+                    // 중복 방지를 위해 이미 있는 주소는 추가하지 않음
+                    if (!itemsFromFile[no].alternativeAddresses.includes(geminiItem.receiverAddressKorean)) {
+                        itemsFromFile[no].alternativeAddresses.push(geminiItem.receiverAddressKorean);
                     }
                 }
-                const finalUniqueValidatedAddresses = [...new Set(validatedAddresses)]; // 최종적으로 검증된 주소 중 중복 제거
 
-                if (finalUniqueValidatedAddresses.length > 0) {
-                    const mainItem = allGeminiResultsForFile[0] || {}; // 첫 번째 시도 결과 (없을 경우 빈 객체)
-                    const no = parseInt(mainItem.no || '0', 10);
+                // 2. 수집된 각 송장 정보별 주소 후보를 카카오로 검증
+                for (const no in itemsFromFile) {
+                    const currentItem = itemsFromFile[no];
+                    const validatedAddressesForThisItem = [];
                     
-                    // 기존 번호가 없거나, 유효한 hawbNo가 추출되지 않았다면 스캔 실패로 간주
-                    if (no === 0 || !mainItem.hawbNo || mainItem.hawbNo.trim() === '') {
-                         throw new Error("송장 번호 또는 No.를 찾을 수 없습니다.");
+                    scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${Object.keys(itemsFromFile).length}개 중 ${no}번)...`;
+
+                    for (const addr of currentItem.alternativeAddresses) {
+                        const validatedAddr = await validateAddressWithKakao(addr);
+                        if (validatedAddr && !validatedAddressesForThisItem.includes(validatedAddr)) {
+                            validatedAddressesForThisItem.push(validatedAddr);
+                        }
                     }
 
-                    mergedResults[no] = { 
-                        ...mainItem, 
-                        receiverAddressKorean: finalUniqueValidatedAddresses[0], 
-                        alternativeAddresses: finalUniqueValidatedAddresses 
-                    };
-                } else {
-                    throw new Error("이미지에서 유효한 주소 후보를 찾지 못했습니다.");
+                    if (validatedAddressesForThisItem.length > 0) {
+                        currentItem.receiverAddressKorean = validatedAddressesForThisItem[0]; // 첫 번째 유효 주소를 기본으로
+                        currentItem.alternativeAddresses = validatedAddressesForThisItem; // 검증된 주소 후보들로 업데이트
+                        tempMergedResults.set(no, currentItem); // 최종 결과 Map에 저장
+                    } else {
+                        // 해당 송장에 대해 유효한 주소를 하나도 얻지 못한 경우
+                        console.warn(`송장 ${no}번에 대해 유효한 주소를 찾을 수 없어 원본 주소를 사용합니다.`);
+                        tempMergedResults.set(no, { 
+                            ...currentItem, 
+                            receiverAddressKorean: cleanStringForDisplay(currentItem.receiverAddressOriginal),
+                            alternativeAddresses: [cleanStringForDisplay(currentItem.receiverAddressOriginal)] // 최소한 원본 주소라도 후보에 포함
+                        });
+                    }
                 }
 
             } catch (error) {
@@ -926,7 +937,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         let newCount = 0;
         let updateCount = 0;
-        const allNewItems = Object.values(mergedResults);
+        const allNewItems = Array.from(tempMergedResults.values()); // Map의 값들을 배열로 변환
 
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
@@ -1196,22 +1207,20 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             const itemNo = parseInt(targetElement.dataset.no);
             const item = deliveryItems.find(i => i.no === itemNo);
             
-            if (!item) return; // 아이템이 없으면 처리하지 않음
+            if (!item) return; 
 
-            // 주소 텍스트 터치 시 주소 선택 모달 열기
             if (action === 'open-address-selection') {
                 openAddressSelectionModal(itemNo);
-                return; // 다른 액션 처리 방지
+                return; 
             }
 
-            // 그 외 버튼 액션 처리 (기존 로직 유지)
             const button = event.target.closest('[data-action]');
-            if (!button) return; // 버튼이 아니면 처리하지 않음
+            if (!button) return; 
 
             switch (action) {
                 case 'open-naver-map': 
                     if (!button.disabled) {
-                        openNaverMap(button.dataset.address, itemNo);
+                        openNaverMap(item.receiverAddressKorean, itemNo); // 현재 카드에 표시된 주소를 사용
                     } else {
                         showMessage('유효하지 않은 주소입니다.');
                     }
