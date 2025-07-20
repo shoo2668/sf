@@ -607,7 +607,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             confirmationModal.style.display = 'flex';
         };
         
-        // ✨ 스마트 편집 조각 분리 로직 (수정됨) ✨
         const openAddressSelectionModal = (itemNo) => {
             currentAddressSelectionItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
@@ -1270,9 +1269,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         });
     };
     
+    // ✨ 버전 정보 수정 (수정됨) ✨
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20240525.1145`;
-        versionChangelog.textContent = `스마트 편집 조각을 공백 기준으로 분리`;
+        versionText.textContent = `v0.20250720.1450`;
+        versionChangelog.textContent = `버전 표기 방식 수정 및 스마트 편집 조각 분리`;
     };
 
     const setupDelegatedEventListeners = () => {
