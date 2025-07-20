@@ -607,6 +607,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             confirmationModal.style.display = 'flex';
         };
         
+        // ✨ 스마트 편집 조각 분리 로직 (수정됨) ✨
         const openAddressSelectionModal = (itemNo) => {
             currentAddressSelectionItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
@@ -617,15 +618,20 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             
             smartEditPreviewOutput.textContent = ''; 
             addressChipsContainer.innerHTML = '';
+
             if (item.receiverAddressComponents && item.receiverAddressComponents.length > 0) {
-                item.receiverAddressComponents.forEach(component => {
-                    if (component) { 
+                const allSplitComponents = item.receiverAddressComponents.flatMap(component => 
+                    component ? component.split(/\s+/).filter(part => part) : []
+                );
+
+                if (allSplitComponents.length > 0) {
+                    allSplitComponents.forEach(splitComponent => {
                         const chip = document.createElement('span');
                         chip.className = 'inline-block bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full cursor-pointer hover:bg-blue-200';
-                        chip.textContent = component;
+                        chip.textContent = splitComponent;
                         chip.addEventListener('click', () => {
                             let currentText = smartEditPreviewOutput.textContent;
-                            const newText = component;
+                            const newText = splitComponent;
                             const lastChar = currentText.length > 0 ? currentText.slice(-1) : '';
                             const isPunctuationOrSpace = (char) => [',', '-', ' '].includes(char); 
                             
@@ -635,8 +641,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                             smartEditPreviewOutput.textContent = currentText + newText;
                         });
                         addressChipsContainer.appendChild(chip);
-                    }
-                });
+                    });
+                } else {
+                     addressChipsContainer.innerHTML = '<span class="text-gray-500 text-sm">주소 조각을 찾을 수 없습니다.</span>';
+                }
             } else {
                 addressChipsContainer.innerHTML = '<span class="text-gray-500 text-sm">주소 조각을 찾을 수 없습니다.</span>';
             }
@@ -1263,8 +1271,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20240525.1130`;
-        versionChangelog.textContent = `스마트 편집 버튼 동작 수정 및 버전 고정 방식 개선`;
+        versionText.textContent = `v0.20240525.1145`;
+        versionChangelog.textContent = `스마트 편집 조각을 공백 기준으로 분리`;
     };
 
     const setupDelegatedEventListeners = () => {
