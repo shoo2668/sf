@@ -517,13 +517,13 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
         const addressSelectionModal = document.getElementById('address-selection-modal');
-        const addressOptionsContainer = document.getElementById('address-options-container');
+        const addressOptionsContainer = document.getElementById('address-options-container'); // 주소 후보 목록 (이제 사용 안함)
         const addressChipsContainer = document.getElementById('address-chips-container'); // 스마트 편집 칩 컨테이너
         const addressDirectEditInput = document.getElementById('address-direct-edit-input'); 
-        const insertSpaceBtn = document.getElementById('insert-space-btn'); // 띄어쓰기 버튼
-        const insertCommaBtn = document.getElementById('insert-comma-btn'); // 쉼표 버튼
-        const insertHyphenBtn = document.getElementById('insert-hyphen-btn'); // 하이픈 버튼
-        const clearSmartEditBtn = document.getElementById('clear-smart-edit-btn'); // 초기화 버튼
+        const insertSpaceBtn = document.getElementById('insert-space-btn'); 
+        const insertCommaBtn = document.getElementById('insert-comma-btn'); 
+        const insertHyphenBtn = document.getElementById('insert-hyphen-btn'); 
+        const clearSmartEditBtn = document.getElementById('clear-smart-edit-btn'); 
         const selectAddressCancelBtn = document.getElementById('select-address-cancel');
         const selectAddressApplyBtn = document.getElementById('select-address-apply');
 
@@ -572,8 +572,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
-            // 기존 후보 목록은 제거 (주소 선택 기능 제거)
+            // 주소 후보 목록은 사용 안 함
             addressOptionsContainer.innerHTML = ''; 
+            addressOptionsContainer.style.display = 'none'; // 숨김 처리
 
             // 직접 편집 필드에 현재 주소 채우기
             addressDirectEditInput.value = item.receiverAddressKorean || '';
@@ -582,25 +583,27 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             // 스마트 편집 칩 초기화 및 생성
             addressChipsContainer.innerHTML = '';
             if (item.receiverAddressComponents && item.receiverAddressComponents.length > 0) {
+                addressChipsContainer.innerHTML = ''; // 기존 "조각 없음" 메시지 제거
                 item.receiverAddressComponents.forEach(component => {
-                    if (component) { // 빈 문자열 필터링
+                    if (component) { 
                         const chip = document.createElement('span');
                         chip.className = 'inline-block bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full cursor-pointer hover:bg-blue-200';
                         chip.textContent = component;
                         chip.addEventListener('click', () => {
-                            // 칩 클릭 시 textarea에 삽입
-                            const start = addressDirectEditInput.selectionStart;
-                            const end = addressDirectEditInput.selectionEnd;
-                            const currentVal = addressDirectEditInput.value;
-                            addressDirectEditInput.value = currentVal.substring(0, start) + component + currentVal.substring(end);
-                            addressDirectEditInput.selectionStart = addressDirectEditInput.selectionEnd = start + component.length; // 커서 이동
-                            addressDirectEditInput.focus();
+                            const input = addressDirectEditInput;
+                            const start = input.selectionStart;
+                            const end = input.selectionEnd;
+                            const newText = component;
+                            
+                            input.value = input.value.substring(0, start) + newText + input.value.substring(end);
+                            input.selectionStart = input.selectionEnd = start + newText.length; 
+                            input.focus();
                         });
                         addressChipsContainer.appendChild(chip);
                     }
                 });
             } else {
-                addressChipsContainer.innerHTML = '<span class="text-gray-500 text-sm">주소 조각을 찾을 수 없습니다.</span>';
+                addressChipsContainer.innerHTML = '<span class="text-gray-500 text-sm">주소 조각을 찾을 수 없습니다. (AI가 조각을 반환하지 않음)</span>';
             }
 
             addressSelectionModal.style.display = 'flex';
@@ -610,7 +613,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             addressSelectionModal.style.display = 'none';
             currentAddressSelectionItemNo = null;
             addressDirectEditInput.value = ''; 
-            addressChipsContainer.innerHTML = ''; // 칩 컨테이너 초기화
+            addressChipsContainer.innerHTML = ''; 
+            addressOptionsContainer.style.display = ''; // 모달 닫을 때 다시 보이도록
         };
 
         // 스마트 편집 특수 문자 삽입 버튼 이벤트
@@ -646,7 +650,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         selectAddressCancelBtn.addEventListener('click', closeAddressSelectionModal);
         selectAddressApplyBtn.addEventListener('click', () => {
-            const newAddress = addressDirectEditInput.value.trim(); // 직접 편집 내용이 최우선
+            const newAddress = addressDirectEditInput.value.trim(); 
 
             if (newAddress && currentAddressSelectionItemNo !== null) {
                 const itemIndex = deliveryItems.findIndex(item => item.no === currentAddressSelectionItemNo);
@@ -770,7 +774,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         if (animationClass) {
             deliveryCardsContainer.style.transform = 'translateX(0px)';
             deliveryCardsContainer.classList.add(animationClass);
-            setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); deliveryCardsContainer.style.animation = ''; }, 300);
+            setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); animation = ''; }, 300);
         }
     };
 
@@ -930,14 +934,12 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     reader.readAsDataURL(file);
                 });
 
-                const geminiResponses = [];
-                // Gemini AI 호출 (1회 시도로 변경, 복수 카드 추출 가능)
                 const payload = {
                     contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
                     generationConfig: { 
                         temperature: 0,
                         responseMimeType: "application/json",
-                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" }, "receiverAddressComponents": { "type": "ARRAY", "items": { "type": "STRING" } } } } }
+                        schema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" }, "receiverAddressComponents": { "type": "ARRAY", "items": { "type": "STRING" } } } } }
                     };
                 
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
@@ -951,35 +953,28 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     try {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                         if (Array.isArray(parsedData) && parsedData.length > 0) {
-                            geminiResponses.push(...parsedData); // 단일 호출이더라도 여러 카드 정보가 올 수 있음
-                        }
+                            for (const geminiItem of parsedData) { // 한 파일에서 여러 송장 정보가 올 수 있음
+                                const no = parseInt(geminiItem.no || '0', 10);
+                                if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
+                                    console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
+                                    continue; 
+                                }
+
+                                // 카카오 검증
+                                scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${file.name})...`;
+                                const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
+                                
+                                tempMergedResults.set(no, { 
+                                    ...geminiItem, 
+                                    receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, 
+                                    receiverAddressComponents: geminiItem.receiverAddressComponents || [] 
+                                });
+                            }
+                        } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
                     } catch (parseError) {
                         console.warn(`Gemini JSON 파싱 실패 (파일 ${file.name}):`, parseError);
                     }
-                }
-
-                // 파일 내의 각 송장 정보별로 주소 후보를 관리
-                for (const geminiItem of geminiResponses) { 
-                    const no = parseInt(geminiItem.no || '0', 10);
-                    // 송장 번호 또는 No.가 없거나 HAWB가 없으면 유효하지 않은 것으로 간주
-                    if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
-                        console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
-                        continue; 
-                    }
-
-                    // 카카오 검증
-                    scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${file.name})...`;
-                    const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
-                    
-                    // 해당 송장 번호에 대한 최종 결과를 임시 Map에 저장
-                    tempMergedResults.set(no, { 
-                        ...geminiItem, 
-                        receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, 
-                        // AI가 직접 분리한 주소 구성 요소 저장
-                        receiverAddressComponents: geminiItem.receiverAddressComponents || [] 
-                    });
-                }
-
+                } else { throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다."); }
             } catch (error) {
                 console.error(`파일 스캔 오류 (${file.name}):`, error);
                 failedFileObjectsForRetry.push(file);
@@ -1004,8 +999,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                alternativeAddresses: item.alternativeAddresses || [], // 이제 사용되지 않을 필드이지만 혹시 모를 상황에 대비하여 유지
-                receiverAddressComponents: item.receiverAddressComponents || [] // 새로 추가된 조각 필드
+                receiverAddressComponents: item.receiverAddressComponents || [] 
             }));
             
             finalItems.forEach(newItem => {
