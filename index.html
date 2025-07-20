@@ -160,11 +160,6 @@
             <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
         </div>
     </div>
-    
-    <div id="version-info-container" class="max-w-md mx-auto mb-6 text-center hidden">
-        <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
-        <p id="version-changelog" class="text-xs text-gray-500"></p>
-    </div>
 
     <div id="scan-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
         <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
@@ -179,6 +174,12 @@
             <p id="scan-progress-text">송장 스캔 중...</p>
         </div>
         <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
+    </div>
+    
+    <!-- ✨ 버전 정보 위치 변경 ✨ -->
+    <div id="version-info-container" class="max-w-md mx-auto mb-6 text-center hidden">
+        <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
+        <p id="version-changelog" class="text-xs text-gray-500"></p>
     </div>
 
     <div id="delivery-cards-container" class="max-w-md mx-auto"></div>
@@ -448,6 +449,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return '';
         };
         
+        // ✨ 클립보드 복사 로직 수정 ✨
         const extractClipboardAddressPart = (fullAddress) => {
             if (!fullAddress || typeof fullAddress !== 'string') return '';
             let cleanAddress = fullAddress.trim();
@@ -461,7 +463,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 return hyphenUnitMatch[1];
             }
 
-            const roadAddrMatch = cleanAddress.match(/([가-힣\d\-]+(?:로|길|대로|번길))\s*([\d\-]+)/);
+            const roadAddrMatch = cleanAddress.match(/([가-힣]+(?:\d+[가-힣]*)?(?:로|길|대로|번길))\s*([\d\-]+)/);
             if (roadAddrMatch) {
                 return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
             }
