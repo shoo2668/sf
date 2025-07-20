@@ -71,55 +71,53 @@
             width: 100vw;
             will-change: transform, top;
         }
-        /* ✨ 퀵-스크롤 핸들 스타일 시작 ✨ */
         #quick-scroll-container {
             position: fixed;
             top: 0;
             right: 0;
             height: 100%;
-            width: 40px; /* 핸들 터치 영역 확장 */
-            display: none; /* '배송중' 탭에서만 보이도록 JS로 제어 */
+            width: 40px;
+            display: none;
             z-index: 40;
             user-select: none;
             -webkit-user-select: none;
         }
         #quick-scroll-handle {
             position: absolute;
-            right: 8px; /* 오른쪽 여백 확보 */
+            right: 8px;
             top: 50%;
-            width: 24px; /* 핸들 두께 */
-            height: 50px; /* 핸들 길이 */
+            width: 24px;
+            height: 50px;
             background-color: rgba(0, 0, 0, 0.25);
             border-radius: 12px;
             cursor: grab;
-            transition: background-color 0.2s; /* 드래그 중이 아닐때만 top 전환 효과 적용 */
+            transition: background-color 0.2s;
         }
         #quick-scroll-handle:not(.active) {
             transition: background-color 0.2s, top 0.15s ease-out;
         }
         #quick-scroll-handle.active {
-            background-color: rgba(37, 99, 235, 0.7); /* 활성화 시 파란색으로 변경 */
+            background-color: rgba(37, 99, 235, 0.7);
             cursor: grabbing;
         }
         #quick-scroll-bubble {
             position: absolute;
-            right: 50px; /* 핸들 왼쪽으로 충분히 이동 */
+            right: 50px;
             top: 50%;
             transform: translateY(-50%);
             padding: 10px 20px;
             background-color: rgba(0, 0, 0, 0.75);
             color: white;
-            font-size: 1.5rem; /* 글자 크기 증가 */
-            font-weight: 700;  /* 폰트 굵게 */
+            font-size: 1.5rem;
+            font-weight: 700;
             border-radius: 16px;
             display: none;
-            pointer-events: none; /* 버블이 터치를 방해하지 않도록 */
+            pointer-events: none;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         #quick-scroll-handle.active ~ #quick-scroll-bubble {
-             transition: none; /* 드래그 중에는 부드러운 효과 제거 */
+             transition: none;
         }
-        /* ✨ 퀵-스크롤 핸들 스타일 끝 ✨ */
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -188,7 +186,6 @@
         <div id="quick-scroll-bubble">1</div>
     </div>
 
-    <!-- ✨ 정렬 버튼 컨테이너 ✨ -->
     <div id="sort-buttons-container" class="fixed bottom-8 right-4 flex flex-col space-y-2 z-40 hidden">
         <button id="sort-by-number-btn" class="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-600">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -705,7 +702,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 if (itemIndex > -1) {
                     deliveryItems[itemIndex].receiverAddressKorean = newAddress;
                     
-                    // ✨ 주소 수정 시 좌표도 함께 업데이트 ✨
                     const coords = await geocodeAddress(newAddress);
                     if (coords) {
                         deliveryItems[itemIndex].lat = coords.lat;
@@ -812,7 +808,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 currentFilteredData = currentFilteredData.filter(item => item.status === activeFilter);
             }
 
-            // ✨ 정렬 로직 추가 ✨
             if (activeFilter === '배송중') {
                 if (activeSortOrder === 'no') {
                     currentFilteredData.sort((a, b) => a.no - b.no);
@@ -823,7 +818,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                             if (item.lat && item.lng && userPos) {
                                 item.distance = calculateDistance(userPos.lat, userPos.lng, item.lat, item.lng);
                             } else {
-                                item.distance = Infinity; // 좌표 없는 항목은 맨 뒤로
+                                item.distance = Infinity;
                             }
                         });
                         currentFilteredData.sort((a, b) => a.distance - b.distance);
