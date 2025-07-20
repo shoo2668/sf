@@ -215,7 +215,19 @@
             <div id="address-options-container" class="space-y-4">
                 <!-- 주소 옵션들이 여기에 동적으로 삽입됩니다. -->
             </div>
-            <div class="flex justify-end space-x-2 mt-6">
+            <div class="mt-6 border-t pt-4 border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">주소 직접 편집</h3>
+                <textarea id="address-direct-edit-input" 
+                          class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
+                          rows="4" 
+                          placeholder="여기에 주소를 직접 수정하세요."
+                          inputmode="text"
+                          autocomplete="address-line1"
+                          autocorrect="off"
+                          autocapitalize="off"
+                          spellcheck="false"></textarea>
+            </div>
+            <div class="flex justify-end space-x-2 mt-4">
                 <button id="select-address-cancel" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
                 <button id="select-address-apply" class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">적용</button>
             </div>
@@ -241,7 +253,7 @@
         *   **Step 2.4: Assemble:** Form the core as "[시/도] [시/군/구] [Road Name] [True Building Number]". Append all other identified "Detailed Address" blocks (from Rule 2.1), separated by commas. Ensure correct Korean postpositions (e.g., '동', '호').
 
     *   **IF NO Road Name is found:**
-        *   **Step 2.5: Jibun Address:** Look for a district name ending in \`-dong\` or \`-ri\`. If it is immediately followed by a number that resembles a Jibun number (e.g., '123-4'), that is the **Jibun Address**.
+        *   **Step 2.5: Jibun Address:** Look for a district name ending in \`-dong\` or \`-ri\`. If it is immediately followed by a number that resembles a Jibun number (e.g., '123-4'), that is the **Jibun Address**. **If multiple hyphenated numbers are present, prioritize the one that appears after the -dong/-ri and looks like a typical main jibun number (e.g., 139-1). The others are detailed addresses.**
         *   **Step 2.6: District Name Only:** If the \`-dong\` or \`-ri\` is NOT followed by a Jibun number, then the district name is the main address component. All other remaining parts are the **Detailed Address**, separated by a comma.
 
 **CRITICAL Formatting Mandates:**
@@ -295,6 +307,11 @@
     *   **Source Text:** \`202, 104-7, Tteokjeongol-ro\`
     *   **Correct \`receiverAddressKorean\`:** "경기 화성시 떡전골로 104-7, 202"
     *   **Reasoning:** \`Tteokjeongol-ro\` is the road. It should be translated to '떡전골로'. \`104-7\` is a building sub-number, making it the **True Building Number**. \`202\` is treated as a **Detailed Address**.
+
+*   **Example 10: Jibun Address with multiple hyphenated numbers**
+    *   **Source Text:** \`Gyeonggi-do Hwaseong-si 105-106, #139-1, DONGHWA-RI, BONGDAM-EUP\`
+    *   **Correct \`receiverAddressKorean\`:** "경기 화성시 봉담읍 동화리 139-1, 105-106"
+    *   **Reasoning:** \`DONGHWA-RI\` is the district. Among \`105-106\` and \`#139-1\`, \`139-1\` is identified as the primary jibun number (due to '#' and typical jibun format). \`105-106\` becomes the detailed address.
 
 **Output JSON Format:**
 Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`receiverAddressKorean\`, \`receiverAddressOriginal\`, \`companyNameKorean\`, \`companyNameOriginal\`, \`receiverNameKorean\`, \`receiverNameOriginal\`, \`receiverTelephoneNo\`.
@@ -477,6 +494,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const confirmCancelButton = document.getElementById('confirmCancelButton');
         const addressSelectionModal = document.getElementById('address-selection-modal');
         const addressOptionsContainer = document.getElementById('address-options-container');
+        const addressDirectEditInput = document.getElementById('address-direct-edit-input'); // 추가된 직접 편집 input
         const selectAddressCancelBtn = document.getElementById('select-address-cancel');
         const selectAddressApplyBtn = document.getElementById('select-address-apply');
 
@@ -523,56 +541,66 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const openAddressSelectionModal = (itemNo) => {
             currentAddressSelectionItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
-            if (!item || !item.alternativeAddresses || item.alternativeAddresses.length === 0) {
-                showMessage('선택할 대체 주소가 없습니다.');
-                return;
-            }
-
-            addressOptionsContainer.innerHTML = '';
-            let defaultSelectedAddress = item.receiverAddressKorean; 
-
-            const uniqueAddresses = [...new Set(item.alternativeAddresses)];
-            if (!uniqueAddresses.includes(defaultSelectedAddress)) {
-                uniqueAddresses.unshift(defaultSelectedAddress); 
+            if (!item || (!item.alternativeAddresses || item.alternativeAddresses.length === 0)) {
+                // 대체 주소가 없으면 현재 주소만 직접 편집 가능하도록
+                addressOptionsContainer.innerHTML = '<p class="text-sm text-gray-600">다른 주소 후보가 없습니다. 아래에서 직접 편집해 주세요.</p>';
+                addressDirectEditInput.value = item.receiverAddressKorean || '';
             } else {
-                uniqueAddresses.splice(uniqueAddresses.indexOf(defaultSelectedAddress), 1); 
-                uniqueAddresses.unshift(defaultSelectedAddress); 
-            }
-            
-            uniqueAddresses.forEach((addr, index) => {
-                const isSelected = (addr === defaultSelectedAddress) ? 'checked' : '';
-                const optionDiv = document.createElement('div');
-                optionDiv.className = 'flex items-start p-2 border border-gray-200 rounded-md';
-                optionDiv.innerHTML = `
-                    <input type="radio" id="addr-option-${index}" name="address-option" value="${addr}" ${isSelected} class="mt-1 mr-2 flex-shrink-0 text-blue-600 form-radio focus:ring-blue-500">
-                    <label for="addr-option-${index}" class="flex-grow text-gray-700 text-sm font-medium leading-tight">
-                        ${addr}
-                    </label>
-                    <button data-address="${addr}" class="ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-xs font-medium hover:bg-green-600 flex-shrink-0 map-button">지도보기</button>
-                `;
-                addressOptionsContainer.appendChild(optionDiv);
-            });
+                addressOptionsContainer.innerHTML = '';
+                let defaultSelectedAddress = item.receiverAddressKorean; 
 
-            addressOptionsContainer.querySelectorAll('.map-button').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation(); 
-                    openNaverMap(e.target.dataset.address, currentAddressSelectionItemNo);
+                const uniqueAddresses = [...new Set(item.alternativeAddresses)];
+                // 현재 주소가 후보에 없거나 맨 앞에 있지 않으면 맨 앞으로 이동
+                if (!uniqueAddresses.includes(defaultSelectedAddress)) {
+                    uniqueAddresses.unshift(defaultSelectedAddress); 
+                } else {
+                    uniqueAddresses.splice(uniqueAddresses.indexOf(defaultSelectedAddress), 1); 
+                    uniqueAddresses.unshift(defaultSelectedAddress); 
+                }
+                
+                uniqueAddresses.forEach((addr, index) => {
+                    const isSelected = (addr === defaultSelectedAddress) ? 'checked' : '';
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'flex items-start p-2 border border-gray-200 rounded-md';
+                    optionDiv.innerHTML = `
+                        <input type="radio" id="addr-option-${index}" name="address-option" value="${addr}" ${isSelected} class="mt-1 mr-2 flex-shrink-0 text-blue-600 form-radio focus:ring-blue-500">
+                        <label for="addr-option-${index}" class="flex-grow text-gray-700 text-sm font-medium leading-tight">
+                            ${addr}
+                        </label>
+                        <button data-address="${addr}" class="ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-xs font-medium hover:bg-green-600 flex-shrink-0 map-button">지도보기</button>
+                    `;
+                    addressOptionsContainer.appendChild(optionDiv);
                 });
-            });
 
+                addressOptionsContainer.querySelectorAll('.map-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation(); 
+                        openNaverMap(e.target.dataset.address, currentAddressSelectionItemNo);
+                    });
+                });
+                addressDirectEditInput.value = defaultSelectedAddress; // 직접 편집 필드에도 기본값 채우기
+            }
             addressSelectionModal.style.display = 'flex';
         };
 
         const closeAddressSelectionModal = () => {
             addressSelectionModal.style.display = 'none';
             currentAddressSelectionItemNo = null;
+            addressDirectEditInput.value = ''; // 모달 닫을 때 초기화
         };
 
         selectAddressCancelBtn.addEventListener('click', closeAddressSelectionModal);
         selectAddressApplyBtn.addEventListener('click', () => {
             const selectedRadio = addressOptionsContainer.querySelector('input[name="address-option"]:checked');
-            if (selectedRadio && currentAddressSelectionItemNo !== null) {
-                const newAddress = selectedRadio.value;
+            let newAddress = '';
+
+            if (addressDirectEditInput.value.trim() !== '') {
+                newAddress = addressDirectEditInput.value.trim(); // 직접 편집 내용이 있으면 최우선
+            } else if (selectedRadio) {
+                newAddress = selectedRadio.value; // 라디오 버튼 선택된 것이 있으면 사용
+            }
+
+            if (newAddress && currentAddressSelectionItemNo !== null) {
                 const itemIndex = deliveryItems.findIndex(item => item.no === currentAddressSelectionItemNo);
                 if (itemIndex > -1) {
                     deliveryItems[itemIndex].receiverAddressKorean = newAddress;
@@ -580,6 +608,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     renderDeliveryCards(); 
                     showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
                 }
+            } else {
+                showMessage('선택하거나 편집된 주소가 없습니다.', '알림');
             }
             closeAddressSelectionModal();
         });
@@ -837,7 +867,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     }
 
     async function performScan(filesToScan) {
-        const tempMergedResults = new Map(); // 각 no별로 임시 결과를 저장할 Map
+        const tempMergedResults = new Map(); 
         const failedFileObjectsForRetry = [];
         
         for (let i = 0; i < filesToScan.length; i++) {
@@ -853,15 +883,15 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 });
 
                 const allGeminiResultsForFile = [];
-                // Gemini AI 호출을 3번 반복하여 주소 후보 생성
-                for (let j = 0; j < 3; j++) { 
+                // Gemini AI 호출 (단일 호출로 변경)
+                // for (let j = 0; j < 3; j++) { // 3번 시도 제거
                     const payload = {
                         contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
                         generationConfig: { 
                             temperature: 0,
                             responseMimeType: "application/json",
                             responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
-                    };
+                        };
                     
                     const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
                     const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
@@ -877,55 +907,31 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                                 allGeminiResultsForFile.push(...parsedData);
                             }
                         } catch (parseError) {
-                            console.warn(`Gemini JSON 파싱 실패 (시도 ${j+1}, 파일 ${file.name}):`, parseError);
+                            console.warn(`Gemini JSON 파싱 실패 (파일 ${file.name}):`, parseError);
                         }
                     }
-                } 
+                // } // 3번 시도 제거 끝
 
-                // 파일 내의 각 송장 정보별로 주소 후보를 관리
-                const itemsFromFile = {}; // 현재 파일에서 추출된 모든 송장 정보 (no를 키로)
-                
-                // 1. 모든 Gemini 결과물에서 각 송장(no)별 주소 후보 수집
-                for (const geminiItem of allGeminiResultsForFile) {
+                // 파일 내의 각 송장 정보별로 주소 후보를 관리 (수정: 이제 3번 시도 대신 단일 시도)
+                for (const geminiItem of allGeminiResultsForFile) { // allGeminiResultsForFile 에는 한 파일에서 추출된 여러 송장 정보가 담김
                     const no = parseInt(geminiItem.no || '0', 10);
-                    if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') continue; // 유효하지 않은 송장 정보는 건너뛰기
-
-                    if (!itemsFromFile[no]) {
-                        itemsFromFile[no] = { ...geminiItem, alternativeAddresses: [] };
+                    // 송장 번호 또는 No.가 없으면 해당 송장은 유효하지 않은 것으로 간주하고 건너뛰기
+                    if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
+                        console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
+                        continue; 
                     }
-                    // 중복 방지를 위해 이미 있는 주소는 추가하지 않음
-                    if (!itemsFromFile[no].alternativeAddresses.includes(geminiItem.receiverAddressKorean)) {
-                        itemsFromFile[no].alternativeAddresses.push(geminiItem.receiverAddressKorean);
-                    }
-                }
 
-                // 2. 수집된 각 송장 정보별 주소 후보를 카카오로 검증
-                for (const no in itemsFromFile) {
-                    const currentItem = itemsFromFile[no];
-                    const validatedAddressesForThisItem = [];
+                    // 카카오 검증
+                    scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${file.name})...`;
+                    const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
                     
-                    scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${Object.keys(itemsFromFile).length}개 중 ${no}번)...`;
-
-                    for (const addr of currentItem.alternativeAddresses) {
-                        const validatedAddr = await validateAddressWithKakao(addr);
-                        if (validatedAddr && !validatedAddressesForThisItem.includes(validatedAddr)) {
-                            validatedAddressesForThisItem.push(validatedAddr);
-                        }
-                    }
-
-                    if (validatedAddressesForThisItem.length > 0) {
-                        currentItem.receiverAddressKorean = validatedAddressesForThisItem[0]; // 첫 번째 유효 주소를 기본으로
-                        currentItem.alternativeAddresses = validatedAddressesForThisItem; // 검증된 주소 후보들로 업데이트
-                        tempMergedResults.set(no, currentItem); // 최종 결과 Map에 저장
-                    } else {
-                        // 해당 송장에 대해 유효한 주소를 하나도 얻지 못한 경우
-                        console.warn(`송장 ${no}번에 대해 유효한 주소를 찾을 수 없어 원본 주소를 사용합니다.`);
-                        tempMergedResults.set(no, { 
-                            ...currentItem, 
-                            receiverAddressKorean: cleanStringForDisplay(currentItem.receiverAddressOriginal),
-                            alternativeAddresses: [cleanStringForDisplay(currentItem.receiverAddressOriginal)] // 최소한 원본 주소라도 후보에 포함
-                        });
-                    }
+                    // 해당 송장 번호에 대한 최종 결과를 임시 Map에 저장
+                    tempMergedResults.set(no, { 
+                        ...geminiItem, 
+                        receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, // 검증 실패 시 원본 그대로
+                        // 직접 편집을 위해 alternativeAddresses 필드에 현재 주소만 저장
+                        alternativeAddresses: [validatedAddress || geminiItem.receiverAddressKorean].filter(Boolean) 
+                    });
                 }
 
             } catch (error) {
@@ -937,7 +943,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         let newCount = 0;
         let updateCount = 0;
-        const allNewItems = Array.from(tempMergedResults.values()); // Map의 값들을 배열로 변환
+        const allNewItems = Array.from(tempMergedResults.values()); 
 
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
@@ -1220,7 +1226,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             switch (action) {
                 case 'open-naver-map': 
                     if (!button.disabled) {
-                        openNaverMap(item.receiverAddressKorean, itemNo); // 현재 카드에 표시된 주소를 사용
+                        openNaverMap(item.receiverAddressKorean, itemNo); 
                     } else {
                         showMessage('유효하지 않은 주소입니다.');
                     }
