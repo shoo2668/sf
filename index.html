@@ -16,7 +16,7 @@
             padding-bottom: 80px;
             overscroll-behavior-y: contain;
         }
-        .signature-modal, .confirmation-modal, .suggestion-modal {
+        .signature-modal, .confirmation-modal, .suggestion-modal, .address-selection-modal {
             position: fixed;
             top: 0;
             left: 0;
@@ -29,13 +29,15 @@
             z-index: 50;
             padding: 1rem;
         }
-        .signature-modal-content, .confirmation-modal-content, .suggestion-modal-content {
+        .signature-modal-content, .confirmation-modal-content, .suggestion-modal-content, .address-selection-modal-content {
             background-color: white;
             border-radius: 0.5rem;
             box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             padding: 1.5rem;
             width: 100%;
             max-width: 28rem;
+            max-height: 90vh; /* 모달 높이 제한 */
+            overflow-y: auto; /* 내용 길어지면 스크롤 */
         }
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -206,6 +208,20 @@
         </div>
     </div>
 
+    <!-- 새로운 주소 선택 모달 -->
+    <div id="address-selection-modal" class="address-selection-modal" style="display: none;">
+        <div class="address-selection-modal-content">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 선택</h2>
+            <div id="address-options-container" class="space-y-4">
+                <!-- 주소 옵션들이 여기에 동적으로 삽입됩니다. -->
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button id="select-address-cancel" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
+                <button id="select-address-apply" class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">적용</button>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript">
         const GEMINI_PROMPT = `You are a specialized Korean address formatting expert. Your primary goal is to parse and reconstruct addresses from invoice images with the highest possible accuracy, following specific structural rules.
 
@@ -238,12 +254,12 @@
 *   **Example 1: Complex Road Name Address (Building Number First, Mixed Details)**
     *   **Source Text:** \`No.601, 422-dong, yangjae-daero 1300\`
     *   **Correct \`receiverAddressKorean\`:** "서울 강동구 양재대로 1300, 422동 601호"
-    *   **Reasoning:** \`yangjae-daero\` is the road. \`No.601\` and \`422-dong\` are **Detailed Addresses** (contain non-numeric characters/labels). \`1300\` is the only remaining numeric candidate for the building number. Assembly: [Road Name] [Building Number], [Detailed Addresses].
+    *   **Reasoning:** \`yangjae-daero\` is the road. \`No.601\` and \`422-dong\` are **Detailed Addresses** (contain non-numeric characters/labels). \`1300\` is the only remaining numeric candidate for the building number. Assemble as [Road Name] [Building Number], [Detailed Addresses].
 
 *   **Example 2: Common Road Name Address (Building Number First, Hyphenated Unit)**
     *   **Source Text:** \`435, Olympic-ro 206-1602\`
     *   **Correct \`receiverAddressKorean\`:** "서울 송파구 올림픽로 435, 206-1602"
-    *   **Reasoning:** \`Olympic-ro\` is the road. \`206-1602\` is a hyphenated apartment unit pattern (Rule 2.1), making it a **Detailed Address**. \`435\` is the remaining numeric candidate for the building number, appearing before the road name.
+    *   **Reasoning:** \`Olympic-ro\` is the road. \`206-1602\` is a hyphenated apartment unit pattern (large numbers), making it a **Detailed Address**. \`435\` is the remaining numeric candidate for the building number, appearing before the road name.
 
 *   **Example 3: Road Name Address (Building Number First, Single Detail)**
     *   **Source Text:** \`989, Cheonho-daero 421\`
@@ -429,6 +445,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         let failedFileObjects = []; 
         let currentSignatureItemNo = null;
         let onConfirmCallback = null;
+        let currentAddressSelectionItemNo = null; // 현재 주소 선택 모달이 열린 카드 번호
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -458,6 +475,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const confirmationModalMessage = document.getElementById('confirmation-modal-message');
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
+        const addressSelectionModal = document.getElementById('address-selection-modal');
+        const addressOptionsContainer = document.getElementById('address-options-container');
+        const selectAddressCancelBtn = document.getElementById('select-address-cancel');
+        const selectAddressApplyBtn = document.getElementById('select-address-apply');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -498,6 +519,73 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             onConfirmCallback = closeConfirmationModal;
             confirmationModal.style.display = 'flex';
         };
+
+        const openAddressSelectionModal = (itemNo) => {
+            currentAddressSelectionItemNo = itemNo;
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item || !item.alternativeAddresses || item.alternativeAddresses.length === 0) {
+                showMessage('선택할 대체 주소가 없습니다.');
+                return;
+            }
+
+            addressOptionsContainer.innerHTML = '';
+            let defaultSelectedAddress = item.receiverAddressKorean; // 현재 카드의 주소를 기본 선택값으로
+
+            // 중복 제거 및 현재 주소를 맨 앞으로
+            const uniqueAddresses = [...new Set(item.alternativeAddresses)];
+            if (!uniqueAddresses.includes(defaultSelectedAddress)) {
+                uniqueAddresses.unshift(defaultSelectedAddress); // 현재 주소가 후보에 없으면 추가
+            } else {
+                uniqueAddresses.splice(uniqueAddresses.indexOf(defaultSelectedAddress), 1); // 있으면 일단 제거
+                uniqueAddresses.unshift(defaultSelectedAddress); // 맨 앞으로 이동
+            }
+            
+
+            uniqueAddresses.forEach((addr, index) => {
+                const isSelected = (addr === defaultSelectedAddress) ? 'checked' : '';
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'flex items-start p-2 border border-gray-200 rounded-md';
+                optionDiv.innerHTML = `
+                    <input type="radio" id="addr-option-${index}" name="address-option" value="${addr}" ${isSelected} class="mt-1 mr-2 flex-shrink-0 text-blue-600 form-radio focus:ring-blue-500">
+                    <label for="addr-option-${index}" class="flex-grow text-gray-700 text-sm font-medium leading-tight">
+                        ${addr}
+                    </label>
+                    <button data-address="${addr}" class="ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-xs font-medium hover:bg-green-600 flex-shrink-0 map-button">지도보기</button>
+                `;
+                addressOptionsContainer.appendChild(optionDiv);
+            });
+
+            // 지도보기 버튼에 이벤트 리스너 추가 (이벤트 위임)
+            addressOptionsContainer.querySelectorAll('.map-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 모달 닫힘 방지
+                    openNaverMap(e.target.dataset.address, currentAddressSelectionItemNo);
+                });
+            });
+
+            addressSelectionModal.style.display = 'flex';
+        };
+
+        const closeAddressSelectionModal = () => {
+            addressSelectionModal.style.display = 'none';
+            currentAddressSelectionItemNo = null;
+        };
+
+        selectAddressCancelBtn.addEventListener('click', closeAddressSelectionModal);
+        selectAddressApplyBtn.addEventListener('click', () => {
+            const selectedRadio = addressOptionsContainer.querySelector('input[name="address-option"]:checked');
+            if (selectedRadio && currentAddressSelectionItemNo !== null) {
+                const newAddress = selectedRadio.value;
+                const itemIndex = deliveryItems.findIndex(item => item.no === currentAddressSelectionItemNo);
+                if (itemIndex > -1) {
+                    deliveryItems[itemIndex].receiverAddressKorean = newAddress;
+                    saveDeliveryItemsToLocalStorage();
+                    renderDeliveryCards(); // 변경사항 반영
+                    showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
+                }
+            }
+            closeAddressSelectionModal();
+        });
         
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
@@ -589,7 +677,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                             `}
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${data.status === '완료' ? 'style="display:none;"' : ''}>
-                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between"><p class="text-base text-blue-600 font-semibold">${data.receiverAddressKorean}</p><button data-action="open-naver-map" data-address="${data.receiverAddressKorean}" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button></div>${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between">
+                                <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-address-selection" data-no="${data.no}">${data.receiverAddressKorean}</p>
+                                <button data-action="open-naver-map" data-address="${data.receiverAddressKorean}" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button>
+                            </div>${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
                             <div><p class="text-sm font-medium text-gray-700">회사명:</p><p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.companyNameOriginal})</p>` : ''}</div>
                             <div><p class="text-sm font-medium text-gray-700">이름:</p><p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverNameOriginal})</p>` : ''}</div>
                             <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
@@ -687,69 +778,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     });
 
     // --- Scan, Import, Export Logic ---
-    async function validateAddressWithKakao(geminiAddress) {
-        if (!KAKAO_API_KEY || !geminiAddress) return geminiAddress;
-
-        // 카카오 API 검색을 위한 주소 파싱 (시/도/구 제외, 상세주소 분리 시도)
-        let queryAddress = geminiAddress;
-        let detailedPart = '';
-
-        const addressComponents = geminiAddress.split(','); // 쉼표 기준으로 분리
-        if (addressComponents.length > 1) {
-            queryAddress = addressComponents[0].trim();
-            detailedPart = addressComponents.slice(1).join(', ').trim();
-        }
-        
-        // 시/도/구/읍/면 제거하여 더 일반적인 검색어 만들기 (도로명, 지번, 동/리 등 핵심만 남기기)
-        queryAddress = queryAddress.replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|도)?\s*/, '').trim();
-        queryAddress = queryAddress.replace(/^([가-힣]+(?:시|군|구))\s*/, '').trim();
-        queryAddress = queryAddress.replace(/^([가-힣]+(?:읍|면))\s*/, '').trim();
-
-        // 떡정골로 -> 떡전골로 처럼 특정 오타를 카카오가 더 잘 인식하도록 미리 처리
-        queryAddress = queryAddress.replace(/떡정골로/g, "떡전골로");
-        // 바란리 -> 발안리 처럼 특정 오타를 카카오가 더 잘 인식하도록 미리 처리
-        queryAddress = queryAddress.replace(/바란리/g, "발안리");
-
-        try {
-            const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(queryAddress)}`, {
-                headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
-            });
-            
-            if (!response.ok) {
-                console.error("카카오 API 응답 오류:", response.status, await response.text());
-                return geminiAddress; // 카카오 API 실패 시 원본 주소 반환
-            }
-
-            const data = await response.json();
-            if (data.documents && data.documents.length > 0) {
-                const firstResult = data.documents[0];
-                const roadAddress = firstResult.road_address;
-                const jibunAddress = firstResult.address;
-
-                let correctedBaseAddress = '';
-                if (roadAddress && roadAddress.address_name) {
-                    correctedBaseAddress = roadAddress.address_name;
-                } else if (jibunAddress && jibunAddress.address_name) {
-                    correctedBaseAddress = jibunAddress.address_name;
-                }
-
-                if (correctedBaseAddress) {
-                    // 카카오가 제공하는 정제된 주소에 상세주소(동, 호수 등)를 다시 붙임
-                    // 단, detailedPart가 correctedBaseAddress의 일부로 이미 포함되어 있지 않은 경우에만
-                    if (detailedPart && !correctedBaseAddress.includes(detailedPart)) {
-                        // '319동 307호' 같은 상세주소는 그대로 붙이기
-                        return `${correctedBaseAddress}, ${detailedPart}`;
-                    }
-                    return correctedBaseAddress;
-                }
-            }
-            return geminiAddress; // 검색 결과 없으면 원본 주소 반환
-        } catch (error) {
-            console.error("카카오 주소 검증 API 오류:", error);
-            return geminiAddress; // 네트워크 오류 등 발생 시 원본 주소 반환
-        }
-    }
-
     async function performScan(filesToScan) {
         const mergedResults = {};
         const failedFileObjectsForRetry = [];
@@ -766,35 +794,58 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     reader.readAsDataURL(file);
                 });
 
-                const payload = {
-                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
-                    generationConfig: { 
-                        temperature: 0,
-                        responseMimeType: "application/json",
-                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
-                };
-                
-                const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+                const allGeminiResultsForFile = [];
+                // Gemini AI 호출을 3번 반복하여 주소 후보 생성
+                for (let j = 0; j < 3; j++) { // 3번 시도
+                    const payload = {
+                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
+                        generationConfig: { 
+                            temperature: 0,
+                            responseMimeType: "application/json",
+                            responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
+                    };
+                    
+                    const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
-                const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
-                const result = await response.json();
+                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                    const result = await response.json();
 
-                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                    if (Array.isArray(parsedData) && parsedData.length > 0) {
-                        scanProgressText.textContent = `주소 검증 중 (${i + 1}/${filesToScan.length})...`;
-                        for (const item of parsedData) {
-                            const no = parseInt(item.no || '0', 10);
-                            if (no > 0) {
-                                // 카카오 주소 검증 추가
-                                const validatedAddress = await validateAddressWithKakao(item.receiverAddressKorean);
-                                mergedResults[no] = { ...item, receiverAddressKorean: validatedAddress };
-                            }
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                        if (Array.isArray(parsedData) && parsedData.length > 0) {
+                            allGeminiResultsForFile.push(...parsedData);
                         }
-                    } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
-                } else { throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다."); }
+                    }
+                } // 3번 시도 끝
+
+                // 중복 제거 및 카카오 검증
+                const uniqueGeminiAddresses = [...new Set(allGeminiResultsForFile.map(item => item.receiverAddressKorean))];
+                const validatedAddresses = [];
+
+                scanProgressText.textContent = `주소 검증 중 (${i + 1}/${filesToScan.length}, ${uniqueGeminiAddresses.length}개 후보)...`;
+                for (const addr of uniqueGeminiAddresses) {
+                    const validatedAddr = await validateAddressWithKakao(addr);
+                    validatedAddresses.push(validatedAddr);
+                }
+                const finalUniqueValidatedAddresses = [...new Set(validatedAddresses)]; // 최종적으로 검증된 주소 중 중복 제거
+
+                if (finalUniqueValidatedAddresses.length > 0) {
+                    // 첫 번째 후보를 기본값으로 사용
+                    const mainItem = allGeminiResultsForFile[0];
+                    const no = parseInt(mainItem.no || '0', 10);
+                    if (no > 0) {
+                        mergedResults[no] = { 
+                            ...mainItem, 
+                            receiverAddressKorean: finalUniqueValidatedAddresses[0], // 기본 주소
+                            alternativeAddresses: finalUniqueValidatedAddresses // 모든 후보 주소 저장
+                        };
+                    }
+                } else {
+                    throw new Error("이미지에서 유효한 주소 후보를 찾지 못했습니다.");
+                }
+
             } catch (error) {
                 console.error(`파일 스캔 오류 (${file.name}):`, error);
                 failedFileObjectsForRetry.push(file);
@@ -819,6 +870,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                alternativeAddresses: item.alternativeAddresses || [] // 대체 주소 저장
             }));
             
             finalItems.forEach(newItem => {
@@ -1076,7 +1128,17 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             if (!item) return;
             
             switch (action) {
-                case 'open-naver-map': if (!button.disabled) openNaverMap(button.dataset.address, itemNo); else showMessage('유효하지 않은 주소입니다.'); break;
+                case 'open-naver-map': 
+                    if (!button.disabled) {
+                        // 지도보기 버튼은 현재 표시된 주소(data.receiverAddressKorean)를 사용
+                        openNaverMap(data.receiverAddressKorean, itemNo);
+                    } else {
+                        showMessage('유효하지 않은 주소입니다.');
+                    }
+                    break;
+                case 'open-address-selection': // 주소 텍스트 터치 시
+                    openAddressSelectionModal(itemNo);
+                    break;
                 case 'identity-verification': 
                     openConfirmationModal(`HAWB ${item.hawbNo} 본인확인 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '본인확인', item.receiverNameKorean)); 
                     break;
