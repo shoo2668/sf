@@ -517,7 +517,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
         const addressSelectionModal = document.getElementById('address-selection-modal');
-        const addressOptionsContainer = document.getElementById('address-options-container'); // 주소 후보 목록 (이제 사용 안함)
+        const addressOptionsContainer = document.getElementById('address-options-container'); // 이제 사용 안 함
         const addressChipsContainer = document.getElementById('address-chips-container'); // 스마트 편집 칩 컨테이너
         const addressDirectEditInput = document.getElementById('address-direct-edit-input'); 
         const insertSpaceBtn = document.getElementById('insert-space-btn'); 
@@ -572,18 +572,17 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
-            // 주소 후보 목록은 사용 안 함
             addressOptionsContainer.innerHTML = ''; 
-            addressOptionsContainer.style.display = 'none'; // 숨김 처리
+            addressOptionsContainer.style.display = 'none'; // 주소 후보 라디오 버튼 영역 완전히 숨김
 
             // 직접 편집 필드에 현재 주소 채우기
             addressDirectEditInput.value = item.receiverAddressKorean || '';
-            addressDirectEditInput.focus(); // 편집 필드에 포커스
+            addressDirectEditInput.focus(); 
 
             // 스마트 편집 칩 초기화 및 생성
             addressChipsContainer.innerHTML = '';
             if (item.receiverAddressComponents && item.receiverAddressComponents.length > 0) {
-                addressChipsContainer.innerHTML = ''; // 기존 "조각 없음" 메시지 제거
+                addressChipsContainer.innerHTML = ''; 
                 item.receiverAddressComponents.forEach(component => {
                     if (component) { 
                         const chip = document.createElement('span');
@@ -774,7 +773,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         if (animationClass) {
             deliveryCardsContainer.style.transform = 'translateX(0px)';
             deliveryCardsContainer.classList.add(animationClass);
-            setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); animation = ''; }, 300);
+            setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); deliveryCardsContainer.style.animation = ''; }, 300);
         }
     };
 
@@ -939,8 +938,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     generationConfig: { 
                         temperature: 0,
                         responseMimeType: "application/json",
-                        schema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" }, "receiverAddressComponents": { "type": "ARRAY", "items": { "type": "STRING" } } } } }
-                    };
+                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" }, "receiverAddressComponents": { "type": "ARRAY", "items": { "type": "STRING" } } } } }
+                    }
+                };
                 
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
                 const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
@@ -953,14 +953,13 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     try {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                         if (Array.isArray(parsedData) && parsedData.length > 0) {
-                            for (const geminiItem of parsedData) { // 한 파일에서 여러 송장 정보가 올 수 있음
+                            for (const geminiItem of parsedData) { 
                                 const no = parseInt(geminiItem.no || '0', 10);
                                 if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
                                     console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
                                     continue; 
                                 }
 
-                                // 카카오 검증
                                 scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${file.name})...`;
                                 const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
                                 
