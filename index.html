@@ -370,17 +370,17 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             if (!address) return '';
             let cleanAddress = address.trim();
 
-            const roadAddrMatch = cleanAddress.match(/([가-힣\d]+(?:로|길|대로|번길))\s*([\d\-]+)/);
+            const roadAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:로|길|대로|번길))\s*([\d\-]+)/);
             if (roadAddrMatch) {
                 return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
             }
 
-            const jibunAddrMatch = cleanAddress.match(/([가-힣\d]+(?:동|리))\s*([\d\-]+)/);
+            const jibunAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))\s*([\d\-]+)/);
             if (jibunAddrMatch) {
                 return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
             }
             
-            const dongRiMatch = cleanAddress.match(/([가-힣\d]+(?:동|리))/);
+            const dongRiMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))/);
             if (dongRiMatch) {
                 return dongRiMatch[1].trim();
             }
@@ -690,12 +690,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                     if (Array.isArray(parsedData) && parsedData.length > 0) {
-                        scanProgressText.textContent = `주소 검증 중 (${i + 1}/${filesToScan.length})...`;
-                        for (const item of parsedData) {
+                         for (const item of parsedData) {
                             const no = parseInt(item.no || '0', 10);
                             if (no > 0) {
-                                const validatedAddress = await validateAddressWithKakao(item.receiverAddressKorean);
-                                mergedResults[no] = { ...item, receiverAddressKorean: validatedAddress };
+                                mergedResults[no] = item;
                             }
                         }
                     } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
