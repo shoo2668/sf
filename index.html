@@ -433,36 +433,41 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return '';
         };
         
+        // ✨ 수정된 함수 ✨
         const extractClipboardAddressPart = (fullAddress) => {
             if (!fullAddress || typeof fullAddress !== 'string') return '';
             let cleanAddress = fullAddress.trim();
 
-            // 1. 도로명 + 건물번호 (최우선)
+            // 1. (최우선) "000동 000호" 또는 "000-000" 같은 아파트/상세주소 패턴 찾기
+            const dongHoMatch = cleanAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
+            if (dongHoMatch) {
+                return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
+            }
+            const hyphenUnitMatch = cleanAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
+            if (hyphenUnitMatch) {
+                return hyphenUnitMatch[1];
+            }
+
+            // 2. (차선) 도로명 + 건물번호 패턴 찾기
             const roadAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:로|길|대로|번길))\s*([\d\-]+)/);
             if (roadAddrMatch) {
                 return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
             }
 
-            // 2. 지번 주소 (동/리 + 지번)
+            // 3. (차선) 지번 주소 (동/리 + 지번) 패턴 찾기
             const jibunAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))\s*([\d\-]+)/);
             if (jibunAddrMatch) {
                 return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
             }
             
-            // 3. 동/리 이름만 (뒤에 오는 모든 상세주소 제거)
+            // 4. (차선) 동/리 이름만 (뒤에 오는 모든 상세주소 제거)
             const dongRiMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))/);
             if (dongRiMatch) {
                 return dongRiMatch[1].trim();
             }
 
-            // 위 패턴에 해당하지 않으면 상세주소(동/호수)를 우선적으로 찾고, 없으면 전체 반환
-            let matchDongHo = cleanAddress.match(/(\d+동\s*\d+호)/);
-            if (matchDongHo?.[1]) return matchDongHo[1].trim();
-            
-            let matchHyphenUnit = cleanAddress.match(/(\b\d{1,4}-\d{1,4}\b)(?:호)?(?!\S)/);
-            if(matchHyphenUnit?.[1]) return matchHyphenUnit[1].trim();
-
-            return cleanAddress.replace(/\s+[\d\-동호]+$/, '').trim(); // 마지막 동/호수 숫자 제거 후 반환 (예: 아파트 단지명만)
+            // 5. 위 패턴에 모두 해당하지 않으면, 마지막 숫자 부분을 제외하고 반환 (예: 아파트 단지명만)
+            return cleanAddress.replace(/\s+[\d\-동호,]+$/, '').trim();
         };
 
         const isValidAddressForMap = (address) => {
@@ -1306,7 +1311,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             switch (action) {
                 case 'open-naver-map': 
                     if (!button.disabled) {
-                        openNaverMap(item.receiverAddressKorean, itemNo); 
+                        openNaverMap(item.receiverAddressKorean, item.no); 
                     } else {
                         showMessage('유효하지 않은 주소입니다.');
                     }
