@@ -532,6 +532,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
         const addressSelectionModal = document.getElementById('address-selection-modal');
+        // addressOptionsContainer는 HTML에서 완전히 제거되었으므로 여기서 DOM 참조도 제거합니다.
         const addressChipsContainer = document.getElementById('address-chips-container'); 
         const smartEditPreviewOutput = document.getElementById('smart-edit-preview-output'); 
         const addressDirectEditInput = document.getElementById('address-direct-edit-input'); 
@@ -605,15 +606,21 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                             const newText = component;
                             
                             const lastChar = currentText.length > 0 ? currentText.slice(-1) : '';
+                            // 구두점 또는 공백 여부 판단 함수
                             const isPunctuationOrSpace = (char) => [',', '-', ' '].includes(char); 
-                            const isKoreanUnit = (text) => text.endsWith('동') || text.endsWith('호') || text.endsWith('길') || text.endsWith('로'); // 한국어 주소 단위 판단
+                            // 한국어 주소 단위 판단 (띄어쓰기 필요 여부)
+                            const isKoreanUnit = (text) => text.endsWith('동') || text.endsWith('호') || text.endsWith('길') || text.endsWith('로') || text.endsWith('대로') || text.endsWith('번길');
 
                             // 띄어쓰기 규칙 적용
-                            if (currentText.length > 0 && !isPunctuationOrSpace(lastChar) && !isPunctuationOrSpace(newText.charAt(0)) && !isKoreanUnit(newText)) {
-                                // 앞 문자가 구두점/공백이 아니고, 새 조각이 구두점/공백으로 시작하지 않으며, 새 조각이 단위가 아닐 때 띄어쓰기 추가
-                                currentText += ' ';
-                            } else if (currentText.length > 0 && newText.charAt(0) === '동' && lastChar !== ' ') { // 조각이 '동'으로 시작하는데 앞에 공백이 없으면 공백 추가
-                                currentText += ' ';
+                            if (currentText.length > 0) {
+                                // 현재 끝 문자가 구두점/공백이 아니고, 새 조각이 구두점/공백이 아니며, 한국어 단위가 아닐 때 띄어쓰기
+                                if (!isPunctuationOrSpace(lastChar) && !isPunctuationOrSpace(newText.charAt(0)) && !isKoreanUnit(newText) && !isKoreanUnit(lastChar)) {
+                                    currentText += ' ';
+                                }
+                                // 특정 단위 뒤에는 항상 띄어쓰기
+                                if (isKoreanUnit(lastChar) && newText.length > 0 && !isPunctuationOrSpace(newText.charAt(0))) {
+                                    currentText += ' ';
+                                }
                             }
                             
                             smartEditPreviewOutput.textContent = (currentText + newText).trim();
@@ -642,21 +649,29 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             if (currentText.length > 0 && currentText.slice(-1) !== ' ') { 
                 smartEditPreviewOutput.textContent = currentText + ' ';
             } else if (currentText.length === 0) { 
-                smartEditPreviewOutput.textContent = '';
+                smartEditPreviewOutput.textContent = ''; // 첫 조각이 공백이면 그냥 빈 상태 유지
             }
         });
         insertCommaBtn.addEventListener('click', () => {
             let currentText = smartEditPreviewOutput.textContent.trim();
+            // 마지막 문자가 공백이면 제거하고 쉼표 추가
+            if (currentText.length > 0 && currentText.slice(-1) === ' ') {
+                currentText = currentText.slice(0, -1);
+            }
             if (currentText.length > 0 && currentText.slice(-1) === ',') { 
-                smartEditPreviewOutput.textContent = currentText;
+                smartEditPreviewOutput.textContent = currentText; // 이미 쉼표면 중복 방지
             } else {
                 smartEditPreviewOutput.textContent = currentText + ', '; 
             }
         });
         insertHyphenBtn.addEventListener('click', () => {
             let currentText = smartEditPreviewOutput.textContent.trim();
+            // 마지막 문자가 공백이면 제거하고 하이픈 추가
+            if (currentText.length > 0 && currentText.slice(-1) === ' ') {
+                currentText = currentText.slice(0, -1);
+            }
             if (currentText.length > 0 && currentText.slice(-1) === '-') { 
-                smartEditPreviewOutput.textContent = currentText;
+                smartEditPreviewOutput.textContent = currentText; // 이미 하이픈이면 중복 방지
             } else {
                 smartEditPreviewOutput.textContent = currentText + '-'; 
             }
@@ -964,7 +979,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                         temperature: 0,
                         responseMimeType: "application/json",
                         responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" }, "receiverAddressComponents": { "type": "ARRAY", "items": { "type": "STRING" } } } } }
-                    } // 이전 오류 발생했던 불필요한 세미콜론 제거
+                    } 
                 };
                 
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
