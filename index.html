@@ -161,7 +161,6 @@
         </div>
     </div>
     
-    <!-- ✨ 버전 정보 표시 영역 ✨ -->
     <div id="version-info-container" class="max-w-md mx-auto mb-6 text-center hidden">
         <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
         <p id="version-changelog" class="text-xs text-gray-500"></p>
@@ -214,15 +213,21 @@
         </div>
     </div>
 
-    <!-- 새로운 주소 선택/편집 모달 -->
+    <!-- ✨ 수정된 주소 선택/편집 모달 ✨ -->
     <div id="address-selection-modal" class="address-selection-modal" style="display: none;">
         <div class="address-selection-modal-content">
             <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 편집</h2>
             
-            <div id="address-smart-edit-area" class="mb-4">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">스마트 편집 (조각 선택)</h3>
-                <div id="address-chips-container" class="flex flex-wrap gap-2 p-3 border border-gray-300 rounded-md bg-gray-50 mb-3">
-                    <!-- 주소 조각 칩들이 여기에 동적으로 삽입됩니다. -->
+            <div class="mb-4">
+                <h3 class="text-sm font-semibold text-gray-600 mb-1">원본 주소 (참조용)</h3>
+                <p id="original-address-display" class="p-2 bg-gray-100 rounded-md text-gray-800 text-sm font-mono break-all"></p>
+            </div>
+
+            <hr class="my-4 border-gray-300"/>
+
+            <div id="address-smart-edit-area" class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">스마트 편집 (조각 조합)</h3>
+                <div id="address-chips-container" class="flex flex-wrap gap-2 p-3 border border-gray-300 rounded-md bg-gray-50 mb-3 min-h-[50px]">
                     <span class="text-gray-500 text-sm">주소 조각이 없습니다.</span>
                 </div>
                 <div class="flex space-x-2 mb-2">
@@ -231,27 +236,28 @@
                     <button id="insert-hyphen-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">하이픈</button>
                     <button id="clear-smart-edit-btn" class="px-3 py-1.5 rounded-md bg-red-200 text-red-800 text-sm font-medium hover:bg-red-300">초기화</button>
                 </div>
-                <div id="smart-edit-preview-output" class="p-2 border bg-white rounded-md min-h-[30px] text-gray-700 text-base">
-                    <!-- 스마트 편집 결과가 여기에 표시됩니다. -->
-                </div>
-                <button id="copy-to-direct-edit-btn" class="w-full mt-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium">위 내용을 직접 편집 영역으로 복사</button>
+                <div id="smart-edit-preview-output" class="p-2 border bg-white rounded-md min-h-[40px] text-gray-700 text-base"></div>
+                <button id="apply-smart-edit-btn" class="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">스마트 편집 내용으로 적용</button>
             </div>
 
-            <div class="mt-6 border-t pt-4 border-gray-200">
+            <hr class="my-4 border-gray-300"/>
+
+            <div class="mt-4">
                 <h3 class="text-lg font-semibold text-gray-800 mb-2">주소 직접 편집</h3>
                 <textarea id="address-direct-edit-input" 
                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
                           rows="4" 
-                          placeholder="여기에 주소를 직접 수정하거나 위 조각을 클릭하여 조합하세요."
+                          placeholder="여기에 주소를 직접 입력하세요."
                           inputmode="text"
                           autocomplete="address-line1"
                           autocorrect="off"
                           autocapitalize="off"
                           spellcheck="false"></textarea>
+                <button id="apply-direct-edit-btn" class="w-full mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium">직접 편집 내용으로 적용</button>
             </div>
-            <div class="flex justify-end space-x-2 mt-4">
-                <button id="select-address-cancel" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
-                <button id="select-address-apply" class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">적용</button>
+
+            <div class="flex justify-end space-x-2 mt-6 border-t pt-4 border-gray-200">
+                <button id="select-address-cancel" class="px-4 py-2 rounded-md bg-gray-400 text-gray-800 text-sm font-medium hover:bg-gray-500">취소</button>
             </div>
         </div>
     </div>
@@ -439,12 +445,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return '';
         };
         
-        // ✨ 수정된 함수 ✨
         const extractClipboardAddressPart = (fullAddress) => {
             if (!fullAddress || typeof fullAddress !== 'string') return '';
             let cleanAddress = fullAddress.trim();
 
-            // 1. (최우선) "000동 000호" 또는 "000-000" 같은 아파트/상세주소 패턴 찾기
             const dongHoMatch = cleanAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
             if (dongHoMatch) {
                 return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
@@ -454,25 +458,21 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 return hyphenUnitMatch[1];
             }
 
-            // 2. (차선) 도로명 + 건물번호 패턴 찾기 (시/군/구 제외)
             const roadAddrMatch = cleanAddress.match(/([가-힣\d\-]+(?:로|길|대로|번길))\s*([\d\-]+)/);
             if (roadAddrMatch) {
                 return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
             }
 
-            // 3. (차선) 지번 주소 (동/리 + 지번) 패턴 찾기 (시/군/구 제외)
             const jibunAddrMatch = cleanAddress.match(/([가-힣\d\-]+(?:동|리))\s*([\d\-]+)/);
             if (jibunAddrMatch) {
                 return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
             }
             
-            // 4. (차선) 동/리 이름만 (뒤에 오는 모든 상세주소 제거)
             const dongRiMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))/);
             if (dongRiMatch) {
                 return dongRiMatch[1].trim();
             }
 
-            // 5. 위 패턴에 모두 해당하지 않으면, 마지막 숫자 부분을 제외하고 반환 (예: 아파트 단지명만)
             return cleanAddress.replace(/\s+[\d\-동호,]+$/, '').trim();
         };
 
@@ -542,7 +542,13 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const confirmationModalMessage = document.getElementById('confirmation-modal-message');
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
+        const versionInfoContainer = document.getElementById('version-info-container');
+        const versionText = document.getElementById('version-text');
+        const versionChangelog = document.getElementById('version-changelog');
+        
+        // Address Modal Elements
         const addressSelectionModal = document.getElementById('address-selection-modal');
+        const originalAddressDisplay = document.getElementById('original-address-display');
         const addressChipsContainer = document.getElementById('address-chips-container'); 
         const smartEditPreviewOutput = document.getElementById('smart-edit-preview-output'); 
         const addressDirectEditInput = document.getElementById('address-direct-edit-input'); 
@@ -550,12 +556,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const insertCommaBtn = document.getElementById('insert-comma-btn'); 
         const insertHyphenBtn = document.getElementById('insert-hyphen-btn'); 
         const clearSmartEditBtn = document.getElementById('clear-smart-edit-btn'); 
-        const copyToDirectEditBtn = document.getElementById('copy-to-direct-edit-btn'); 
+        const applySmartEditBtn = document.getElementById('apply-smart-edit-btn');
+        const applyDirectEditBtn = document.getElementById('apply-direct-edit-btn');
         const selectAddressCancelBtn = document.getElementById('select-address-cancel');
-        const selectAddressApplyBtn = document.getElementById('select-address-apply');
-        const versionInfoContainer = document.getElementById('version-info-container');
-        const versionText = document.getElementById('version-text');
-        const versionChangelog = document.getElementById('version-changelog');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -596,17 +599,21 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             onConfirmCallback = closeConfirmationModal;
             confirmationModal.style.display = 'flex';
         };
-
+        
+        // ✨ 주소 편집 모달 로직 (수정됨) ✨
         const openAddressSelectionModal = (itemNo) => {
             currentAddressSelectionItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
-            addressDirectEditInput.value = item.receiverAddressKorean || '';
-            addressDirectEditInput.focus(); 
+            // 1. 원본(영문) 주소 표시
+            originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             
+            // 2. 직접 편집 영역에 현재 한글 주소 채우기
+            addressDirectEditInput.value = item.receiverAddressKorean || '';
+            
+            // 3. 스마트 편집 영역 초기화
             smartEditPreviewOutput.textContent = ''; 
-
             addressChipsContainer.innerHTML = '';
             if (item.receiverAddressComponents && item.receiverAddressComponents.length > 0) {
                 item.receiverAddressComponents.forEach(component => {
@@ -615,29 +622,21 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                         chip.className = 'inline-block bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full cursor-pointer hover:bg-blue-200';
                         chip.textContent = component;
                         chip.addEventListener('click', () => {
-                            let currentText = smartEditPreviewOutput.textContent.trim();
+                            let currentText = smartEditPreviewOutput.textContent;
                             const newText = component;
-                            
                             const lastChar = currentText.length > 0 ? currentText.slice(-1) : '';
                             const isPunctuationOrSpace = (char) => [',', '-', ' '].includes(char); 
-                            const isKoreanUnit = (text) => text.endsWith('동') || text.endsWith('호') || text.endsWith('길') || text.endsWith('로') || text.endsWith('대로') || text.endsWith('번길');
-
-                            if (currentText.length > 0) {
-                                if (!isPunctuationOrSpace(lastChar) && !isPunctuationOrSpace(newText.charAt(0)) && !isKoreanUnit(newText) && !isKoreanUnit(lastChar)) {
-                                    currentText += ' ';
-                                }
-                                if (isKoreanUnit(lastChar) && newText.length > 0 && !isPunctuationOrSpace(newText.charAt(0))) {
-                                    currentText += ' ';
-                                }
-                            }
                             
-                            smartEditPreviewOutput.textContent = (currentText + newText).trim();
+                            if (currentText.length > 0 && !isPunctuationOrSpace(lastChar) && !isPunctuationOrSpace(newText.charAt(0))) {
+                                currentText += ' ';
+                            }
+                            smartEditPreviewOutput.textContent = currentText + newText;
                         });
                         addressChipsContainer.appendChild(chip);
                     }
                 });
             } else {
-                addressChipsContainer.innerHTML = '<span class="text-gray-500 text-sm">주소 조각을 찾을 수 없습니다. (AI가 조각을 반환하지 않음)</span>';
+                addressChipsContainer.innerHTML = '<span class="text-gray-500 text-sm">주소 조각을 찾을 수 없습니다.</span>';
             }
 
             addressSelectionModal.style.display = 'flex';
@@ -649,53 +648,15 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             addressDirectEditInput.value = ''; 
             addressChipsContainer.innerHTML = ''; 
             smartEditPreviewOutput.textContent = ''; 
+            originalAddressDisplay.textContent = '';
         };
 
-        insertSpaceBtn.addEventListener('click', () => {
-            let currentText = smartEditPreviewOutput.textContent.trim();
-            if (currentText.length > 0 && currentText.slice(-1) !== ' ') { 
-                smartEditPreviewOutput.textContent = currentText + ' ';
-            } else if (currentText.length === 0) { 
-                smartEditPreviewOutput.textContent = '';
+        const applyNewAddress = (newAddress) => {
+            if (!newAddress) {
+                showMessage('적용할 주소 내용이 없습니다.', '알림');
+                return;
             }
-        });
-        insertCommaBtn.addEventListener('click', () => {
-            let currentText = smartEditPreviewOutput.textContent.trim();
-            if (currentText.length > 0 && currentText.slice(-1) === ' ') {
-                currentText = currentText.slice(0, -1);
-            }
-            if (currentText.length > 0 && currentText.slice(-1) === ',') { 
-                smartEditPreviewOutput.textContent = currentText;
-            } else {
-                smartEditPreviewOutput.textContent = currentText + ', '; 
-            }
-        });
-        insertHyphenBtn.addEventListener('click', () => {
-            let currentText = smartEditPreviewOutput.textContent.trim();
-            if (currentText.length > 0 && currentText.slice(-1) === ' ') {
-                currentText = currentText.slice(0, -1);
-            }
-            if (currentText.length > 0 && currentText.slice(-1) === '-') { 
-                smartEditPreviewOutput.textContent = currentText;
-            } else {
-                smartEditPreviewOutput.textContent = currentText + '-'; 
-            }
-        });
-        clearSmartEditBtn.addEventListener('click', () => {
-            smartEditPreviewOutput.textContent = ''; 
-        });
-
-        copyToDirectEditBtn.addEventListener('click', () => {
-            addressDirectEditInput.value = smartEditPreviewOutput.textContent.trim();
-            addressDirectEditInput.focus();
-        });
-
-
-        selectAddressCancelBtn.addEventListener('click', closeAddressSelectionModal);
-        selectAddressApplyBtn.addEventListener('click', () => {
-            const newAddress = addressDirectEditInput.value.trim(); 
-
-            if (newAddress && currentAddressSelectionItemNo !== null) {
+            if (currentAddressSelectionItemNo !== null) {
                 const itemIndex = deliveryItems.findIndex(item => item.no === currentAddressSelectionItemNo);
                 if (itemIndex > -1) {
                     deliveryItems[itemIndex].receiverAddressKorean = newAddress;
@@ -703,11 +664,24 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     renderDeliveryCards(); 
                     showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
                 }
-            } else {
-                showMessage('편집된 주소 내용이 없습니다.', '알림');
             }
             closeAddressSelectionModal();
+        };
+        
+        // 스마트 편집 특수 문자 삽입 버튼 이벤트
+        insertSpaceBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ' '; });
+        insertCommaBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ', '; });
+        insertHyphenBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '-'; });
+        clearSmartEditBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent = ''; });
+
+        // 각 편집 영역의 '적용' 버튼 이벤트
+        applySmartEditBtn.addEventListener('click', () => {
+            applyNewAddress(smartEditPreviewOutput.textContent.trim());
         });
+        applyDirectEditBtn.addEventListener('click', () => {
+            applyNewAddress(addressDirectEditInput.value.trim());
+        });
+        selectAddressCancelBtn.addEventListener('click', closeAddressSelectionModal);
         
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
@@ -1294,7 +1268,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const MM = String(now.getMinutes()).padStart(2, '0');
         
         versionText.textContent = `v0.${yyyy}${mm}${dd}.${HH}${MM}`;
-        versionChangelog.textContent = `클립보드 주소 복사 로직 개선`;
+        versionChangelog.textContent = `주소 편집 모달 UI/UX 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
