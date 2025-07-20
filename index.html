@@ -213,7 +213,6 @@
         </div>
     </div>
 
-    <!-- ✨ 수정된 주소 선택/편집 모달 ✨ -->
     <div id="address-selection-modal" class="address-selection-modal" style="display: none;">
         <div class="address-selection-modal-content">
             <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 편집</h2>
@@ -230,10 +229,15 @@
                 <div id="address-chips-container" class="flex flex-wrap gap-2 p-3 border border-gray-300 rounded-md bg-gray-50 mb-3 min-h-[50px]">
                     <span class="text-gray-500 text-sm">주소 조각이 없습니다.</span>
                 </div>
-                <div class="flex space-x-2 mb-2">
-                    <button id="insert-space-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">띄어쓰기</button>
-                    <button id="insert-comma-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">쉼표</button>
-                    <button id="insert-hyphen-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">하이픈</button>
+                <!-- ✨ 수정된 버튼 그룹 ✨ -->
+                <div class="flex space-x-2 mb-2 flex-wrap gap-y-2">
+                    <button id="insert-dong-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">동</button>
+                    <button id="insert-ri-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">리</button>
+                    <button id="insert-gil-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">길</button>
+                    <button id="insert-beongil-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">번길</button>
+                    <button id="insert-space-btn" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">(빈칸)</button>
+                    <button id="insert-comma-btn" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">,</button>
+                    <button id="insert-hyphen-btn" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">-</button>
                     <button id="clear-smart-edit-btn" class="px-3 py-1.5 rounded-md bg-red-200 text-red-800 text-sm font-medium hover:bg-red-300">초기화</button>
                 </div>
                 <div id="smart-edit-preview-output" class="p-2 border bg-white rounded-md min-h-[40px] text-gray-700 text-base"></div>
@@ -552,6 +556,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const addressChipsContainer = document.getElementById('address-chips-container'); 
         const smartEditPreviewOutput = document.getElementById('smart-edit-preview-output'); 
         const addressDirectEditInput = document.getElementById('address-direct-edit-input'); 
+        const insertDongBtn = document.getElementById('insert-dong-btn');
+        const insertRiBtn = document.getElementById('insert-ri-btn');
+        const insertGilBtn = document.getElementById('insert-gil-btn');
+        const insertBeongilBtn = document.getElementById('insert-beongil-btn');
         const insertSpaceBtn = document.getElementById('insert-space-btn'); 
         const insertCommaBtn = document.getElementById('insert-comma-btn'); 
         const insertHyphenBtn = document.getElementById('insert-hyphen-btn'); 
@@ -600,19 +608,14 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             confirmationModal.style.display = 'flex';
         };
         
-        // ✨ 주소 편집 모달 로직 (수정됨) ✨
         const openAddressSelectionModal = (itemNo) => {
             currentAddressSelectionItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
-            // 1. 원본(영문) 주소 표시
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            
-            // 2. 직접 편집 영역에 현재 한글 주소 채우기
             addressDirectEditInput.value = item.receiverAddressKorean || '';
             
-            // 3. 스마트 편집 영역 초기화
             smartEditPreviewOutput.textContent = ''; 
             addressChipsContainer.innerHTML = '';
             if (item.receiverAddressComponents && item.receiverAddressComponents.length > 0) {
@@ -668,13 +671,16 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             closeAddressSelectionModal();
         };
         
-        // 스마트 편집 특수 문자 삽입 버튼 이벤트
+        // ✨ 스마트 편집 버튼 이벤트 리스너 (수정됨) ✨
+        insertDongBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '동'; });
+        insertRiBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '리'; });
+        insertGilBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '길'; });
+        insertBeongilBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '번길'; });
         insertSpaceBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ' '; });
-        insertCommaBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ', '; });
+        insertCommaBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ','; });
         insertHyphenBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '-'; });
         clearSmartEditBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent = ''; });
 
-        // 각 편집 영역의 '적용' 버튼 이벤트
         applySmartEditBtn.addEventListener('click', () => {
             applyNewAddress(smartEditPreviewOutput.textContent.trim());
         });
@@ -1149,7 +1155,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         }
     });
     
-    // ✨ 퀵-스크롤 핸들 로직 ("디지털 다이얼" 최종 버전) ✨
     const setupQuickScroll = () => {
         let isDragging = false;
         let cardElementsCache = [];
@@ -1259,16 +1264,10 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         });
     };
     
+    // ✨ 버전 정보 고정 (수정됨) ✨
     const setVersionInfo = () => {
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const HH = String(now.getHours()).padStart(2, '0');
-        const MM = String(now.getMinutes()).padStart(2, '0');
-        
-        versionText.textContent = `v0.${yyyy}${mm}${dd}.${HH}${MM}`;
-        versionChangelog.textContent = `주소 편집 모달 UI/UX 개선`;
+        versionText.textContent = `v0.20240525.1115`;
+        versionChangelog.textContent = `스마트 편집 버튼 추가 및 버전 고정`;
     };
 
     const setupDelegatedEventListeners = () => {
