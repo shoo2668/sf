@@ -208,19 +208,31 @@
         </div>
     </div>
 
-    <!-- 새로운 주소 선택 모달 -->
+    <!-- 새로운 주소 선택/편집 모달 -->
     <div id="address-selection-modal" class="address-selection-modal" style="display: none;">
         <div class="address-selection-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 선택</h2>
-            <div id="address-options-container" class="space-y-4">
-                <!-- 주소 옵션들이 여기에 동적으로 삽입됩니다. -->
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 편집</h2>
+            
+            <div id="address-smart-edit-area" class="mb-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">스마트 편집 (조각 선택)</h3>
+                <div id="address-chips-container" class="flex flex-wrap gap-2 p-3 border border-gray-300 rounded-md bg-gray-50 mb-3">
+                    <!-- 주소 조각 칩들이 여기에 동적으로 삽입됩니다. -->
+                    <span class="text-gray-500 text-sm">주소 조각이 없습니다.</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="insert-space-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">띄어쓰기</button>
+                    <button id="insert-comma-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">쉼표</button>
+                    <button id="insert-hyphen-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">하이픈</button>
+                    <button id="clear-smart-edit-btn" class="px-3 py-1.5 rounded-md bg-red-200 text-red-800 text-sm font-medium hover:bg-red-300">초기화</button>
+                </div>
             </div>
+
             <div class="mt-6 border-t pt-4 border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-800 mb-2">주소 직접 편집</h3>
                 <textarea id="address-direct-edit-input" 
                           class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
                           rows="4" 
-                          placeholder="여기에 주소를 직접 수정하세요."
+                          placeholder="여기에 주소를 직접 수정하거나 위 조각을 클릭하여 조합하세요."
                           inputmode="text"
                           autocomplete="address-line1"
                           autocorrect="off"
@@ -237,6 +249,8 @@
     <script type="text/javascript">
         const GEMINI_PROMPT = `Your task is to extract delivery information from an invoice and convert the address into a standard Korean "Road Name Address" (도로명주소). Your primary goal is to parse and reconstruct addresses from invoice images with the highest possible accuracy, following specific structural rules.
 
+**Crucially, in addition to the full Korean address string in "receiverAddressKorean", you MUST also provide the parsed address components as a JSON array of strings in a new field called "receiverAddressComponents". Each element in this array should be a distinct, meaningful component of the address (e.g., city, district, road name, building number, specific apartment complex name, building/unit number). Do not split a single building number (like 123-45) or a compound dong/ri name (like Dongtan) into smaller pieces. Ensure all parts of the address are present in this array, maintaining their original order.**
+
 **Primary Duty: Correctly identify the Building Number (건물번호) and the Detailed Address (상세주소) based on their characteristics and position relative to the Road Name or District Name.**
 
 **Follow these steps for address construction:**
@@ -246,14 +260,14 @@
     *   **IF a Road Name is found (e.g., 'Olympic-ro', 'Cheonho-daero', 'yangjaedaero'):**
         *   **Step 2.1: Candidate Identification:** Identify all numeric or alphanumeric blocks (e.g., '435', '206-1602', '989', '421', 'No.601', '422-dong') that appear around the Road Name.
         *   **Step 2.2: Filter out "Detailed Address" blocks (NOT Building Numbers):**
-            *   Any block containing **non-numeric characters or specific labels** (e.g., 'No.', '-dong', '-ho', 'B-') is considered a **Detailed Address**.
+            *   Any block containing **non-numeric characters or specific labels** (e.g., 'No.', '-dong', '-ho', 'B-', 'A-') is considered a **Detailed Address**.
             *   Any **hyphenated number** where **both parts are 3 or more digits** (e.g., '206-1602', '319-307') indicates an **apartment building/unit number**, and is a **Detailed Address**, not a Building Number. This is distinct from building sub-numbers like '1300-1' or '56-7'.
         *   **Step 2.3: Identify the "True" Building Number:**
             *   From the remaining unfiltered numeric blocks (those that are *not* Detailed Addresses by Rule 2.1), the one that logically represents the primary building number for the identified Road Name is the "True Building Number". **Prioritize numbers found *before* the Road Name.** If multiple logical candidates remain, use the one physically closest to the Road Name.
         *   **Step 2.4: Assemble:** Form the core as "[시/도] [시/군/구] [Road Name] [True Building Number]". Append all other identified "Detailed Address" blocks (from Rule 2.1), separated by commas. Ensure correct Korean postpositions (e.g., '동', '호').
 
     *   **IF NO Road Name is found:**
-        *   **Step 2.5: Jibun Address:** Look for a district name ending in \`-dong\` or \`-ri\`. If it is immediately followed by a number that resembles a Jibun number (e.g., '123-4'), that is the **Jibun Address**. **If multiple hyphenated numbers are present, prioritize the one that appears after the -dong/-ri and looks like a typical main jibun number (e.g., 139-1). The others are detailed addresses.**
+        *   **Step 2.5: Jibun Address:** Look for a district name ending in \`-dong\` or \`-ri\`. If it is immediately followed by a number that resembles a Jibun number (e.g., '123-4', '139-1'), that is the **Jibun Address**. **If multiple hyphenated numbers are present, prioritize the one that appears after the -dong/-ri and looks like a typical main jibun number (e.g., 139-1). The others are detailed addresses.**
         *   **Step 2.6: District Name Only:** If the \`-dong\` or \`-ri\` is NOT followed by a Jibun number, then the district name is the main address component. All other remaining parts are the **Detailed Address**, separated by a comma.
 
 **CRITICAL Formatting Mandates:**
@@ -266,55 +280,65 @@
 *   **Example 1: Complex Road Name Address (Building Number First, Mixed Details)**
     *   **Source Text:** \`No.601, 422-dong, yangjae-daero 1300\`
     *   **Correct \`receiverAddressKorean\`:** "서울 강동구 양재대로 1300, 422동 601호"
+    *   **Correct \`receiverAddressComponents\`:** \`["서울", "강동구", "양재대로", "1300", "422동", "601호"]\`
     *   **Reasoning:** \`yangjae-daero\` is the road. \`No.601\` and \`422-dong\` are **Detailed Addresses** (contain non-numeric characters/labels). \`1300\` is the only remaining numeric candidate for the building number. Assemble as [Road Name] [Building Number], [Detailed Addresses].
 
 *   **Example 2: Common Road Name Address (Building Number First, Hyphenated Unit)**
     *   **Source Text:** \`435, Olympic-ro 206-1602\`
     *   **Correct \`receiverAddressKorean\`:** "서울 송파구 올림픽로 435, 206-1602"
+    *   **Correct \`receiverAddressComponents\`:** \`["서울", "송파구", "올림픽로", "435", "206-1602"]\`
     *   **Reasoning:** \`Olympic-ro\` is the road. \`206-1602\` is a hyphenated apartment unit pattern (large numbers), making it a **Detailed Address**. \`435\` is the remaining numeric candidate for the building number, appearing before the road name.
 
 *   **Example 3: Road Name Address (Building Number First, Single Detail)**
     *   **Source Text:** \`989, Cheonho-daero 421\`
     *   **Correct \`receiverAddressKorean\`:** "서울 강동구 천호대로 989, 421"
+    *   **Correct \`receiverAddressComponents\`:** \`["서울", "강동구", "천호대로", "989", "421"]\`
     *   **Reasoning:** \`Cheonho-daero\` is the road. \`421\` is a number after the road name, making it a **Detailed Address**. \`989\` is the leading numeric candidate for the building number, appearing before the road name.
 
 *   **Example 4: Road Name Address (Building Number Missing, Only Detailed After Road Name)**
     *   **Source Text:** \`Olympic-ro 102-408\`
     *   **Correct \`receiverAddressKorean\`:** "서울 송파구 올림픽로, 102-408"
+    *   **Correct \`receiverAddressComponents\`:** \`["서울", "송파구", "올림픽로", "102-408"]\`
     *   **Reasoning:** No number appears before \`Olympic-ro\` for the building number. Therefore, \`102-408\` is the **Detailed Address**, separated by a comma because the building number is implied missing from the input text.
 
 *   **Example 5: Jibun Address (District Name Only, followed by detailed)**
     *   **Source Text:** \`Shinchundong Jamsil the sharp starpark 101-2503\`
     *   **Correct \`receiverAddressKorean\`:** "서울 송파구 신천동, 잠실 더샵 스타파크 101-2503"
+    *   **Correct \`receiverAddressComponents\`:** \`["서울", "송파구", "신천동", "잠실 더샵 스타파크", "101-2503"]\`
     *   **Reasoning:** \`Shinchundong\` is a district name not followed by a Jibun number. The rest of the text is **Detailed Address**, separated by a comma.
 
 *   **Example 6: Road Name, Building Number on right (Complex detailed)**
     *   **Source Text:** \`yangjaedaero 1300 olympic park foreon 319dong 307ho\`
     *   **Correct \`receiverAddressKorean\`:** "서울 강동구 양재대로 1300, 올림픽파크 포레온 319동 307호"
+    *   **Correct \`receiverAddressComponents\`:** \`["서울", "강동구", "양재대로", "1300", "올림픽파크 포레온", "319동", "307호"]\`
     *   **Reasoning:** \`yangjaedaero\` is the road name. \`319dong\` and \`307ho\` are **Detailed Addresses** (contain non-numeric characters/labels). \`1300\` is the logical numeric candidate for the building number.
 
 *   **Example 7: Road Name Address (Scattered, Building Sub-number, Detail)**
     *   **Source Text:** \`202, 56-7, Cheonho-daero 168na-gil\`
     *   **Correct \`receiverAddressKorean\`:** "서울 강동구 천호대로168나길 56-7, 202"
+    *   **Correct \`receiverAddressComponents\`:** \`["서울", "강동구", "천호대로168나길", "56-7", "202"]\`
     *   **Reasoning:** \`Cheonho-daero 168na-gil\` is the road. \`56-7\` is a building sub-number pattern (not a large apartment unit pattern), making it the **True Building Number**. \`202\` is a short number and is treated as a **Detailed Address**.
 
 *   **Example 8: Direct Road/Sub-road translation (Specific)**
     *   **Source Text:** \`10-2, Baran-ri\`
     *   **Correct \`receiverAddressKorean\`:** "경기 화성시 발안리 10-2"
+    *   **Correct \`receiverAddressComponents\`:** \`["경기", "화성시", "발안리", "10-2"]\`
     *   **Reasoning:** This is a Jibun address. \`Baran-ri\` should be translated to '발안리'. \`10-2\` is the Jibun number. City/Province inferred.
 
 *   **Example 9: Direct Road Name Correction (Specific)**
     *   **Source Text:** \`202, 104-7, Tteokjeongol-ro\`
     *   **Correct \`receiverAddressKorean\`:** "경기 화성시 떡전골로 104-7, 202"
+    *   **Correct \`receiverAddressComponents\`:** \`["경기", "화성시", "떡전골로", "104-7", "202"]\`
     *   **Reasoning:** \`Tteokjeongol-ro\` is the road. It should be translated to '떡전골로'. \`104-7\` is a building sub-number, making it the **True Building Number**. \`202\` is treated as a **Detailed Address**.
 
-*   **Example 10: Jibun Address with multiple hyphenated numbers**
+*   **Example 10: Jibun Address with multiple hyphenated numbers (Complex)**
     *   **Source Text:** \`Gyeonggi-do Hwaseong-si 105-106, #139-1, DONGHWA-RI, BONGDAM-EUP\`
     *   **Correct \`receiverAddressKorean\`:** "경기 화성시 봉담읍 동화리 139-1, 105-106"
+    *   **Correct \`receiverAddressComponents\`:** \`["경기", "화성시", "봉담읍", "동화리", "139-1", "105-106"]\`
     *   **Reasoning:** \`DONGHWA-RI\` is the district. Among \`105-106\` and \`#139-1\`, \`139-1\` is identified as the primary jibun number (due to '#' and typical jibun format). \`105-106\` becomes the detailed address.
 
 **Output JSON Format:**
-Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`receiverAddressKorean\`, \`receiverAddressOriginal\`, \`companyNameKorean\`, \`companyNameOriginal\`, \`receiverNameKorean\`, \`receiverNameOriginal\`, \`receiverTelephoneNo\`.
+Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`receiverAddressKorean\`, \`receiverAddressOriginal\`, \`companyNameKorean\`, \`companyNameOriginal\`, \`receiverNameKorean\`, \`receiverNameOriginal\`, \`receiverTelephoneNo\`, \`receiverAddressComponents\`.
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -494,7 +518,12 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const confirmCancelButton = document.getElementById('confirmCancelButton');
         const addressSelectionModal = document.getElementById('address-selection-modal');
         const addressOptionsContainer = document.getElementById('address-options-container');
-        const addressDirectEditInput = document.getElementById('address-direct-edit-input'); // 추가된 직접 편집 input
+        const addressChipsContainer = document.getElementById('address-chips-container'); // 스마트 편집 칩 컨테이너
+        const addressDirectEditInput = document.getElementById('address-direct-edit-input'); 
+        const insertSpaceBtn = document.getElementById('insert-space-btn'); // 띄어쓰기 버튼
+        const insertCommaBtn = document.getElementById('insert-comma-btn'); // 쉼표 버튼
+        const insertHyphenBtn = document.getElementById('insert-hyphen-btn'); // 하이픈 버튼
+        const clearSmartEditBtn = document.getElementById('clear-smart-edit-btn'); // 초기화 버튼
         const selectAddressCancelBtn = document.getElementById('select-address-cancel');
         const selectAddressApplyBtn = document.getElementById('select-address-apply');
 
@@ -541,64 +570,83 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const openAddressSelectionModal = (itemNo) => {
             currentAddressSelectionItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
-            if (!item || (!item.alternativeAddresses || item.alternativeAddresses.length === 0)) {
-                // 대체 주소가 없으면 현재 주소만 직접 편집 가능하도록
-                addressOptionsContainer.innerHTML = '<p class="text-sm text-gray-600">다른 주소 후보가 없습니다. 아래에서 직접 편집해 주세요.</p>';
-                addressDirectEditInput.value = item.receiverAddressKorean || '';
+            if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
+
+            // 기존 후보 목록은 제거 (주소 선택 기능 제거)
+            addressOptionsContainer.innerHTML = ''; 
+
+            // 직접 편집 필드에 현재 주소 채우기
+            addressDirectEditInput.value = item.receiverAddressKorean || '';
+            addressDirectEditInput.focus(); // 편집 필드에 포커스
+
+            // 스마트 편집 칩 초기화 및 생성
+            addressChipsContainer.innerHTML = '';
+            if (item.receiverAddressComponents && item.receiverAddressComponents.length > 0) {
+                item.receiverAddressComponents.forEach(component => {
+                    if (component) { // 빈 문자열 필터링
+                        const chip = document.createElement('span');
+                        chip.className = 'inline-block bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full cursor-pointer hover:bg-blue-200';
+                        chip.textContent = component;
+                        chip.addEventListener('click', () => {
+                            // 칩 클릭 시 textarea에 삽입
+                            const start = addressDirectEditInput.selectionStart;
+                            const end = addressDirectEditInput.selectionEnd;
+                            const currentVal = addressDirectEditInput.value;
+                            addressDirectEditInput.value = currentVal.substring(0, start) + component + currentVal.substring(end);
+                            addressDirectEditInput.selectionStart = addressDirectEditInput.selectionEnd = start + component.length; // 커서 이동
+                            addressDirectEditInput.focus();
+                        });
+                        addressChipsContainer.appendChild(chip);
+                    }
+                });
             } else {
-                addressOptionsContainer.innerHTML = '';
-                let defaultSelectedAddress = item.receiverAddressKorean; 
-
-                const uniqueAddresses = [...new Set(item.alternativeAddresses)];
-                // 현재 주소가 후보에 없거나 맨 앞에 있지 않으면 맨 앞으로 이동
-                if (!uniqueAddresses.includes(defaultSelectedAddress)) {
-                    uniqueAddresses.unshift(defaultSelectedAddress); 
-                } else {
-                    uniqueAddresses.splice(uniqueAddresses.indexOf(defaultSelectedAddress), 1); 
-                    uniqueAddresses.unshift(defaultSelectedAddress); 
-                }
-                
-                uniqueAddresses.forEach((addr, index) => {
-                    const isSelected = (addr === defaultSelectedAddress) ? 'checked' : '';
-                    const optionDiv = document.createElement('div');
-                    optionDiv.className = 'flex items-start p-2 border border-gray-200 rounded-md';
-                    optionDiv.innerHTML = `
-                        <input type="radio" id="addr-option-${index}" name="address-option" value="${addr}" ${isSelected} class="mt-1 mr-2 flex-shrink-0 text-blue-600 form-radio focus:ring-blue-500">
-                        <label for="addr-option-${index}" class="flex-grow text-gray-700 text-sm font-medium leading-tight">
-                            ${addr}
-                        </label>
-                        <button data-address="${addr}" class="ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-xs font-medium hover:bg-green-600 flex-shrink-0 map-button">지도보기</button>
-                    `;
-                    addressOptionsContainer.appendChild(optionDiv);
-                });
-
-                addressOptionsContainer.querySelectorAll('.map-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        e.stopPropagation(); 
-                        openNaverMap(e.target.dataset.address, currentAddressSelectionItemNo);
-                    });
-                });
-                addressDirectEditInput.value = defaultSelectedAddress; // 직접 편집 필드에도 기본값 채우기
+                addressChipsContainer.innerHTML = '<span class="text-gray-500 text-sm">주소 조각을 찾을 수 없습니다.</span>';
             }
+
             addressSelectionModal.style.display = 'flex';
         };
 
         const closeAddressSelectionModal = () => {
             addressSelectionModal.style.display = 'none';
             currentAddressSelectionItemNo = null;
-            addressDirectEditInput.value = ''; // 모달 닫을 때 초기화
+            addressDirectEditInput.value = ''; 
+            addressChipsContainer.innerHTML = ''; // 칩 컨테이너 초기화
         };
+
+        // 스마트 편집 특수 문자 삽입 버튼 이벤트
+        insertSpaceBtn.addEventListener('click', () => {
+            const input = addressDirectEditInput;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + ' ' + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start + 1;
+            input.focus();
+        });
+        insertCommaBtn.addEventListener('click', () => {
+            const input = addressDirectEditInput;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + ', ' + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start + 2;
+            input.focus();
+        });
+        insertHyphenBtn.addEventListener('click', () => {
+            const input = addressDirectEditInput;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + '-' + input.value.substring(end);
+            input.selectionStart = input.selectionEnd = start + 1;
+            input.focus();
+        });
+        clearSmartEditBtn.addEventListener('click', () => {
+            addressDirectEditInput.value = '';
+            addressDirectEditInput.focus();
+        });
+
 
         selectAddressCancelBtn.addEventListener('click', closeAddressSelectionModal);
         selectAddressApplyBtn.addEventListener('click', () => {
-            const selectedRadio = addressOptionsContainer.querySelector('input[name="address-option"]:checked');
-            let newAddress = '';
-
-            if (addressDirectEditInput.value.trim() !== '') {
-                newAddress = addressDirectEditInput.value.trim(); // 직접 편집 내용이 있으면 최우선
-            } else if (selectedRadio) {
-                newAddress = selectedRadio.value; // 라디오 버튼 선택된 것이 있으면 사용
-            }
+            const newAddress = addressDirectEditInput.value.trim(); // 직접 편집 내용이 최우선
 
             if (newAddress && currentAddressSelectionItemNo !== null) {
                 const itemIndex = deliveryItems.findIndex(item => item.no === currentAddressSelectionItemNo);
@@ -609,7 +657,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
                 }
             } else {
-                showMessage('선택하거나 편집된 주소가 없습니다.', '알림');
+                showMessage('편집된 주소 내용이 없습니다.', '알림');
             }
             closeAddressSelectionModal();
         });
@@ -882,40 +930,38 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     reader.readAsDataURL(file);
                 });
 
-                const allGeminiResultsForFile = [];
-                // Gemini AI 호출 (단일 호출로 변경)
-                // for (let j = 0; j < 3; j++) { // 3번 시도 제거
-                    const payload = {
-                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
-                        generationConfig: { 
-                            temperature: 0,
-                            responseMimeType: "application/json",
-                            responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" } } } } }
-                        };
-                    
-                    const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+                const geminiResponses = [];
+                // Gemini AI 호출 (1회 시도로 변경, 복수 카드 추출 가능)
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
+                    generationConfig: { 
+                        temperature: 0,
+                        responseMimeType: "application/json",
+                        responseSchema: { type: "ARRAY", items: { type: "OBJECT", properties: { "no": { "type": "STRING" }, "hawbNo": { "type": "STRING" }, "receiverAddressKorean": { "type": "STRING" }, "receiverAddressOriginal": { "type": "STRING" }, "companyNameKorean": { "type": "STRING" }, "companyNameOriginal": { "type": "STRING" }, "receiverNameKorean": { "type": "STRING" }, "receiverNameOriginal": { "type": "STRING" }, "receiverTelephoneNo": { "type": "STRING" }, "receiverAddressComponents": { "type": "ARRAY", "items": { "type": "STRING" } } } } }
+                    };
+                
+                const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
-                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
-                    const result = await response.json();
+                const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                const result = await response.json();
 
-                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        try {
-                            const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                            if (Array.isArray(parsedData) && parsedData.length > 0) {
-                                allGeminiResultsForFile.push(...parsedData);
-                            }
-                        } catch (parseError) {
-                            console.warn(`Gemini JSON 파싱 실패 (파일 ${file.name}):`, parseError);
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    try {
+                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                        if (Array.isArray(parsedData) && parsedData.length > 0) {
+                            geminiResponses.push(...parsedData); // 단일 호출이더라도 여러 카드 정보가 올 수 있음
                         }
+                    } catch (parseError) {
+                        console.warn(`Gemini JSON 파싱 실패 (파일 ${file.name}):`, parseError);
                     }
-                // } // 3번 시도 제거 끝
+                }
 
-                // 파일 내의 각 송장 정보별로 주소 후보를 관리 (수정: 이제 3번 시도 대신 단일 시도)
-                for (const geminiItem of allGeminiResultsForFile) { // allGeminiResultsForFile 에는 한 파일에서 추출된 여러 송장 정보가 담김
+                // 파일 내의 각 송장 정보별로 주소 후보를 관리
+                for (const geminiItem of geminiResponses) { 
                     const no = parseInt(geminiItem.no || '0', 10);
-                    // 송장 번호 또는 No.가 없으면 해당 송장은 유효하지 않은 것으로 간주하고 건너뛰기
+                    // 송장 번호 또는 No.가 없거나 HAWB가 없으면 유효하지 않은 것으로 간주
                     if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
                         console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
                         continue; 
@@ -928,9 +974,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     // 해당 송장 번호에 대한 최종 결과를 임시 Map에 저장
                     tempMergedResults.set(no, { 
                         ...geminiItem, 
-                        receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, // 검증 실패 시 원본 그대로
-                        // 직접 편집을 위해 alternativeAddresses 필드에 현재 주소만 저장
-                        alternativeAddresses: [validatedAddress || geminiItem.receiverAddressKorean].filter(Boolean) 
+                        receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, 
+                        // AI가 직접 분리한 주소 구성 요소 저장
+                        receiverAddressComponents: geminiItem.receiverAddressComponents || [] 
                     });
                 }
 
@@ -958,7 +1004,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 receiverTelephoneNo: item.receiverTelephoneNo ? getCleanPhoneNumber(item.receiverTelephoneNo) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                alternativeAddresses: item.alternativeAddresses || [] 
+                alternativeAddresses: item.alternativeAddresses || [], // 이제 사용되지 않을 필드이지만 혹시 모를 상황에 대비하여 유지
+                receiverAddressComponents: item.receiverAddressComponents || [] // 새로 추가된 조각 필드
             }));
             
             finalItems.forEach(newItem => {
