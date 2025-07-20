@@ -229,13 +229,12 @@
                 <div id="address-chips-container" class="flex flex-wrap gap-2 p-3 border border-gray-300 rounded-md bg-gray-50 mb-3 min-h-[50px]">
                     <span class="text-gray-500 text-sm">주소 조각이 없습니다.</span>
                 </div>
-                <!-- ✨ 수정된 버튼 그룹 ✨ -->
                 <div class="flex space-x-2 mb-2 flex-wrap gap-y-2">
                     <button id="insert-dong-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">동</button>
                     <button id="insert-ri-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">리</button>
                     <button id="insert-gil-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">길</button>
                     <button id="insert-beongil-btn" class="px-3 py-1.5 rounded-md bg-blue-200 text-blue-800 text-sm font-medium hover:bg-blue-300">번길</button>
-                    <button id="insert-space-btn" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">(빈칸)</button>
+                    <button id="insert-space-btn" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300"> </button>
                     <button id="insert-comma-btn" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">,</button>
                     <button id="insert-hyphen-btn" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">-</button>
                     <button id="clear-smart-edit-btn" class="px-3 py-1.5 rounded-md bg-red-200 text-red-800 text-sm font-medium hover:bg-red-300">초기화</button>
@@ -671,13 +670,12 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             closeAddressSelectionModal();
         };
         
-        // ✨ 스마트 편집 버튼 이벤트 리스너 (수정됨) ✨
         insertDongBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '동'; });
         insertRiBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '리'; });
         insertGilBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '길'; });
         insertBeongilBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '번길'; });
         insertSpaceBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ' '; });
-        insertCommaBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ','; });
+        insertCommaBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += ', '; });
         insertHyphenBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent += '-'; });
         clearSmartEditBtn.addEventListener('click', () => { smartEditPreviewOutput.textContent = ''; });
 
@@ -1264,10 +1262,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         });
     };
     
-    // ✨ 버전 정보 고정 (수정됨) ✨
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20240525.1115`;
-        versionChangelog.textContent = `스마트 편집 버튼 추가 및 버전 고정`;
+        versionText.textContent = `v0.20240525.1130`;
+        versionChangelog.textContent = `스마트 편집 버튼 동작 수정 및 버전 고정 방식 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
