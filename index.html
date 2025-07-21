@@ -1125,16 +1125,22 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return;
         }
 
-        const scanPromises = preloadedFiles.map(fileData => {
-            const uiElements = uiElementsMap.get(fileData.file);
-            uiElements.retryBtnEl.onclick = () => processSingleFile(fileData, uiElements);
-            return processSingleFile(fileData, uiElements);
-        });
-        
-        const results = await Promise.allSettled(scanPromises);
+        const allResults = [];
+        const CHUNK_SIZE = 3; // 한 번에 처리할 작업 수
+
+        for (let i = 0; i < preloadedFiles.length; i += CHUNK_SIZE) {
+            const chunk = preloadedFiles.slice(i, i + CHUNK_SIZE);
+            const scanPromises = chunk.map(fileData => {
+                const uiElements = uiElementsMap.get(fileData.file);
+                uiElements.retryBtnEl.onclick = () => processSingleFile(fileData, uiElements);
+                return processSingleFile(fileData, uiElements);
+            });
+            const chunkResults = await Promise.allSettled(scanPromises);
+            allResults.push(...chunkResults);
+        }
         
         const allNewItems = [];
-        results.forEach(result => {
+        allResults.forEach(result => {
             if (result.status === 'fulfilled' && result.value) {
                 allNewItems.push(...result.value);
             }
@@ -1361,8 +1367,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20240521.1745`;
-        versionChangelog.textContent = `스캔 프로세스 치명적 오류 수정 (재시도 오류)`;
+        versionText.textContent = `v0.20240521.1750`;
+        versionChangelog.textContent = `스캔 안정성 개선 (제어된 병렬 처리) 및 오류 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
