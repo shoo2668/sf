@@ -574,6 +574,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const versionInfoContainer = document.getElementById('version-info-container');
         const versionText = document.getElementById('version-text');
         const versionChangelog = document.getElementById('version-changelog');
+        const quickScrollContainer = document.getElementById('quick-scroll-container');
+        const quickScrollHandle = document.getElementById('quick-scroll-handle');
+        const quickScrollBubble = document.getElementById('quick-scroll-bubble');
         
         const addressSelectionModal = document.getElementById('address-selection-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
@@ -955,8 +958,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         try {
             iconEl.innerHTML = '<div class="spinner w-4 h-4"></div>';
             statusEl.textContent = '분석 중...';
-            statusEl.classList.remove('text-green-600', 'text-red-600');
-            statusEl.classList.add('text-gray-600');
+            statusEl.classList.remove('text-green-600', 'text-red-600', 'text-gray-600');
             progressFgEl.style.width = '10%';
             progressFgEl.classList.remove('bg-green-500', 'bg-red-500');
             progressFgEl.classList.add('bg-blue-500');
@@ -997,7 +999,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             progressFgEl.classList.replace('bg-blue-500', 'bg-green-500');
             iconEl.innerHTML = '<span class="text-green-500">✔</span>';
             statusEl.textContent = `성공 (${validatedItems.length}개 항목)`;
-            statusEl.classList.replace('text-gray-600', 'text-green-600');
+            statusEl.classList.add('text-green-600');
             
             return validatedItems;
 
@@ -1007,7 +1009,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             progressFgEl.classList.replace('bg-blue-500', 'bg-red-500');
             iconEl.innerHTML = '<span class="text-red-500">✖</span>';
             statusEl.textContent = `실패: ${error.message}`;
-            statusEl.classList.replace('text-gray-600', 'text-red-600');
+            statusEl.classList.add('text-red-600');
             retryBtnEl.classList.remove('hidden');
             throw error;
         }
@@ -1052,7 +1054,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             });
         });
 
-        // 1. 모든 파일을 메모리로 미리 읽기
         const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve({ file, base64Data: reader.result.split(',')[1] });
@@ -1069,7 +1070,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return;
         }
 
-        // 2. 미리 읽은 데이터를 사용하여 병렬 처리
         const scanPromises = preloadedFiles.map(fileData => {
             const uiElements = uiElementsMap.get(fileData.file);
             uiElements.retryBtnEl.onclick = () => processSingleFile(fileData, uiElements);
@@ -1078,7 +1078,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         
         const results = await Promise.allSettled(scanPromises);
         
-        // 3. 결과 취합 및 데이터 업데이트
         const allNewItems = [];
         results.forEach(result => {
             if (result.status === 'fulfilled' && result.value) {
@@ -1307,8 +1306,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20240521.1730`;
-        versionChangelog.textContent = `모바일 스캔 안정성 개선 (파일 선-읽기 적용)`;
+        versionText.textContent = `v0.20240521.1735`;
+        versionChangelog.textContent = `모바일 스캔 안정성 개선 및 초기화 오류 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
