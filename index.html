@@ -646,13 +646,12 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     result = current;
                     continue;
                 }
-                const prev = result;
+                const prev = pieces[i - 1];
                 let separator = ' ';
                 if (['동', '리', '길', '번길'].includes(current) ||
-                    (/^\d$/.test(current) && /\d$/.test(prev.slice(-1))) ||
-                    current === '-' || prev.endsWith('-') ||
-                    current.startsWith(',')
-                    ) {
+                    (/^\d$/.test(current) && /^\d$/.test(prev)) ||
+                    current === '-' || prev === '-' ||
+                    prev.endsWith(' ')) {
                     separator = '';
                 }
                 result += separator + current;
@@ -1013,75 +1012,71 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     }
 
     async function performScan(filesToScan) {
-        const tempMergedResults = new Map();
+        const tempMergedResults = new Map(); 
         const failedFileObjectsForRetry = [];
-
-        scanProgressText.textContent = `총 ${filesToScan.length}개 이미지 동시 스캔 중...`;
-
-        // 1. 각 파일에 대한 스캔 작업을 Promise 배열로 만듭니다.
-        const scanPromises = Array.from(filesToScan).map(async (file) => {
-            const base64ImageData = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-
-            const payload = {
-                contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
-                generationConfig: { temperature: 0, responseMimeType: "application/json" }
-            };
-
-            const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-            const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
-
-            const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+        
+        for (let i = 0; i < filesToScan.length; i++) {
+            const file = filesToScan[i];
+            scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${filesToScan.length})...`;
             
-            const result = await response.json();
-
-            if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다.");
-            }
-
-            const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-            if (!Array.isArray(parsedData) || parsedData.length === 0) {
-                throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다.");
-            }
-
-            // 이 이미지에서 찾은 모든 항목에 대해 주소 검증을 수행합니다.
-            const validatedItems = [];
-            for (const geminiItem of parsedData) {
-                const no = parseInt(geminiItem.no || '0', 10);
-                if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
-                    console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
-                    continue;
-                }
-                const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
-                validatedItems.push({ ...geminiItem, receiverAddressKorean: validatedAddress });
-            }
-            return validatedItems; // 이 Promise는 검증된 항목들의 배열을 반환합니다.
-        });
-
-        // 2. 모든 스캔 작업을 동시에 실행하고, 모든 작업이 완료될 때까지 기다립니다.
-        const allResults = await Promise.allSettled(scanPromises);
-
-        // 3. 모든 결과를 취합합니다.
-        allResults.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-                const itemsFromImage = result.value; // 성공 시, 값은 항목들의 배열입니다.
-                itemsFromImage.forEach(item => {
-                    tempMergedResults.set(parseInt(item.no, 10), item);
+            try {
+                const base64ImageData = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
                 });
-            } else { // status is 'rejected'
-                console.error(`파일 스캔 오류 (${filesToScan[index].name}):`, result.reason);
-                failedFileObjectsForRetry.push(filesToScan[index]);
+
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
+                    generationConfig: { 
+                        temperature: 0,
+                        responseMimeType: "application/json"
+                    } 
+                };
+                
+                const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+
+                const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                const result = await response.json();
+
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    try {
+                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                        if (Array.isArray(parsedData) && parsedData.length > 0) {
+                            for (const geminiItem of parsedData) { 
+                                const no = parseInt(geminiItem.no || '0', 10);
+                                if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
+                                    console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
+                                    continue; 
+                                }
+
+                                scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${file.name})...`;
+                                const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
+                                
+                                tempMergedResults.set(no, { 
+                                    ...geminiItem, 
+                                    receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, 
+                                    receiverAddressComponents: geminiItem.receiverAddressComponents || []
+                                });
+                            }
+                        } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
+                    } catch (parseError) {
+                        console.warn(`Gemini JSON 파싱 실패 (파일 ${file.name}):`, parseError);
+                    }
+                } else { throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다."); }
+            } catch (error) {
+                console.error(`파일 스캔 오류 (${file.name}):`, error);
+                failedFileObjectsForRetry.push(file);
+                continue;
             }
-        });
+        }
 
         let newCount = 0;
         let updateCount = 0;
-        const allNewItems = Array.from(tempMergedResults.values());
+        const allNewItems = Array.from(tempMergedResults.values()); 
 
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
@@ -1098,7 +1093,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
                 receiverAddressComponents: item.receiverAddressComponents || []
             }));
-
+            
             finalItems.forEach(newItem => {
                 const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
                 if (existingItemIndex > -1) {
@@ -1112,7 +1107,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             deliveryItems.sort((a, b) => a.no - b.no);
             saveDeliveryItemsToLocalStorage();
         }
-
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
 
@@ -1346,8 +1340,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     
     const setVersionInfo = () => {
         // 버전 번호를 고정값으로 변경
-        versionText.textContent = `v0.20240521.1600`;
-        versionChangelog.textContent = `이미지 스캔 병렬 처리로 속도 개선`;
+        versionText.textContent = `v0.20240521.1540`;
+        versionChangelog.textContent = `스마트 편집 공백 처리 개선, 백스페이스 UI 변경`;
     };
 
     const setupDelegatedEventListeners = () => {
