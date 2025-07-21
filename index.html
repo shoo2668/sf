@@ -392,6 +392,53 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
         // --- Helper functions ---
+
+        /**
+         * 이미지를 지정된 최대 너비로 리사이징하고 Base64 문자열로 반환합니다.
+         * @param {File} file - 리사이징할 이미지 파일
+         * @returns {Promise<string>} 리사이징된 이미지의 Base64 데이터 (data: URL 접두사 제외)
+         */
+        const resizeImage = (file) => {
+            return new Promise((resolve, reject) => {
+                const MAX_WIDTH = 1920; // OCR에 충분한 최대 너비 설정 (예: 1920px)
+                const reader = new FileReader();
+
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+
+                        // 너비가 최대 너비보다 클 경우에만 리사이징
+                        if (width > MAX_WIDTH) {
+                            height = (MAX_WIDTH / width) * height;
+                            width = MAX_WIDTH;
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // JPEG 형식과 80% 품질로 압축하여 데이터 크기를 더욱 줄임
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        
+                        // "data:image/jpeg;base64," 부분을 제외하고 순수 데이터만 반환
+                        resolve(dataUrl.split(',')[1]);
+                    };
+
+                    img.onerror = (error) => reject(error);
+                };
+
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(file);
+            });
+        };
+
         const cleanStringForDisplay = (str) => {
             if (typeof str !== 'string' || !str) return '';
             return str.replace(/[\n\\]/g, '').trim();
@@ -1017,18 +1064,15 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         
         for (let i = 0; i < filesToScan.length; i++) {
             const file = filesToScan[i];
-            scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${filesToScan.length})...`;
+            scanProgressText.textContent = `이미지 리사이징 중 (${i + 1}/${filesToScan.length})...`;
             
             try {
-                const base64ImageData = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
+                const base64ImageData = await resizeImage(file);
+
+                scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${filesToScan.length})...`;
 
                 const payload = {
-                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
+                    contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
                     generationConfig: { 
                         temperature: 0,
                         responseMimeType: "application/json"
@@ -1341,7 +1385,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     const setVersionInfo = () => {
         // 버전 번호를 고정값으로 변경
         versionText.textContent = `v0.20240521.1540`;
-        versionChangelog.textContent = `스마트 편집 공백 처리 개선, 백스페이스 UI 변경`;
+        versionChangelog.textContent = `리사이징`;
     };
 
     const setupDelegatedEventListeners = () => {
