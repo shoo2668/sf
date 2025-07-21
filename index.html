@@ -259,12 +259,8 @@
                         <button data-insert-char=" " class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300"> </button>
                         <button data-insert-char=", " class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">,</button>
                         <button data-insert-char="-" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">-</button>
-                        <!-- 백스페이스 버튼 추가 -->
-                        <button data-action="backspace" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L21 12M3 12l6.414-6.414a2 2 0 012.828 0L21 12" />
-                            </svg>
-                        </button>
+                        <!-- 백스페이스 버튼 UI/크기 수정 -->
+                        <button data-action="backspace" class="px-4 py-1.5 rounded-md bg-gray-200 text-gray-800 text-lg font-bold hover:bg-gray-300 flex items-center justify-center">←</button>
                     </div>
                     <div id="smart-edit-preview-output" class="p-2 border bg-white rounded-md min-h-[40px] text-gray-700 text-base"></div>
                     <div class="flex space-x-2 mt-2">
@@ -640,6 +636,28 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
+        
+        const assembleSmartEditPieces = (pieces) => {
+            if (!pieces || pieces.length === 0) return '';
+            let result = '';
+            for (let i = 0; i < pieces.length; i++) {
+                const current = pieces[i];
+                if (i === 0) {
+                    result = current;
+                    continue;
+                }
+                const prev = pieces[i - 1];
+                let separator = ' ';
+                if (['동', '리', '길', '번길'].includes(current) ||
+                    (/^\d$/.test(current) && /^\d$/.test(prev)) ||
+                    current === '-' || prev === '-' ||
+                    prev.endsWith(' ')) {
+                    separator = '';
+                }
+                result += separator + current;
+            }
+            return result;
+        };
 
         const openAddressSelectionModal = (itemNo) => {
             currentAddressSelectionItemNo = itemNo;
@@ -650,7 +668,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             addressDirectEditInput.value = initialAddressForReset;
             
-            smartEditPieces = []; // 스마트 편집 조각 배열 초기화
+            smartEditPieces = [];
             smartEditPreviewOutput.textContent = ''; 
             addressChipsContainer.innerHTML = '';
 
@@ -666,7 +684,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                         chip.textContent = splitComponent;
                         chip.addEventListener('click', () => {
                             smartEditPieces.push(splitComponent);
-                            smartEditPreviewOutput.textContent = smartEditPieces.join(' ');
+                            smartEditPreviewOutput.textContent = assembleSmartEditPieces(smartEditPieces);
                         });
                         addressChipsContainer.appendChild(chip);
                     });
@@ -716,13 +734,13 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             const charToInsert = button.dataset.insertChar;
             if (charToInsert) {
                 smartEditPieces.push(charToInsert);
-                smartEditPreviewOutput.textContent = smartEditPieces.join(' ');
             }
             
             if (button.dataset.action === 'backspace') {
                 smartEditPieces.pop();
-                smartEditPreviewOutput.textContent = smartEditPieces.join(' ');
             }
+            
+            smartEditPreviewOutput.textContent = assembleSmartEditPieces(smartEditPieces);
         });
         
         resetSmartEditBtn.addEventListener('click', () => {
@@ -1322,8 +1340,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     
     const setVersionInfo = () => {
         // 버전 번호를 고정값으로 변경
-        versionText.textContent = `v0.20240521.1510`;
-        versionChangelog.textContent = `주소 편집 모달 개선 / 버전 고정 방식으로 수정`;
+        versionText.textContent = `v0.20240521.1540`;
+        versionChangelog.textContent = `스마트 편집 공백 처리 개선, 백스페이스 UI 변경`;
     };
 
     const setupDelegatedEventListeners = () => {
