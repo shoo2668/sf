@@ -526,35 +526,35 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             if (!fullAddress || typeof fullAddress !== 'string') return '';
             const cleanAddress = fullAddress.trim();
 
-            // 주소 키워드 배열
+            // 1순위: '123-1201' 또는 '101동 202호' 같은 아파트 동-호수 패턴
+            const dongHoMatch1 = cleanAddress.match(/(\b\d{2,4}-\d{2,4}\b)/); // 123-1201
+            if (dongHoMatch1) return dongHoMatch1[1];
+            const dongHoMatch2 = cleanAddress.match(/(\d+)\s*동\s*(\d+)\s*호/); // 101동 202호
+            if (dongHoMatch2) return `${dongHoMatch2[1]}-${dongHoMatch2[2]}`;
+
+            // 2순위: '도로명/길 + 건물번호' 패턴
+            const roadAddrMatch = cleanAddress.match(/([가-힣\s\d]+(?:대로|로|번길|길))\s*([\d\-]+)/);
+            if (roadAddrMatch) return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
+
+            // 3순위: '지번(동/리) + 번지' 패턴
+            const jibunAddrMatch = cleanAddress.match(/([가-힣\d\-]+(?:동|리))\s*([\d\-]+)/);
+            if (jibunAddrMatch) return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
+            
+            // 4순위: 최후의 수단 (이전 로직과 유사하게, 주소 핵심 키워드부터 끝까지)
             const keywords = ['대로', '로', '번길', '길', '동', '리'];
             let bestMatchIndex = -1;
-
-            // 주소에서 키워드가 처음 나타나는 위치 찾기
             for (const keyword of keywords) {
                 const index = cleanAddress.indexOf(keyword);
-                if (index !== -1) {
-                    if (bestMatchIndex === -1 || index < bestMatchIndex) {
-                        bestMatchIndex = index;
-                    }
+                if (index !== -1 && (bestMatchIndex === -1 || index < bestMatchIndex)) {
+                    bestMatchIndex = index;
                 }
             }
-
-            // 키워드를 찾았다면, 해당 키워드의 시작 위치부터 문자열 끝까지 반환
             if (bestMatchIndex !== -1) {
-                // 키워드 앞의 공백을 포함하여 자르기 위해, 키워드 앞에서부터 첫 공백을 찾음
                 const sliceStartIndex = cleanAddress.lastIndexOf(' ', bestMatchIndex) + 1;
                 return cleanAddress.substring(sliceStartIndex).trim();
             }
 
-            // 아파트 단지명이나 상세주소만 있는 경우를 위한 폴백(Fallback) 로직
-            const dongHoMatch = cleanAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
-            if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
-            
-            const hyphenUnitMatch = cleanAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
-            if (hyphenUnitMatch) return hyphenUnitMatch[1];
-            
-            // 어떤 패턴도 맞지 않으면, 전체 주소 반환
+            // 모든 패턴 실패 시 전체 주소 반환
             return cleanAddress;
         };
 
@@ -1398,8 +1398,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20240522.1130`;
-        versionChangelog.textContent = `스마트 편집 조각 버튼 햅틱피드백 적용`;
+        versionText.textContent = `v20240722.0810`;
+        versionChangelog.textContent = `클립보드 복사 로직 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
