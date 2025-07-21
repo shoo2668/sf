@@ -29,6 +29,7 @@
             z-index: 50;
             padding: 1rem;
         }
+        /* 모달 구조 변경: Flexbox를 사용하여 하단 버튼 고정 */
         .signature-modal-content, .confirmation-modal-content, .suggestion-modal-content, .address-selection-modal-content {
             background-color: white;
             border-radius: 0.5rem;
@@ -36,14 +37,15 @@
             padding: 1.5rem;
             width: 100%;
             max-width: 28rem;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
+            max-height: 90vh; /* 모달 높이 제한 */
+            display: flex; /* Flexbox 레이아웃 적용 */
+            flex-direction: column; /* 수직 방향으로 아이템 배치 */
         }
+        /* 스크롤이 필요한 콘텐츠 영역 */
         #address-modal-scroll-area {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 1rem;
+            flex-grow: 1; /* 남은 공간을 모두 차지 */
+            overflow-y: auto; /* 내용이 넘칠 때만 스크롤바 표시 */
+            margin-bottom: 1rem; /* 하단 버튼 영역과의 간격 */
         }
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -52,18 +54,6 @@
             width: 24px;
             height: 24px;
             animation: spin 1s linear infinite;
-        }
-        .progress-bar-bg {
-            background-color: #e5e7eb;
-            border-radius: 9999px;
-            height: 8px;
-            overflow: hidden;
-        }
-        .progress-bar-fg {
-            background-color: #3b82f6;
-            height: 100%;
-            border-radius: 9999px;
-            transition: width 0.3s ease-in-out, background-color 0.3s;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -185,7 +175,10 @@
             <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
         </div>
         <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
-        <div id="scan-progress-container" class="hidden mt-4 w-full space-y-3"></div>
+        <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
+            <div class="spinner mx-auto mb-2"></div>
+            <p id="scan-progress-text">송장 스캔 중...</p>
+        </div>
         <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
     </div>
     
@@ -228,13 +221,17 @@
 
     <div id="address-selection-modal" class="address-selection-modal" style="display: none;">
         <div class="address-selection-modal-content">
+            <!-- 스크롤이 필요한 콘텐츠를 이 div로 감쌉니다. -->
             <div id="address-modal-scroll-area">
                 <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 편집</h2>
+                
                 <div class="mb-4">
                     <h3 class="text-sm font-semibold text-gray-600 mb-1">원본 주소 (참조용)</h3>
                     <p id="original-address-display" class="p-2 bg-gray-100 rounded-md text-gray-800 text-sm font-mono break-all"></p>
                 </div>
+
                 <hr class="my-4 border-gray-300"/>
+
                 <div id="address-smart-edit-area" class="mb-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">스마트 편집 (조각 조합)</h3>
                     <div id="address-chips-container" class="flex flex-wrap gap-2 p-3 border border-gray-300 rounded-md bg-gray-50 mb-3 min-h-[50px]">
@@ -262,6 +259,7 @@
                         <button data-insert-char=" " class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300"> </button>
                         <button data-insert-char=", " class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">,</button>
                         <button data-insert-char="-" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">-</button>
+                        <!-- 백스페이스 버튼 UI/크기 수정 -->
                         <button data-action="backspace" class="px-4 py-1.5 rounded-md bg-gray-200 text-gray-800 text-lg font-bold hover:bg-gray-300 flex items-center justify-center">←</button>
                     </div>
                     <div id="smart-edit-preview-output" class="p-2 border bg-white rounded-md min-h-[40px] text-gray-700 text-base"></div>
@@ -270,7 +268,9 @@
                         <button id="apply-smart-edit-btn" class="flex-grow px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">적용</button>
                     </div>
                 </div>
+
                 <hr class="my-4 border-gray-300"/>
+
                 <div class="mt-4">
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">주소 직접 편집</h3>
                     <textarea id="address-direct-edit-input" 
@@ -284,6 +284,8 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 고정될 하단 버튼 영역 -->
             <div class="flex justify-end space-x-2 mt-auto pt-4 border-t border-gray-200">
                 <button id="select-address-cancel" class="px-4 py-2 rounded-md bg-gray-400 text-gray-800 text-sm font-medium hover:bg-gray-500">취소</button>
             </div>
@@ -542,7 +544,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         let onConfirmCallback = null;
         let currentAddressSelectionItemNo = null; 
         let initialAddressForReset = '';
-        let smartEditPieces = [];
+        let smartEditPieces = []; // 스마트 편집 조각을 저장할 배열
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -552,7 +554,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const deliveryCardsContainer = document.getElementById('delivery-cards-container');
         const deliverySheetImageInput = document.getElementById('deliverySheetImage');
         const scanAndGenerateButton = document.getElementById('scanAndGenerateButton');
-        const scanProgressContainer = document.getElementById('scan-progress-container');
+        const scanLoadingIndicator = document.getElementById('scan-loading-indicator');
         const scanErrorMessage = document.getElementById('scan-error-message');
         const scanErrorText = document.getElementById('scan-error-text');
         const scanSectionContainer = document.getElementById('scan-section-container');
@@ -560,6 +562,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const dataManagementContainer = document.getElementById('data-management-container');
         const exportDataButton = document.getElementById('exportDataButton');
         const importDataInput = document.getElementById('importDataInput');
+        const scanProgressText = document.getElementById('scan-progress-text');
         const selectedFilesDisplay = document.getElementById('selected-files-display');
         const signatureModal = document.getElementById('signature-modal');
         const signatureTextInput = document.getElementById('signature-text-input');
@@ -574,10 +577,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const versionInfoContainer = document.getElementById('version-info-container');
         const versionText = document.getElementById('version-text');
         const versionChangelog = document.getElementById('version-changelog');
-        const quickScrollContainer = document.getElementById('quick-scroll-container');
-        const quickScrollHandle = document.getElementById('quick-scroll-handle');
-        const quickScrollBubble = document.getElementById('quick-scroll-bubble');
         
+        // Address Modal Elements
         const addressSelectionModal = document.getElementById('address-selection-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
         const addressChipsContainer = document.getElementById('address-chips-container'); 
@@ -811,6 +812,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return formattedHawbNo.split(new RegExp(`(${escapedTerm})`, 'gi')).map(part => part.toLowerCase() === term.toLowerCase() ? `<span class="bg-yellow-200 rounded px-0.5">${part}</span>` : part).join('');
         };
         
+        // --- Render function ---
         const renderDeliveryCards = async (animationClass = '') => {
             let currentFilteredData = deliveryItems;
             if (activeFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
@@ -875,12 +877,17 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         }
     };
 
+    // --- UI Update & Event Listener Setup ---
     const updateFilterCounts = () => {
         document.getElementById('count-전체').textContent = deliveryItems.length;
         document.getElementById('count-배송전').textContent = deliveryItems.filter(item => item.status === '배송전').length;
         document.getElementById('count-배송중').textContent = deliveryItems.filter(item => item.status === '배송중').length;
         document.getElementById('count-완료').textContent = deliveryItems.filter(item => item.status === '완료').length;
     };
+    
+    const quickScrollContainer = document.getElementById('quick-scroll-container');
+    const quickScrollHandle = document.getElementById('quick-scroll-handle');
+    const quickScrollBubble = document.getElementById('quick-scroll-bubble');
     
     const updateStickyHeaderPositions = () => {
         requestAnimationFrame(() => {
@@ -1004,156 +1011,80 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return geminiAddress; 
         }
     }
-    
-    async function processSingleFile(fileData, uiElements) {
-        const { file, base64Data, mimeType } = fileData;
-        const { iconEl, statusEl, progressFgEl, retryBtnEl } = uiElements;
-        let progressInterval = null;
 
-        try {
-            iconEl.innerHTML = '<div class="spinner w-4 h-4"></div>';
-            statusEl.textContent = '분석 중...';
-            statusEl.classList.remove('text-green-600', 'text-red-600', 'text-gray-600');
-            progressFgEl.style.width = '10%';
-            progressFgEl.classList.remove('bg-green-500', 'bg-red-500');
-            progressFgEl.classList.add('bg-blue-500');
-            retryBtnEl.classList.add('hidden');
-            
-            let currentProgress = 10;
-            progressInterval = setInterval(() => {
-                currentProgress += Math.random() * 2;
-                if (currentProgress > 90) currentProgress = 90;
-                progressFgEl.style.width = `${currentProgress}%`;
-            }, 500);
+    async function performScan(filesToScan) {
+        const tempMergedResults = new Map();
+        const failedFileObjectsForRetry = [];
+
+        scanProgressText.textContent = `총 ${filesToScan.length}개 이미지 동시 스캔 중...`;
+
+        // 1. 각 파일에 대한 스캔 작업을 Promise 배열로 만듭니다.
+        const scanPromises = Array.from(filesToScan).map(async (file) => {
+            const base64ImageData = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
 
             const payload = {
-                contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: mimeType, data: base64Data } }] }],
+                contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: file.type, data: base64ImageData } }] }],
                 generationConfig: { temperature: 0, responseMimeType: "application/json" }
             };
+
             const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
             const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
-            const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            
-            clearInterval(progressInterval);
 
-            if (!response.ok) throw new Error(`API 오류 (${response.status})`);
+            const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
             
             const result = await response.json();
-            if (!result.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API 응답 없음");
-            
-            const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-            if (!Array.isArray(parsedData) || parsedData.length === 0) throw new Error("데이터 인식 불가");
 
+            if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다.");
+            }
+
+            const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+            if (!Array.isArray(parsedData) || parsedData.length === 0) {
+                throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다.");
+            }
+
+            // 이 이미지에서 찾은 모든 항목에 대해 주소 검증을 수행합니다.
             const validatedItems = [];
             for (const geminiItem of parsedData) {
+                const no = parseInt(geminiItem.no || '0', 10);
+                if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
+                    console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
+                    continue;
+                }
                 const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
                 validatedItems.push({ ...geminiItem, receiverAddressKorean: validatedAddress });
             }
-
-            progressFgEl.style.width = '100%';
-            progressFgEl.classList.replace('bg-blue-500', 'bg-green-500');
-            iconEl.innerHTML = '<span class="text-green-500">✔</span>';
-            statusEl.textContent = `성공 (${validatedItems.length}개 항목)`;
-            statusEl.classList.add('text-green-600');
-            
-            return validatedItems;
-
-        } catch (error) {
-            if (progressInterval) clearInterval(progressInterval);
-            progressFgEl.style.width = '100%';
-            progressFgEl.classList.replace('bg-blue-500', 'bg-red-500');
-            iconEl.innerHTML = '<span class="text-red-500">✖</span>';
-            statusEl.textContent = `실패: ${error.message}`;
-            statusEl.classList.add('text-red-600');
-            retryBtnEl.classList.remove('hidden');
-            throw error;
-        }
-    }
-
-    scanAndGenerateButton.addEventListener('click', async () => {
-        if (!currentFileToScan || currentFileToScan.length === 0) {
-            showMessage('스캔할 이미지를 선택해주세요.');
-            return;
-        }
-        
-        scanProgressContainer.innerHTML = '';
-        scanProgressContainer.classList.remove('hidden');
-        scanErrorMessage.classList.add('hidden');
-        
-        const files = Array.from(currentFileToScan);
-        const uiElementsMap = new Map();
-
-        files.forEach(file => {
-            const progressItem = document.createElement('div');
-            progressItem.className = 'p-2 border rounded-md bg-gray-50';
-            progressItem.innerHTML = `
-                <div class="flex items-center justify-between text-sm">
-                    <div class="flex items-center space-x-2 truncate">
-                        <div class="status-icon w-4 h-4 flex-shrink-0 flex items-center justify-center"></div>
-                        <span class="file-name truncate" title="${file.name}">${file.name}</span>
-                    </div>
-                    <button class="retry-button hidden ml-2 px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">재시도</button>
-                </div>
-                <div class="status-text text-xs text-gray-600 mt-1">대기 중...</div>
-                <div class="progress-bar-bg mt-1.5">
-                    <div class="progress-bar-fg"></div>
-                </div>
-            `;
-            scanProgressContainer.appendChild(progressItem);
-            
-            uiElementsMap.set(file, {
-                iconEl: progressItem.querySelector('.status-icon'),
-                statusEl: progressItem.querySelector('.status-text'),
-                progressFgEl: progressItem.querySelector('.progress-bar-fg'),
-                retryBtnEl: progressItem.querySelector('.retry-button')
-            });
+            return validatedItems; // 이 Promise는 검증된 항목들의 배열을 반환합니다.
         });
 
-        const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve({ file, base64Data: reader.result.split(',')[1], mimeType: file.type });
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(file);
-        });
+        // 2. 모든 스캔 작업을 동시에 실행하고, 모든 작업이 완료될 때까지 기다립니다.
+        const allResults = await Promise.allSettled(scanPromises);
 
-        let preloadedFiles;
-        try {
-            preloadedFiles = await Promise.all(files.map(readFileAsBase64));
-        } catch (error) {
-            showMessage('파일을 읽는 중 오류가 발생했습니다. 다시 시도해주세요.');
-            scanProgressContainer.classList.add('hidden');
-            return;
-        }
-
-        const allResults = [];
-        const CHUNK_SIZE = 3; // 한 번에 처리할 작업 수
-
-        for (let i = 0; i < preloadedFiles.length; i += CHUNK_SIZE) {
-            const chunk = preloadedFiles.slice(i, i + CHUNK_SIZE);
-            const scanPromises = chunk.map(fileData => {
-                const uiElements = uiElementsMap.get(fileData.file);
-                uiElements.retryBtnEl.onclick = () => processSingleFile(fileData, uiElements);
-                return processSingleFile(fileData, uiElements);
-            });
-            const chunkResults = await Promise.allSettled(scanPromises);
-            allResults.push(...chunkResults);
-        }
-        
-        const allNewItems = [];
-        allResults.forEach(result => {
-            if (result.status === 'fulfilled' && result.value) {
-                allNewItems.push(...result.value);
+        // 3. 모든 결과를 취합합니다.
+        allResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                const itemsFromImage = result.value; // 성공 시, 값은 항목들의 배열입니다.
+                itemsFromImage.forEach(item => {
+                    tempMergedResults.set(parseInt(item.no, 10), item);
+                });
+            } else { // status is 'rejected'
+                console.error(`파일 스캔 오류 (${filesToScan[index].name}):`, result.reason);
+                failedFileObjectsForRetry.push(filesToScan[index]);
             }
         });
 
-        if (allNewItems.length > 0) {
-            let newCount = 0;
-            let updateCount = 0;
-            const tempMergedResults = new Map();
-            
-            allNewItems.forEach(item => tempMergedResults.set(parseInt(item.no, 10), item));
+        let newCount = 0;
+        let updateCount = 0;
+        const allNewItems = Array.from(tempMergedResults.values());
 
-            const finalItems = Array.from(tempMergedResults.values()).map(item => ({
+        if (allNewItems.length > 0) {
+            const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
                 hawbNo: item.hawbNo || '',
                 receiverAddressKorean: item.receiverAddressKorean || '',
@@ -1178,18 +1109,65 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                     newCount++;
                 }
             });
-
             deliveryItems.sort((a, b) => a.no - b.no);
             saveDeliveryItemsToLocalStorage();
+        }
+
+        return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
+    }
+
+    scanAndGenerateButton.addEventListener('click', async () => {
+        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
+        
+        scanLoadingIndicator.style.display = 'block';
+        scanErrorMessage.style.display = 'none';
+        failedFileObjects = []; 
+
+        try {
+            const initialFiles = Array.from(currentFileToScan);
+            const result = await performScan(initialFiles);
+
+            if (result.failedFiles.length === 0) {
+                showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다.`);
+            } else {
+                failedFileObjects = result.failedFiles;
+                const successCount = initialFiles.length - failedFileObjects.length;
+                const failedFileNames = failedFileObjects.map(f => f.name);
+                
+                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공.\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
+
+                const onRetry = async () => {
+                    scanLoadingIndicator.style.display = 'block';
+                    scanProgressText.textContent = '실패한 파일 재시도 중...';
+                    
+                    const retryResult = await performScan(failedFileObjects);
+
+                    scanLoadingIndicator.style.display = 'none';
+
+                    if (retryResult.failedFiles.length === 0) {
+                        showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
+                    } else {
+                        const stillFailingNames = retryResult.failedFiles.map(f => f.name);
+                        showMessage(`재시도 후에도 아래 ${stillFailingNames.length}개 파일이 실패했습니다.\n- ${stillFailingNames.join('\n- ')}`, '재시도 일부 실패');
+                    }
+                    renderDeliveryCards();
+                    updateFilterCounts();
+                };
+                openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
+            }
+        } catch (error) {
+            console.error("전체 스캔 프로세스 오류:", error);
+            scanErrorText.textContent = error.message;
+            scanErrorMessage.style.display = 'block';
+        } finally {
+            scanLoadingIndicator.style.display = 'none';
+            deliverySheetImageInput.value = '';
+            currentFileToScan = null;
+            selectedFilesDisplay.textContent = '선택된 파일 없음';
             renderDeliveryCards();
             updateFilterCounts();
-            
-            showMessage(`${updateCount}개 업데이트, ${newCount}개 신규 생성 완료.`);
+            updateStickyHeaderPositions();
         }
-        
-        deliverySheetImageInput.value = '';
-        currentFileToScan = null;
-        selectedFilesDisplay.textContent = '선택된 파일 없음';
     });
     
     exportDataButton.addEventListener('click', () => {
@@ -1367,8 +1345,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v0.20240521.1750`;
-        versionChangelog.textContent = `스캔 안정성 개선 (제어된 병렬 처리) 및 오류 수정`;
+        // 버전 번호를 고정값으로 변경
+        versionText.textContent = `v0.20240521.1600`;
+        versionChangelog.textContent = `이미지 스캔 병렬 처리로 속도 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
