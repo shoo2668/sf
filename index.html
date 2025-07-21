@@ -261,8 +261,8 @@
                         <button data-insert-char="-" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300">-</button>
                         <!-- 백스페이스 버튼 추가 -->
                         <button data-action="backspace" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L21 12M3 12l6.414-6.414a2 2 0 012.828 0L21 12" />
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 002.828 0L21 12M3 12l6.414-6.414a2 2 0 012.828 0L21 12" />
                             </svg>
                         </button>
                     </div>
@@ -1321,15 +1321,9 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        
-        versionText.textContent = `v0.${year}${month}${day}.${hours}${minutes}`;
-        versionChangelog.textContent = `주소 편집 모달 개선 및 버전 자동화`;
+        // 버전 번호를 고정값으로 변경
+        versionText.textContent = `v0.20240521.1510`;
+        versionChangelog.textContent = `주소 편집 모달 개선 / 버전 고정 방식으로 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
