@@ -950,8 +950,63 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     });
 
     // --- Scan, Import, Export Logic ---
+    async function validateAddressWithKakao(geminiAddress) {
+        if (!KAKAO_API_KEY || !geminiAddress) return geminiAddress;
+
+        let queryAddress = geminiAddress;
+        let detailedPart = '';
+
+        const addressComponents = geminiAddress.split(',');
+        if (addressComponents.length > 1) {
+            queryAddress = addressComponents[0].trim();
+            detailedPart = addressComponents.slice(1).join(', ').trim();
+        }
+        
+        queryAddress = queryAddress.replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|도)?\s*/, '').trim();
+        queryAddress = queryAddress.replace(/^([가-힣]+(?:시|군|구))\s*/, '').trim();
+        queryAddress = queryAddress.replace(/^([가-힣]+(?:읍|면))\s*/, '').trim();
+        queryAddress = queryAddress.replace(/떡정골로/g, "떡전골로");
+        queryAddress = queryAddress.replace(/바란리/g, "발안리");
+
+        try {
+            const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(queryAddress)}`, {
+                headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
+            });
+            
+            if (!response.ok) {
+                console.error("카카오 API 응답 오류:", response.status, await response.text());
+                return geminiAddress; 
+            }
+
+            const data = await response.json();
+            if (data.documents && data.documents.length > 0) {
+                const firstResult = data.documents[0];
+                const roadAddress = firstResult.road_address;
+                const jibunAddress = firstResult.address;
+
+                let correctedBaseAddress = '';
+                if (roadAddress && roadAddress.address_name) {
+                    correctedBaseAddress = roadAddress.address_name;
+                } else if (jibunAddress && jibunAddress.address_name) {
+                    correctedBaseAddress = jibunAddress.address_name;
+                }
+
+                if (correctedBaseAddress) {
+                    if (detailedPart && !correctedBaseAddress.includes(detailedPart)) {
+                        return `${correctedBaseAddress}, ${detailedPart}`;
+                    }
+                    return correctedBaseAddress;
+                }
+            }
+            return geminiAddress; 
+        } catch (error) {
+            console.error("카카오 주소 검증 API 오류:", error);
+            return geminiAddress; 
+        }
+    }
+    
     async function processSingleFile(fileData, uiElements) {
-        const { file, base64Data, mimeType } = fileData; // mimeType 추가
+        const { file, base64Data, mimeType } = fileData;
         const { iconEl, statusEl, progressFgEl, retryBtnEl } = uiElements;
         let progressInterval = null;
 
@@ -972,7 +1027,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             }, 500);
 
             const payload = {
-                contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: mimeType, data: base64Data } }] }], // file.type 대신 mimeType 사용
+                contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: mimeType, data: base64Data } }] }],
                 generationConfig: { temperature: 0, responseMimeType: "application/json" }
             };
             const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
@@ -1056,7 +1111,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve({ file, base64Data: reader.result.split(',')[1], mimeType: file.type }); // mimeType도 함께 저장
+            reader.onload = () => resolve({ file, base64Data: reader.result.split(',')[1], mimeType: file.type });
             reader.onerror = (error) => reject(error);
             reader.readAsDataURL(file);
         });
@@ -1307,7 +1362,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     
     const setVersionInfo = () => {
         versionText.textContent = `v0.20240521.1745`;
-        versionChangelog.textContent = `스캔 프로세스 오류 수정 (함수 누락)`;
+        versionChangelog.textContent = `스캔 프로세스 치명적 오류 수정 (재시도 오류)`;
     };
 
     const setupDelegatedEventListeners = () => {
