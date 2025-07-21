@@ -393,47 +393,30 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         // --- Helper functions ---
 
-        /**
-         * 이미지를 지정된 최대 너비로 리사이징하고 Base64 문자열로 반환합니다.
-         * @param {File} file - 리사이징할 이미지 파일
-         * @returns {Promise<string>} 리사이징된 이미지의 Base64 데이터 (data: URL 접두사 제외)
-         */
         const resizeImage = (file) => {
             return new Promise((resolve, reject) => {
-                const MAX_WIDTH = 1920; // OCR에 충분한 최대 너비 설정 (예: 1920px)
+                const MAX_WIDTH = 1920;
                 const reader = new FileReader();
-
                 reader.onload = (event) => {
                     const img = new Image();
                     img.src = event.target.result;
-
                     img.onload = () => {
                         let width = img.width;
                         let height = img.height;
-
-                        // 너비가 최대 너비보다 클 경우에만 리사이징
                         if (width > MAX_WIDTH) {
                             height = (MAX_WIDTH / width) * height;
                             width = MAX_WIDTH;
                         }
-
                         const canvas = document.createElement('canvas');
                         canvas.width = width;
                         canvas.height = height;
-
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-
-                        // JPEG 형식과 80% 품질로 압축하여 데이터 크기를 더욱 줄임
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                        
-                        // "data:image/jpeg;base64," 부분을 제외하고 순수 데이터만 반환
-                        resolve(dataUrl.split(',')[1]);
+                        resolve({ file, data: dataUrl.split(',')[1] }); // 파일 정보와 함께 데이터 반환
                     };
-
                     img.onerror = (error) => reject(error);
                 };
-
                 reader.onerror = (error) => reject(error);
                 reader.readAsDataURL(file);
             });
@@ -527,33 +510,19 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             const cleanAddress = fullAddress.trim();
 
             // 1순위: '123-1201' 또는 '101동 202호' 같은 아파트 동-호수 패턴
-            const dongHoMatch1 = cleanAddress.match(/(\b\d{2,4}-\d{2,4}\b)/); // 123-1201
+            const dongHoMatch1 = cleanAddress.match(/\b(\d{2,4}-\d{2,4})\b/); // 123-1201
             if (dongHoMatch1) return dongHoMatch1[1];
             const dongHoMatch2 = cleanAddress.match(/(\d+)\s*동\s*(\d+)\s*호/); // 101동 202호
             if (dongHoMatch2) return `${dongHoMatch2[1]}-${dongHoMatch2[2]}`;
 
-            // 2순위: '도로명/길 + 건물번호' 패턴
+            // 2순위: '도로명/길 + 건물번호' 패턴 (공백 포함 도로명 지원)
             const roadAddrMatch = cleanAddress.match(/([가-힣\s\d]+(?:대로|로|번길|길))\s*([\d\-]+)/);
-            if (roadAddrMatch) return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
+            if (roadAddrMatch) return `${roadAddrMatch[1].trim()} ${roadAddrMatch[2]}`.trim();
 
             // 3순위: '지번(동/리) + 번지' 패턴
             const jibunAddrMatch = cleanAddress.match(/([가-힣\d\-]+(?:동|리))\s*([\d\-]+)/);
-            if (jibunAddrMatch) return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
+            if (jibunAddrMatch) return `${jibunAddrMatch[1].trim()} ${jibunAddrMatch[2]}`.trim();
             
-            // 4순위: 최후의 수단 (이전 로직과 유사하게, 주소 핵심 키워드부터 끝까지)
-            const keywords = ['대로', '로', '번길', '길', '동', '리'];
-            let bestMatchIndex = -1;
-            for (const keyword of keywords) {
-                const index = cleanAddress.indexOf(keyword);
-                if (index !== -1 && (bestMatchIndex === -1 || index < bestMatchIndex)) {
-                    bestMatchIndex = index;
-                }
-            }
-            if (bestMatchIndex !== -1) {
-                const sliceStartIndex = cleanAddress.lastIndexOf(' ', bestMatchIndex) + 1;
-                return cleanAddress.substring(sliceStartIndex).trim();
-            }
-
             // 모든 패턴 실패 시 전체 주소 반환
             return cleanAddress;
         };
@@ -566,20 +535,17 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             if (!address) return '';
             let cleanAddress = address.trim();
 
+            // 1순위: '도로명/길 + 건물번호' 패턴
             const roadAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:로|길|대로|번길))\s*([\d\-]+)/);
-            if (roadAddrMatch) {
-                return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
-            }
-
-            const jibunAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))\s*([\d\-]+)/);
-            if (jibunAddrMatch) {
-                return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
-            }
+            if (roadAddrMatch) return `${roadAddrMatch[1].trim()} ${roadAddrMatch[2]}`.trim();
             
+            // 2순위: '지번(동/리) + 번지' 패턴
+            const jibunAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))\s*([\d\-]+)/);
+            if (jibunAddrMatch) return `${jibunAddrMatch[1].trim()} ${jibunAddrMatch[2]}`.trim();
+            
+            // 3순위: 동/리 까지만
             const dongRiMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))/);
-            if (dongRiMatch) {
-                return dongRiMatch[1].trim();
-            }
+            if (dongRiMatch) return dongRiMatch[1].trim();
 
             return cleanAddress;
         };
@@ -1067,22 +1033,29 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     }
     
     async function performScan(filesToScan) {
-        const CONCURRENT_LIMIT = 3; 
+        const CONCURRENT_LIMIT = 3;
         const totalFiles = filesToScan.length;
         let completedCount = 0;
         
+        // 1단계: 모든 이미지 리사이징 (빠른 CPU 작업)
+        scanProgressText.textContent = `이미지 리사이징 준비 중...`;
+        const resizePromises = filesToScan.map(file => resizeImage(file));
+        const resizedImageObjects = await Promise.all(resizePromises);
+        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
+
+        // 2단계: 리사이징된 이미지로 API 요청 (느린 네트워크 작업)
         const tempMergedResults = new Map();
         const failedFileObjectsForRetry = [];
-        const fileQueue = [...filesToScan]; 
+        const requestQueue = [...resizedImageObjects]; 
 
-        const updateProgress = () => {
+        const updateApiProgress = () => {
             completedCount++;
-            scanProgressText.textContent = `이미지 처리 중 (${completedCount}/${totalFiles})...`;
+            scanProgressText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
         };
 
-        const processFile = async (file) => {
+        const processApiRequest = async (resizedObject) => {
+            const { file, data: base64ImageData } = resizedObject;
             try {
-                const base64ImageData = await resizeImage(file);
                 const payload = {
                     contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
                     generationConfig: { temperature: 0, responseMimeType: "application/json" }
@@ -1112,19 +1085,19 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 } else { throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다."); }
             } catch (error) {
                 console.error(`파일 스캔 오류 (${file.name}):`, error);
-                failedFileObjectsForRetry.push(file);
+                failedFileObjectsForRetry.push(file); // 실패 시 원본 파일 객체 저장
             } finally {
-                updateProgress();
+                updateApiProgress();
             }
         };
 
         const workerPromises = [];
         for (let i = 0; i < CONCURRENT_LIMIT; i++) {
             const worker = async () => {
-                while (fileQueue.length > 0) {
-                    const fileToProcess = fileQueue.shift(); 
-                    if (fileToProcess) {
-                        await processFile(fileToProcess);
+                while (requestQueue.length > 0) {
+                    const requestObject = requestQueue.shift(); 
+                    if (requestObject) {
+                        await processApiRequest(requestObject);
                     }
                 }
             };
@@ -1133,6 +1106,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         await Promise.all(workerPromises);
 
+        // 3단계: 결과 처리
         let newCount = 0;
         let updateCount = 0;
         const allNewItems = Array.from(tempMergedResults.values()); 
@@ -1173,7 +1147,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         
         scanLoadingIndicator.style.display = 'block';
         scanErrorMessage.style.display = 'none';
-        scanProgressText.textContent = `이미지 처리 준비 중...`;
         failedFileObjects = []; 
 
         try {
@@ -1191,7 +1164,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
                 const onRetry = async () => {
                     scanLoadingIndicator.style.display = 'block';
-                    scanProgressText.textContent = '실패한 파일 재시도 중...';
                     
                     const retryResult = await performScan(failedFileObjects);
 
@@ -1398,8 +1370,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.0810`;
-        versionChangelog.textContent = `클립보드 복사 로직 개선`;
+        versionText.textContent = `v20240722.0830`;
+        versionChangelog.textContent = `클립보드 로직 개선 및 스캔 UI 피드백 강화`;
     };
 
     const setupDelegatedEventListeners = () => {
