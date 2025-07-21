@@ -1057,66 +1057,78 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             return geminiAddress; 
         }
     }
-
+    
+    /**
+     * 제어된 병렬 처리로 이미지 스캔을 수행합니다.
+     * @param {File[]} filesToScan - 스캔할 파일 배열
+     * @returns {Promise<{newCount: number, updateCount: number, failedFiles: File[]}>} 처리 결과
+     */
     async function performScan(filesToScan) {
-        const tempMergedResults = new Map(); 
-        const failedFileObjectsForRetry = [];
+        const CONCURRENT_LIMIT = 3; // 스마트폰 환경을 고려하여 동시 실행 개수를 3으로 제한
+        const totalFiles = filesToScan.length;
+        let completedCount = 0;
         
-        for (let i = 0; i < filesToScan.length; i++) {
-            const file = filesToScan[i];
-            scanProgressText.textContent = `이미지 리사이징 중 (${i + 1}/${filesToScan.length})...`;
-            
+        const tempMergedResults = new Map();
+        const failedFileObjectsForRetry = [];
+        const fileQueue = [...filesToScan]; // 처리할 파일 목록 복사
+
+        const updateProgress = () => {
+            completedCount++;
+            scanProgressText.textContent = `이미지 처리 중 (${completedCount}/${totalFiles})...`;
+        };
+
+        const processFile = async (file) => {
             try {
                 const base64ImageData = await resizeImage(file);
-
-                scanProgressText.textContent = `이미지 분석 중 (${i + 1}/${filesToScan.length})...`;
-
                 const payload = {
                     contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
-                    generationConfig: { 
-                        temperature: 0,
-                        responseMimeType: "application/json"
-                    } 
+                    generationConfig: { temperature: 0, responseMimeType: "application/json" }
                 };
-                
+
                 const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
                 const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                 const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                
                 const result = await response.json();
 
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    try {
-                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        if (Array.isArray(parsedData) && parsedData.length > 0) {
-                            for (const geminiItem of parsedData) { 
-                                const no = parseInt(geminiItem.no || '0', 10);
-                                if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
-                                    console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
-                                    continue; 
-                                }
-
-                                scanProgressText.textContent = `송장 ${no}번 주소 검증 중 (${file.name})...`;
-                                const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
-                                
-                                tempMergedResults.set(no, { 
-                                    ...geminiItem, 
-                                    receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, 
-                                    receiverAddressComponents: geminiItem.receiverAddressComponents || []
-                                });
+                    const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                    if (Array.isArray(parsedData) && parsedData.length > 0) {
+                        for (const geminiItem of parsedData) {
+                            const no = parseInt(geminiItem.no || '0', 10);
+                            if (no === 0 || !geminiItem.hawbNo || geminiItem.hawbNo.trim() === '') {
+                                console.warn(`유효하지 않은 송장 정보 발견 (No: ${geminiItem.no}, HAWB: ${geminiItem.hawbNo}) - 파일 ${file.name}`);
+                                continue;
                             }
-                        } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
-                    } catch (parseError) {
-                        console.warn(`Gemini JSON 파싱 실패 (파일 ${file.name}):`, parseError);
-                    }
+                            const validatedAddress = await validateAddressWithKakao(geminiItem.receiverAddressKorean);
+                            tempMergedResults.set(no, { ...geminiItem, receiverAddressKorean: validatedAddress || geminiItem.receiverAddressKorean, receiverAddressComponents: geminiItem.receiverAddressComponents || [] });
+                        }
+                    } else { throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다."); }
                 } else { throw new Error("API가 분석 가능한 텍스트를 반환하지 않았습니다."); }
             } catch (error) {
                 console.error(`파일 스캔 오류 (${file.name}):`, error);
                 failedFileObjectsForRetry.push(file);
-                continue;
+            } finally {
+                updateProgress();
             }
+        };
+
+        const workerPromises = [];
+        for (let i = 0; i < CONCURRENT_LIMIT; i++) {
+            const worker = async () => {
+                while (fileQueue.length > 0) {
+                    const fileToProcess = fileQueue.shift(); // 대기열에서 파일 하나 가져오기
+                    if (fileToProcess) {
+                        await processFile(fileToProcess);
+                    }
+                }
+            };
+            workerPromises.push(worker());
         }
+
+        await Promise.all(workerPromises); // 모든 워커가 작업을 마칠 때까지 기다립니다.
 
         let newCount = 0;
         let updateCount = 0;
@@ -1124,8 +1136,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
 
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
-                no: parseInt(item.no, 10),
-                hawbNo: item.hawbNo || '',
+                no: parseInt(item.no, 10), hawbNo: item.hawbNo || '',
                 receiverAddressKorean: item.receiverAddressKorean || '',
                 receiverAddressOriginal: cleanStringForDisplay(item.receiverAddressOriginal),
                 companyNameKorean: item.companyNameKorean || '',
@@ -1154,11 +1165,13 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
 
+
     scanAndGenerateButton.addEventListener('click', async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
         
         scanLoadingIndicator.style.display = 'block';
         scanErrorMessage.style.display = 'none';
+        scanProgressText.textContent = `이미지 처리 준비 중...`;
         failedFileObjects = []; 
 
         try {
@@ -1353,7 +1366,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 }
             }
             
-            const percentage = cardPositionsCache.length > 1 ? closestIndex / (cardElementsCache.length - 1) : 0; 
+            const percentage = cardPositionsCache.length > 1 ? closestIndex / (cardPositionsCache.length - 1) : 0; 
             
             const usableScreenHeight = window.innerHeight / 2;
             const usableScreenTop = window.innerHeight / 2;
@@ -1385,7 +1398,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     const setVersionInfo = () => {
         // 버전 번호를 고정값으로 변경
         versionText.textContent = `v0.20240521.1540`;
-        versionChangelog.textContent = `리사이징`;
+        versionChangelog.textContent = `리사이징 및 병렬처리`;
     };
 
     const setupDelegatedEventListeners = () => {
