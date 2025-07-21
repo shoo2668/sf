@@ -524,33 +524,38 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         
         const extractClipboardAddressPart = (fullAddress) => {
             if (!fullAddress || typeof fullAddress !== 'string') return '';
-            let cleanAddress = fullAddress.trim();
+            const cleanAddress = fullAddress.trim();
 
+            // 주소 키워드 배열
+            const keywords = ['대로', '로', '번길', '길', '동', '리'];
+            let bestMatchIndex = -1;
+
+            // 주소에서 키워드가 처음 나타나는 위치 찾기
+            for (const keyword of keywords) {
+                const index = cleanAddress.indexOf(keyword);
+                if (index !== -1) {
+                    if (bestMatchIndex === -1 || index < bestMatchIndex) {
+                        bestMatchIndex = index;
+                    }
+                }
+            }
+
+            // 키워드를 찾았다면, 해당 키워드의 시작 위치부터 문자열 끝까지 반환
+            if (bestMatchIndex !== -1) {
+                // 키워드 앞의 공백을 포함하여 자르기 위해, 키워드 앞에서부터 첫 공백을 찾음
+                const sliceStartIndex = cleanAddress.lastIndexOf(' ', bestMatchIndex) + 1;
+                return cleanAddress.substring(sliceStartIndex).trim();
+            }
+
+            // 아파트 단지명이나 상세주소만 있는 경우를 위한 폴백(Fallback) 로직
             const dongHoMatch = cleanAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
-            if (dongHoMatch) {
-                return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
-            }
-            const hyphenUnitMatch = cleanAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
-            if (hyphenUnitMatch) {
-                return hyphenUnitMatch[1];
-            }
-
-            const roadAddrMatch = cleanAddress.match(/([가-힣]+(?:\d+[가-힣]*)?(?:로|길|대로|번길))\s*([\d\-]+)/);
-            if (roadAddrMatch) {
-                return `${roadAddrMatch[1]} ${roadAddrMatch[2]}`.trim();
-            }
-
-            const jibunAddrMatch = cleanAddress.match(/([가-힣\d\-]+(?:동|리))\s*([\d\-]+)/);
-            if (jibunAddrMatch) {
-                return `${jibunAddrMatch[1]} ${jibunAddrMatch[2]}`.trim();
-            }
+            if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
             
-            const dongRiMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))/);
-            if (dongRiMatch) {
-                return dongRiMatch[1].trim();
-            }
-
-            return cleanAddress.replace(/\s+[\d\-동호,]+$/, '').trim();
+            const hyphenUnitMatch = cleanAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
+            if (hyphenUnitMatch) return hyphenUnitMatch[1];
+            
+            // 어떤 패턴도 맞지 않으면, 전체 주소 반환
+            return cleanAddress;
         };
 
         const isValidAddressForMap = (address) => {
@@ -730,6 +735,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                         chip.className = 'inline-block bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full cursor-pointer hover:bg-blue-200';
                         chip.textContent = splitComponent;
                         chip.addEventListener('click', () => {
+                            if (navigator.vibrate) navigator.vibrate(20); // 햅틱 피드백 추가
                             smartEditPieces.push(splitComponent);
                             smartEditPreviewOutput.textContent = assembleSmartEditPieces(smartEditPieces);
                         });
@@ -777,6 +783,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         smartEditButtonContainer.addEventListener('click', (event) => {
             const button = event.target.closest('button');
             if (!button) return;
+
+            if (navigator.vibrate) navigator.vibrate(20); // 햅틱 피드백 추가
             
             const charToInsert = button.dataset.insertChar;
             if (charToInsert) {
@@ -953,7 +961,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             const isScanVisible = activeFilter === '배송준비';
             scanSectionContainer.classList.toggle('hidden', !isScanVisible);
             dataManagementContainer.classList.toggle('hidden', !isScanVisible);
-            versionInfoContainer.classList.toggle('hidden', !isScanVisible);
+            versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
 
             const deliveryInProgressCount = deliveryItems.filter(item => item.status === '배송중').length;
             quickScrollContainer.style.display = (activeFilter === '배송중' && deliveryInProgressCount > 0) ? 'block' : 'none';
@@ -1058,19 +1066,14 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         }
     }
     
-    /**
-     * 제어된 병렬 처리로 이미지 스캔을 수행합니다.
-     * @param {File[]} filesToScan - 스캔할 파일 배열
-     * @returns {Promise<{newCount: number, updateCount: number, failedFiles: File[]}>} 처리 결과
-     */
     async function performScan(filesToScan) {
-        const CONCURRENT_LIMIT = 3; // 스마트폰 환경을 고려하여 동시 실행 개수를 3으로 제한
+        const CONCURRENT_LIMIT = 3; 
         const totalFiles = filesToScan.length;
         let completedCount = 0;
         
         const tempMergedResults = new Map();
         const failedFileObjectsForRetry = [];
-        const fileQueue = [...filesToScan]; // 처리할 파일 목록 복사
+        const fileQueue = [...filesToScan]; 
 
         const updateProgress = () => {
             completedCount++;
@@ -1119,7 +1122,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         for (let i = 0; i < CONCURRENT_LIMIT; i++) {
             const worker = async () => {
                 while (fileQueue.length > 0) {
-                    const fileToProcess = fileQueue.shift(); // 대기열에서 파일 하나 가져오기
+                    const fileToProcess = fileQueue.shift(); 
                     if (fileToProcess) {
                         await processFile(fileToProcess);
                     }
@@ -1128,7 +1131,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             workerPromises.push(worker());
         }
 
-        await Promise.all(workerPromises); // 모든 워커가 작업을 마칠 때까지 기다립니다.
+        await Promise.all(workerPromises);
 
         let newCount = 0;
         let updateCount = 0;
@@ -1164,7 +1167,6 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         }
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
-
 
     scanAndGenerateButton.addEventListener('click', async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
@@ -1366,7 +1368,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
                 }
             }
             
-            const percentage = cardPositionsCache.length > 1 ? closestIndex / (cardPositionsCache.length - 1) : 0; 
+            const percentage = cardPositionsCache.length > 1 ? closestIndex / (cardElementsCache.length - 1) : 0; 
             
             const usableScreenHeight = window.innerHeight / 2;
             const usableScreenTop = window.innerHeight / 2;
@@ -1396,9 +1398,8 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
     };
     
     const setVersionInfo = () => {
-        // 버전 번호를 고정값으로 변경
-        versionText.textContent = `v0.20240521.1540`;
-        versionChangelog.textContent = `리사이징 및 병렬처리`;
+        versionText.textContent = `v0.20240522.1130`;
+        versionChangelog.textContent = `스마트 편집 조각 버튼 햅틱피드백 적용`;
     };
 
     const setupDelegatedEventListeners = () => {
