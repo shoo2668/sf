@@ -514,20 +514,20 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             const detailAddress = parts.length > 1 ? parts.slice(1).join(',').trim() : null;
 
             if (detailAddress) {
-                // 아파트 패턴 1: 301-1101 (전체가 이 패턴으로만 구성)
-                const hyphenMatch = detailAddress.match(/^\s*(\d{2,4}-\d{2,4})\s*$/);
+                // 아파트 패턴 1: '301-1101' (문자열 내 어디든)
+                const hyphenMatch = detailAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
                 if (hyphenMatch) {
                     return hyphenMatch[1];
                 }
 
-                // 아파트 패턴 2: 101동 202호 (전체가 이 패턴으로만 구성)
-                const dongHoMatch = detailAddress.match(/^\s*(\d+)\s*동\s*(\d+)\s*호\s*$/);
+                // 아파트 패턴 2: '101동 202호' (문자열 내 어디든)
+                const dongHoMatch = detailAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
                 if (dongHoMatch) {
                     return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
                 }
             }
 
-            // 아파트 패턴이 아니거나, 상세 주소가 없으면 기본 주소만 반환
+            // 아파트 패턴이 없거나, 상세 주소가 없으면 기본 주소만 반환
             return baseAddress;
         };
 
