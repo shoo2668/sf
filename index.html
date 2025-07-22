@@ -509,22 +509,26 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             if (!fullAddress || typeof fullAddress !== 'string') return '';
             const cleanAddress = fullAddress.trim();
 
-            // 1순위: '123-1201' 또는 '101동 202호' 같은 아파트 동-호수 패턴
-            const dongHoMatch1 = cleanAddress.match(/\b(\d{2,4}-\d{2,4})\b/); // 123-1201
-            if (dongHoMatch1) return dongHoMatch1[1];
-            const dongHoMatch2 = cleanAddress.match(/(\d+)\s*동\s*(\d+)\s*호/); // 101동 202호
-            if (dongHoMatch2) return `${dongHoMatch2[1]}-${dongHoMatch2[2]}`;
+            const parts = cleanAddress.split(',');
+            const baseAddress = parts[0].trim();
+            const detailAddress = parts.length > 1 ? parts.slice(1).join(',').trim() : null;
 
-            // 2순위: '도로명/길 + 건물번호' 패턴 (공백 포함 도로명 지원)
-            const roadAddrMatch = cleanAddress.match(/([가-힣\s\d]+(?:대로|로|번길|길))\s*([\d\-]+)/);
-            if (roadAddrMatch) return `${roadAddrMatch[1].trim()} ${roadAddrMatch[2]}`.trim();
+            if (detailAddress) {
+                // 아파트 패턴 1: 301-1101 (전체가 이 패턴으로만 구성)
+                const hyphenMatch = detailAddress.match(/^\s*(\d{2,4}-\d{2,4})\s*$/);
+                if (hyphenMatch) {
+                    return hyphenMatch[1];
+                }
 
-            // 3순위: '지번(동/리) + 번지' 패턴
-            const jibunAddrMatch = cleanAddress.match(/([가-힣\d\-]+(?:동|리))\s*([\d\-]+)/);
-            if (jibunAddrMatch) return `${jibunAddrMatch[1].trim()} ${jibunAddrMatch[2]}`.trim();
-            
-            // 모든 패턴 실패 시 전체 주소 반환
-            return cleanAddress;
+                // 아파트 패턴 2: 101동 202호 (전체가 이 패턴으로만 구성)
+                const dongHoMatch = detailAddress.match(/^\s*(\d+)\s*동\s*(\d+)\s*호\s*$/);
+                if (dongHoMatch) {
+                    return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
+                }
+            }
+
+            // 아파트 패턴이 아니거나, 상세 주소가 없으면 기본 주소만 반환
+            return baseAddress;
         };
 
         const isValidAddressForMap = (address) => {
@@ -535,19 +539,22 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
             if (!address) return '';
             let cleanAddress = address.trim();
 
+            // 지도 검색은 기본 주소 부분만 사용하는 것이 정확도가 높음
+            const baseAddress = cleanAddress.split(',')[0].trim();
+
             // 1순위: '도로명/길 + 건물번호' 패턴
-            const roadAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:로|길|대로|번길))\s*([\d\-]+)/);
+            const roadAddrMatch = baseAddress.match(/([가-힣\d\s]+(?:대로|로|번길|길))\s*([\d\-]+)/);
             if (roadAddrMatch) return `${roadAddrMatch[1].trim()} ${roadAddrMatch[2]}`.trim();
             
             // 2순위: '지번(동/리) + 번지' 패턴
-            const jibunAddrMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))\s*([\d\-]+)/);
+            const jibunAddrMatch = baseAddress.match(/([가-힣\d\s]+(?:동|리))\s*([\d\-]+)/);
             if (jibunAddrMatch) return `${jibunAddrMatch[1].trim()} ${jibunAddrMatch[2]}`.trim();
             
             // 3순위: 동/리 까지만
-            const dongRiMatch = cleanAddress.match(/([가-힣\d\s]+(?:동|리))/);
+            const dongRiMatch = baseAddress.match(/([가-힣\d\s]+(?:동|리))/);
             if (dongRiMatch) return dongRiMatch[1].trim();
 
-            return cleanAddress;
+            return baseAddress;
         };
 
         // --- Global state and DOM elements ---
@@ -986,7 +993,7 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const addressComponents = geminiAddress.split(',');
         if (addressComponents.length > 1) {
             queryAddress = addressComponents[0].trim();
-            detailedPart = addressComponents.slice(1).join(', ').trim();
+            detailedPart = addressComponents.slice(1).join(',').trim();
         }
         
         queryAddress = queryAddress.replace(/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도|제주특별자치도|충북|충남|전북|전남|경북|경남|제주)(특별시|광역시|특별자치시|도)?\s*/, '').trim();
@@ -1036,13 +1043,18 @@ Return a JSON array of objects. Each object must contain: \`no\`, \`hawbNo\`, \`
         const CONCURRENT_LIMIT = 3;
         const totalFiles = filesToScan.length;
         let completedCount = 0;
-        
+
         // 1단계: 모든 이미지 리사이징 (빠른 CPU 작업)
-        scanProgressText.textContent = `이미지 리사이징 준비 중...`;
-        const resizePromises = filesToScan.map(file => resizeImage(file));
+        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+        const resizePromises = filesToScan.map((file, index) => 
+            resizeImage(file).then(resizedObject => {
+                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
+                return resizedObject;
+            })
+        );
         const resizedImageObjects = await Promise.all(resizePromises);
         scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
-
+        
         // 2단계: 리사이징된 이미지로 API 요청 (느린 네트워크 작업)
         const tempMergedResults = new Map();
         const failedFileObjectsForRetry = [];
