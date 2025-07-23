@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html {
-            scroll-behavior: auto !important; /* JS로 부드러운 스크롤을 제어하기 위해 기본 스크롤 동작을 즉시로 변경 */
+            scroll-behavior: auto !important;
         }
         body {
             font-family: 'Inter', sans-serif;
@@ -45,7 +45,7 @@
             overflow-y: auto;
             margin-bottom: 1rem;
         }
-        #address-pieces-container button, #detail-pieces-container button {
+        #address-pieces-container button {
             margin: 0.25rem;
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
@@ -171,31 +171,26 @@
     <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
         <div class="smart-edit-modal-content">
             <div id="smart-edit-scroll-area">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 스마트 편집</h2>
-                
                 <div class="mb-4">
                     <h3 class="text-sm font-semibold text-gray-600 mb-1">AI 추출 원본 (참조용)</h3>
                     <p id="original-address-display" class="p-2 bg-gray-100 rounded-md text-gray-800 text-sm font-mono break-all"></p>
                 </div>
 
                 <div class="mb-2">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-1">기본주소 조각</h3>
+                    <h3 class="text-sm font-semibold text-gray-600 mb-1">주소 조각 (클릭하여 추가)</h3>
                     <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
                 </div>
-                <div class="mb-2">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-1">상세주소 조각</h3>
-                    <div id="detail-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
+                
+                <div id="fixed-buttons-container" class="mt-2 space-y-2">
+                    <div id="main-buttons" class="flex flex-wrap justify-center"></div>
+                    <div id="special-buttons" class="flex flex-wrap justify-center items-center"></div>
                 </div>
                 
                 <hr class="my-4 border-gray-300"/>
 
                 <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">기본 주소</h3>
-                    <textarea id="edited-base-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
-                </div>
-                <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">상세 주소</h3>
-                    <textarea id="edited-detail-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">수정할 주소</h3>
+                    <textarea id="edited-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="3"></textarea>
                 </div>
             </div>
             <div class="flex justify-between space-x-2 mt-auto pt-4 border-t border-gray-200">
@@ -206,7 +201,6 @@
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 1: GEMINI_PROMPT ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
 
 **CRITICAL INSTRUCTIONS:**
@@ -244,7 +238,6 @@
   }
 ]
 `;
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 1 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -429,8 +422,7 @@
         
         const smartEditModal = document.getElementById('smart-edit-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
-        const editedBaseAddressInput = document.getElementById('edited-base-address-input');
-        const editedDetailAddressInput = document.getElementById('edited-detail-address-input');
+        const editedAddressInput = document.getElementById('edited-address-input');
         const applySmartEditBtn = document.getElementById('apply-smart-edit-btn');
         const smartEditCancelBtn = document.getElementById('smart-edit-cancel');
 
@@ -480,42 +472,64 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
         
-        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 2: 스마트 편집 관련 함수들 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            editedBaseAddressInput.value = item.baseAddress || '';
-            editedDetailAddressInput.value = item.detailAddress || '';
-            autoResizeTextarea({ target: editedBaseAddressInput });
-            autoResizeTextarea({ target: editedDetailAddressInput });
+            editedAddressInput.value = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+            autoResizeTextarea({ target: editedAddressInput });
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
-            const detailPiecesContainer = document.getElementById('detail-pieces-container');
-            [addressPiecesContainer, detailPiecesContainer].forEach(c => c.innerHTML = '');
+            const mainButtonsContainer = document.getElementById('main-buttons');
+            const specialButtonsContainer = document.getElementById('special-buttons');
+            [addressPiecesContainer, mainButtonsContainer, specialButtonsContainer].forEach(c => c.innerHTML = '');
             
-            const createPieceButton = (text, targetInput, colorClass) => {
+            const createPieceButton = (text, colorClass, value, isHtml = false) => {
                 const button = document.createElement('button');
-                button.textContent = text;
+                if (isHtml) button.innerHTML = text;
+                else button.textContent = text;
+                
+                const finalValue = value !== undefined ? value : text;
                 button.className = `font-medium m-1 text-sm ${colorClass}`;
                 button.onclick = () => {
-                    targetInput.value += (targetInput.value ? ' ' : '') + text;
-                    autoResizeTextarea({ target: targetInput });
+                    const input = editedAddressInput;
+                    const needsSpace = finalValue !== ' ' && finalValue !== ',' && finalValue !== '-' && input.value.length > 0 && !/[\s,-]$/.test(input.value);
+                    const isNumber = /^\d$/.test(finalValue);
+                    
+                    input.value += (needsSpace && !isNumber ? ' ' : '') + finalValue;
+                    autoResizeTextarea({ target: input });
                 };
                 return button;
             };
 
             const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
-            basePieces.forEach(piece => {
-                addressPiecesContainer.appendChild(createPieceButton(piece, editedBaseAddressInput, 'bg-blue-100 text-blue-800 hover:bg-blue-200'));
-            });
+            basePieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full')));
 
-            const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
-            detailPieces.forEach(piece => {
-                detailPiecesContainer.appendChild(createPieceButton(piece, editedDetailAddressInput, 'bg-green-100 text-green-800 hover:bg-green-200'));
-            });
+            if (item.detailAddress) {
+                addressPiecesContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full'));
+                const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
+                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full')));
+            }
+            
+            ['길', '번길', '동', '리'].forEach(unit => mainButtonsContainer.appendChild(createPieceButton(unit, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-md')));
+            for (let i = 0; i <= 9; i++) {
+                mainButtonsContainer.appendChild(createPieceButton(i.toString(), 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-md'));
+            }
+            
+            specialButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-md', ' ', true));
+            specialButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-md'));
+            specialButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-md'));
+            
+            const backspaceBtn = document.createElement('button');
+            backspaceBtn.innerHTML = '←';
+            backspaceBtn.className = 'px-6 py-2 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-lg';
+            backspaceBtn.onclick = () => {
+                editedAddressInput.value = editedAddressInput.value.slice(0, -1);
+                autoResizeTextarea({ target: editedAddressInput });
+            };
+            specialButtonsContainer.appendChild(backspaceBtn);
 
             smartEditModal.style.display = 'flex';
         };
@@ -529,8 +543,17 @@
             if (currentEditItemNo === null) return;
             const itemIndex = deliveryItems.findIndex(item => item.no === currentEditItemNo);
             if (itemIndex > -1) {
-                deliveryItems[itemIndex].baseAddress = editedBaseAddressInput.value.trim();
-                deliveryItems[itemIndex].detailAddress = editedDetailAddressInput.value.trim();
+                const fullAddress = editedAddressInput.value.trim();
+                const commaIndex = fullAddress.indexOf(',');
+                
+                if (commaIndex > -1) {
+                    deliveryItems[itemIndex].baseAddress = fullAddress.substring(0, commaIndex).trim();
+                    deliveryItems[itemIndex].detailAddress = fullAddress.substring(commaIndex + 1).trim();
+                } else {
+                    deliveryItems[itemIndex].baseAddress = fullAddress;
+                    deliveryItems[itemIndex].detailAddress = '';
+                }
+
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(); 
                 showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
@@ -540,9 +563,7 @@
         
         applySmartEditBtn.addEventListener('click', applySmartEdit);
         smartEditCancelBtn.addEventListener('click', closeSmartEditModal);
-        editedBaseAddressInput.addEventListener('input', autoResizeTextarea);
-        editedDetailAddressInput.addEventListener('input', autoResizeTextarea);
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 2 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+        editedAddressInput.addEventListener('input', autoResizeTextarea);
 
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
@@ -1097,8 +1118,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1700`;
-        versionChangelog.textContent = `주소 분리 저장 및 스마트 편집 고도화`;
+        versionText.textContent = `v20240722.1800`;
+        versionChangelog.textContent = `스마트 편집 최종 UI/UX 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1147,7 +1168,6 @@
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
-                // 이전 버전 데이터(receiverAddressKorean) 호환
                 deliveryItems = parsedItems.map(item => {
                     if (item.receiverAddressKorean && !item.baseAddress) {
                         item.baseAddress = item.receiverAddressKorean;
