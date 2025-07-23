@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -227,7 +227,6 @@
         </div>
     </div>
 
-    <!-- ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 1: 스마트 편집 모달 HTML ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ -->
     <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
         <div class="smart-edit-modal-content">
             <div id="smart-edit-scroll-area">
@@ -246,9 +245,8 @@
                 </div>
 
                 <div id="fixed-buttons-container" class="mt-4 space-y-2">
-                    <div id="unit-buttons" class="flex flex-wrap justify-center"></div>
-                    <div id="number-buttons" class="flex flex-wrap justify-center"></div>
-                    <div id="special-buttons" class="flex flex-wrap justify-center"></div>
+                    <div id="main-buttons" class="flex flex-wrap justify-center"></div>
+                    <div id="special-buttons" class="flex flex-wrap justify-center items-center"></div>
                 </div>
 
                 <hr class="my-4 border-gray-300"/>
@@ -268,7 +266,6 @@
             </div>
         </div>
     </div>
-    <!-- ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 1 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ -->
 
     <script type="text/javascript">
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
@@ -535,49 +532,37 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
         
-        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 2: 스마트 편집 관련 함수들 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
-            // 1. 기본 정보 설정
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             editedAddressInput.value = item.receiverAddressKorean || '';
             autoResizeTextarea({ target: editedAddressInput });
 
-            // 2. 주소 조각 버튼 생성
             const koreanAddress = item.receiverAddressKorean || '';
             const addressPiecesContainer = document.getElementById('address-pieces-container');
-            addressPiecesContainer.innerHTML = '';
+            const mainButtonsContainer = document.getElementById('main-buttons');
+            const specialButtonsContainer = document.getElementById('special-buttons');
             
-            // 2-1. 단어 조각
+            [addressPiecesContainer, mainButtonsContainer, specialButtonsContainer].forEach(c => c.innerHTML = '');
+            
             const textPieces = koreanAddress.split(/[\s,]+|\d+/).filter(p => p && p.trim() !== '' && isNaN(p));
             textPieces.forEach(piece => createPieceButton(piece, 'bg-purple-100', 'text-purple-800', 'bg-purple-200', addressPiecesContainer));
             
-            // 2-2. 숫자 조각
             const numberPieces = koreanAddress.match(/\d[\d-]*/g) || [];
             numberPieces.forEach(piece => createPieceButton(piece, 'bg-teal-100', 'text-teal-800', 'bg-teal-200', addressPiecesContainer));
             
-            // 3. 고정 유닛/숫자/기능 버튼 생성
-            const unitButtonsContainer = document.getElementById('unit-buttons');
-            const numberButtonsContainer = document.getElementById('number-buttons');
-            const specialButtonsContainer = document.getElementById('special-buttons');
-            unitButtonsContainer.innerHTML = '';
-            numberButtonsContainer.innerHTML = '';
-            specialButtonsContainer.innerHTML = '';
-            
-            ['길', '번길', '동', '리'].forEach(unit => createPieceButton(unit, 'bg-blue-100', 'text-blue-800', 'bg-blue-200', unitButtonsContainer));
-            
+            ['길', '번길', '동', '리'].forEach(unit => createPieceButton(unit, 'bg-blue-100', 'text-blue-800', 'bg-blue-200', mainButtonsContainer));
             for (let i = 0; i <= 9; i++) {
-                createPieceButton(i.toString(), 'bg-green-100', 'text-green-800', 'bg-green-200', numberButtonsContainer);
+                createPieceButton(i.toString(), 'bg-green-100', 'text-green-800', 'bg-green-200', mainButtonsContainer);
             }
             
-            createPieceButton('빈칸', 'bg-gray-200', 'text-gray-800', 'bg-gray-300', specialButtonsContainer, ' ');
+            createPieceButton(' ', 'bg-gray-200', 'text-gray-800', 'bg-gray-300', specialButtonsContainer, ' ', true); // 빈칸
             createPieceButton(',', 'bg-gray-200', 'text-gray-800', 'bg-gray-300', specialButtonsContainer);
             createPieceButton('-', 'bg-gray-200', 'text-gray-800', 'bg-gray-300', specialButtonsContainer);
             
-            // 백스페이스 버튼
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
             backspaceBtn.className = 'px-6 py-2 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-lg';
@@ -590,15 +575,19 @@
             smartEditModal.style.display = 'flex';
         };
 
-        const createPieceButton = (text, bgColor, textColor, hoverColor, container, value) => {
+        const createPieceButton = (text, bgColor, textColor, hoverColor, container, value, isHtml = false) => {
             const button = document.createElement('button');
-            button.textContent = text;
+            if (isHtml) {
+                button.innerHTML = text;
+            } else {
+                button.textContent = text;
+            }
             const finalValue = value !== undefined ? value : text;
             button.className = `px-3 py-1.5 rounded-md ${bgColor} ${textColor} hover:${hoverColor} font-medium m-1 text-sm`;
             button.onclick = () => {
                 const input = editedAddressInput;
                 const needsSpace = finalValue !== ' ' && finalValue !== ',' && finalValue !== '-' && input.value.length > 0 && !/[\s,-]$/.test(input.value);
-                input.value += (needsSpace ? ' ' : '') + finalValue;
+                input.value += (needsSpace && !/^\d$/.test(finalValue) ? ' ' : '') + finalValue;
                 autoResizeTextarea({ target: input });
             };
             container.appendChild(button);
@@ -624,7 +613,6 @@
         applySmartEditBtn.addEventListener('click', applySmartEdit);
         smartEditCancelBtn.addEventListener('click', closeSmartEditModal);
         editedAddressInput.addEventListener('input', autoResizeTextarea);
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 2 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
@@ -1178,8 +1166,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1600`;
-        versionChangelog.textContent = `스마트 편집 기능 업그레이드`;
+        versionText.textContent = `v20240722.1630`;
+        versionChangelog.textContent = `스마트 편집 UI/UX 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
