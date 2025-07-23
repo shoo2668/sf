@@ -258,32 +258,43 @@
     </div>
 
     <script type="text/javascript">
+        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 1: GEMINI_PROMPT ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
 
 **CRITICAL INSTRUCTIONS:**
 1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item.
-2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields if present: "no", "hawbNo", "receiverName", "receiverPhone", "receiverAddress".
-3.  **PRESERVE ORIGINAL TEXT:** The values in the JSON should be the exact text as seen in the image, without any modification or translation.
-4.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array, where each element in the array is a JSON object representing one invoice.
-5.  **HANDLE MISSING DATA:** If a field is not found for an invoice, omit that key from the JSON object. A "no" is essential for an item to be valid.
+2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract "no", "hawbNo", "receiverName", "receiverPhone", "receiverAddress". The values must be the exact text from the image.
+3.  **TRANSLATE TO KOREAN (HANGUL):**
+    - If "receiverName" is in English or Romanized Korean, create a new field "receiverNameKorean" with the translated Hangul name.
+    - If "receiverAddress" is in English or Romanized Korean, create a new field "receiverAddressKorean" with the translated Hangul address.
+    - If the original is already in Hangul, copy it to the "Korean" fields.
+4.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of invoice objects.
+5.  **HANDLE MISSING DATA:** If a field is not found, omit that key from the JSON object. A "no" is essential.
 
-**Example of your required output format for an image with two invoices:**
+**Example of your required output format:**
 [
   {
-    "no": "1",
-    "hawbNo": "123 4567 8901",
-    "receiverName": "홍길동",
-    "receiverPhone": "010-1234-5678",
-    "receiverAddress": "서울 강동구 아리수로50길 40, 고덕동 래미안 힐스테이트 고덕 115-2304"
+    "no": "36",
+    "hawbNo": "SF319209893 1163",
+    "receiverName": "Ungheui Lee",
+    "receiverNameKorean": "이응희",
+    "receiverPhone": "010-6679-3641",
+    "receiverAddress": "Seoul Songpa-gu Hanyang APT Garak-ro 192 302 Ho 31 Dong",
+    "receiverAddressKorean": "서울 송파구 가락로 192, 한양아파트 31동 302호"
   },
   {
     "no": "2",
     "hawbNo": "987 6543 2109",
     "receiverName": "김철수",
-    "receiverAddress": "경기 성남시 분당구 판교역로 235"
+    "receiverNameKorean": "김철수",
+    "receiverAddress": "경기 성남시 분당구 판교역로 235",
+    "receiverAddressKorean": "경기 성남시 분당구 판교역로 235"
   }
 ]
 `;
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 1 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -882,8 +893,6 @@
         };
     };
 
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 여기가 추가된 부분 1 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     const validateAddressWithKakao = async (addressText) => {
         if (!addressText || !addressText.trim()) {
             return { baseAddress: '', detailAddress: '' };
@@ -896,7 +905,6 @@
     
             if (!response.ok) {
                 console.warn(`Kakao API-Failed with status: ${response.status}. Falling back to parser.`);
-                // API 호출 실패 시, 기존 파서로 대체
                 return parseAndReassembleAddress(addressText);
             }
     
@@ -904,21 +912,16 @@
     
             if (data.documents && data.documents.length > 0) {
                 const doc = data.documents[0];
-                // 도로명 주소를 우선적으로 사용, 없으면 지번 주소 사용
                 const kakaoBaseAddress = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
                 
-                // 원본 주소에서 카카오가 찾아준 기본 주소를 제거하여 상세 주소를 추출
-                // 대소문자, 공백 차이를 무시하고 제거하기 위해 정규식 사용
                 const cleanedOriginal = addressText.replace(/[\s,]/g, '');
                 const cleanedKakaoBase = kakaoBaseAddress.replace(/[\s,]/g, '');
                 
                 let detailAddress = '';
                 if (cleanedOriginal.startsWith(cleanedKakaoBase)) {
                     const remainingText = addressText.substring(kakaoBaseAddress.length).trim();
-                    // 앞에 붙은 쉼표나 불필요한 문자를 제거
                     detailAddress = remainingText.replace(/^[,.\s]+/, '').trim();
                 } else {
-                    // 카카오 주소가 원본과 많이 다를 경우, 기존 파서의 상세주소 로직을 활용
                     const parsed = parseAndReassembleAddress(addressText);
                     detailAddress = parsed.detailAddress;
                 }
@@ -928,19 +931,17 @@
                     detailAddress: detailAddress
                 };
             } else {
-                // 카카오가 주소를 찾지 못했을 경우, 기존 파서로 대체
                 console.warn(`Kakao API-No address found for: "${addressText}". Falling back to parser.`);
                 return parseAndReassembleAddress(addressText);
             }
         } catch (error) {
             console.error('Error validating address with Kakao API:', error);
-            // 네트워크 오류 등 예외 발생 시, 기존 파서로 대체
             return parseAndReassembleAddress(addressText);
         }
     };
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 추가된 부분 1 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 2: performScan 함수 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 3;
         const totalFiles = filesToScan.length;
@@ -1015,15 +1016,12 @@
                                 const no = parseInt(geminiItem.no || '0', 10);
                                 if (no === 0) continue;
                                 
-                                // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-                                // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 여기가 수정된 부분 2 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-                                const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.receiverAddress);
-                                // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 2 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-                                // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+                                const addressToValidate = geminiItem.receiverAddressKorean || geminiItem.receiverAddress;
+                                const { baseAddress, detailAddress } = await validateAddressWithKakao(addressToValidate);
                                 
                                 geminiItem.baseAddress = baseAddress;
                                 geminiItem.detailAddress = detailAddress;
-                                geminiItem.receiverAddressOriginal = geminiItem.receiverAddress || '';
+                                geminiItem.receiverAddressOriginal = geminiItem.receiverAddress || ''; 
                                 
                                 tempMergedResults.set(no, geminiItem);
                             }
@@ -1052,8 +1050,10 @@
                 baseAddress: item.baseAddress || '',
                 detailAddress: item.detailAddress || '',
                 receiverAddressOriginal: item.receiverAddressOriginal || '',
-                companyNameKorean: item.receiverName || '',
-                receiverNameKorean: item.receiverName || '',
+                companyNameKorean: item.receiverNameKorean || item.receiverName,
+                receiverNameKorean: item.receiverNameKorean || item.receiverName,
+                companyNameOriginal: item.receiverName,
+                receiverNameOriginal: item.receiverName,
                 receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null
@@ -1074,6 +1074,8 @@
         }
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 2 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     scanAndGenerateButton.addEventListener('click', async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
@@ -1317,8 +1319,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1300`;
-        versionChangelog.textContent = `다중 송장 인식 및 분리 처리 기능 구현`;
+        versionText.textContent = `v20240722.1400`;
+        versionChangelog.textContent = `한글 번역 기능 추가 (Gemini Prompt 수정)`;
     };
 
     const setupDelegatedEventListeners = () => {
