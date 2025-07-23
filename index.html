@@ -258,26 +258,31 @@
     </div>
 
     <script type="text/javascript">
-        const GEMINI_PROMPT = `Analyze the provided invoice image. Your task is to perform Optical Character Recognition (OCR) and extract all visible text. Structure the extracted text into a JSON object with keys corresponding to the labels found on the invoice.
+        const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
 
 **CRITICAL INSTRUCTIONS:**
-1.  **EXTRACT ALL TEXT:** Do not omit any text. Capture everything, including labels and values.
-2.  **USE BEST-GUESS KEYS:** Use simplified English keys for common labels (e.g., "no", "hawbNo", "receiverName", "receiverAddress", "receiverPhone"). If a label is unclear, use a generic key like "field1", "field2".
-3.  **PRESERVE ORIGINAL TEXT:** The values in the JSON object should be the exact text as seen in the image, without any modification, translation, or reformatting.
-4.  **SINGLE JSON OBJECT:** Your entire output MUST be a single, valid JSON object. Do not include any text, explanations, or markdown formatting before or after the JSON object.
+1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item.
+2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields if present: "no", "hawbNo", "receiverName", "receiverPhone", "receiverAddress".
+3.  **PRESERVE ORIGINAL TEXT:** The values in the JSON should be the exact text as seen in the image, without any modification or translation.
+4.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array, where each element in the array is a JSON object representing one invoice.
+5.  **HANDLE MISSING DATA:** If a field is not found for an invoice, omit that key from the JSON object. A "no" is essential for an item to be valid.
 
-**Example of your required output format:**
-{
-  "no": "1",
-  "hawbNo": "123 4567 8901",
-  "senderName": "Some Company",
-  "senderPhone": "02-123-4567",
-  "receiverName": "홍길동",
-  "receiverPhone": "010-1234-5678",
-  "receiverAddress": "서울 강동구 아리수로50길 40, 고덕동 래미안 힐스테이트 고덕 115-2304",
-  "productName": "Sample Item",
-  "memo": "Handle with care"
-}
+**Example of your required output format for an image with two invoices:**
+[
+  {
+    "no": "1",
+    "hawbNo": "123 4567 8901",
+    "receiverName": "홍길동",
+    "receiverPhone": "010-1234-5678",
+    "receiverAddress": "서울 강동구 아리수로50길 40, 고덕동 래미안 힐스테이트 고덕 115-2304"
+  },
+  {
+    "no": "2",
+    "hawbNo": "987 6543 2109",
+    "receiverName": "김철수",
+    "receiverAddress": "경기 성남시 분당구 판교역로 235"
+  }
+]
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -472,7 +477,6 @@
         const baseAddressDirectEditInput = document.getElementById('base-address-direct-edit-input');
         const detailAddressDirectEditInput = document.getElementById('detail-address-direct-edit-input');
         const applyDirectEditBtn = document.getElementById('apply-direct-edit-btn');
-        const smartEditButtonContainer = document.getElementById('address-smart-edit-area');
         const selectAddressCancelBtn = document.getElementById('select-address-cancel');
 
         // --- Modal & Core Logic Functions ---
@@ -764,8 +768,14 @@
     });
 
     // --- Scan, Import, Export Logic ---
-    const reassembleAddress = (components) => {
-        if (!Array.isArray(components)) return { baseAddress: '', detailAddress: '' };
+    const parseAndReassembleAddress = (fullAddressText) => {
+        if (!fullAddressText) return { baseAddress: '', detailAddress: '' };
+
+        const components = fullAddressText
+            .replace(/P\d{12}/g, '') // 개인통관번호 제거
+            .replace(/,/g, ' ')     // 쉼표를 공백으로 변환
+            .split(/\s+/)
+            .filter(p => p);
 
         const usedIndices = new Set();
         const baseAddressParts = [];
@@ -804,29 +814,38 @@
                         roadName += nextPart;
                         usedIndices.add(nextIdx);
                         nextIdx++;
-                    } else {
-                        break;
-                    }
+                    } else { break; }
                 }
 
                 let buildingNumber = null;
                 let buildingNumberIdx = -1;
-                let searchIdx = nextIdx;
-                while(searchIdx < components.length) {
-                     if (usedIndices.has(searchIdx)) { searchIdx++; continue; }
-                     if (isNumeric(components[searchIdx])) {
-                         buildingNumber = components[searchIdx];
-                         buildingNumberIdx = searchIdx;
-                         break;
-                     }
-                     searchIdx++;
+                let searchIdx = i - 1; // 도로명 앞 숫자부터
+                while(searchIdx >= 0) {
+                    if(usedIndices.has(searchIdx)) { searchIdx--; continue; }
+                    if(isNumeric(components[searchIdx])) {
+                        buildingNumber = components[searchIdx];
+                        buildingNumberIdx = searchIdx;
+                        break;
+                    }
+                    searchIdx--;
+                }
+                if (!buildingNumber) { // 앞에서 못찾으면 뒤에서
+                     searchIdx = nextIdx;
+                     while(searchIdx < components.length) {
+                         if (usedIndices.has(searchIdx)) { searchIdx++; continue; }
+                         if (isNumeric(components[searchIdx])) {
+                             buildingNumber = components[searchIdx];
+                             buildingNumberIdx = searchIdx;
+                             break;
+                         }
+                         searchIdx++;
+                    }
                 }
 
+                baseAddressParts.push(roadName);
                 if (buildingNumber) {
-                    baseAddressParts.push(`${roadName} ${buildingNumber}`);
+                    baseAddressParts.push(buildingNumber);
                     usedIndices.add(buildingNumberIdx);
-                } else {
-                    baseAddressParts.push(roadName);
                 }
                 roadNameFound = true;
                 break; 
@@ -836,7 +855,7 @@
         if (!roadNameFound) {
             ['동', '리'].forEach(suffix => {
                  for (let i = 0; i < components.length; i++) {
-                    if (usedIndices.has(i)) continue;
+                    if (usedIndices.has(i) || roadNameFound) continue;
                     if (components[i].endsWith(suffix)) {
                         baseAddressParts.push(components[i]);
                         usedIndices.add(i);
@@ -862,7 +881,7 @@
             detailAddress: detailAddressParts.join(' ').trim()
         };
     };
-    
+
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 3;
         const totalFiles = filesToScan.length;
@@ -908,11 +927,11 @@
 
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+                        if (Array.isArray(parsedData) && parsedData.length > 0) {
                              return parsedData;
                         }
                     }
-                    throw new Error("이미지에서 유효한 데이터를 찾지 못했습니다.");
+                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
                 } catch (error) {
                     lastError = error;
                     console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
@@ -931,24 +950,20 @@
                     const requestObject = requestQueue.shift(); 
                     if (requestObject) {
                         try {
-                            const apiResult = await processApiRequest(requestObject);
-                            const geminiItem = apiResult;
-                            
-                            const fullAddressText = geminiItem.receiverAddress || '';
-                            const addressComponents = fullAddressText.split(/\s+/).filter(p => p);
-                            const { baseAddress, detailAddress } = reassembleAddress(addressComponents);
+                            const apiResultArray = await processApiRequest(requestObject);
 
-                            const validatedAddresses = await validateAddressWithKakao({ baseAddress, detailAddress });
+                            for (const geminiItem of apiResultArray) {
+                                const no = parseInt(geminiItem.no || '0', 10);
+                                if (no === 0) continue;
 
-                            geminiItem.baseAddress = validatedAddresses.baseAddress;
-                            geminiItem.detailAddress = validatedAddresses.detailAddress;
-                            geminiItem.receiverAddressComponents = addressComponents;
-                            geminiItem.receiverAddressOriginal = fullAddressText;
-                            
-                            const no = parseInt(geminiItem.no || '0', 10);
-                            if (no === 0) continue;
-
-                            tempMergedResults.set(no, geminiItem);
+                                const { baseAddress, detailAddress } = parseAndReassembleAddress(geminiItem.receiverAddress);
+                                
+                                geminiItem.baseAddress = baseAddress;
+                                geminiItem.detailAddress = detailAddress;
+                                geminiItem.receiverAddressOriginal = geminiItem.receiverAddress || '';
+                                
+                                tempMergedResults.set(no, geminiItem);
+                            }
                         } catch (error) {
                             console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
                             failedFileObjectsForRetry.push(requestObject.file);
@@ -973,9 +988,8 @@
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddress || '',
                 detailAddress: item.detailAddress || '',
-                receiverAddressComponents: item.receiverAddressComponents || [],
                 receiverAddressOriginal: item.receiverAddressOriginal || '',
-                companyNameKorean: item.receiverName || '', // 회사명 대신 수취인 이름 우선 사용
+                companyNameKorean: item.receiverName || '',
                 receiverNameKorean: item.receiverName || '',
                 receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
                 status: '배송전', isHawbConfirmed: false,
@@ -1084,13 +1098,11 @@
                         const importedData = JSON.parse(e.target.result);
                         if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
                         
-                        // 데이터 구조 검증 (새로운 구조 또는 이전 구조 호환)
                         const firstItem = importedData[0];
                         if (importedData.length > 0 && typeof firstItem.no === 'undefined' && (typeof firstItem.baseAddress === 'undefined' && typeof firstItem.receiverAddressKorean === 'undefined')) {
                            throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
                         }
                         
-                        // 이전 버전 데이터(receiverAddressKorean)를 새 구조로 변환
                         deliveryItems = importedData.map(item => {
                             if (item.receiverAddressKorean && !item.baseAddress) {
                                 const parts = item.receiverAddressKorean.split(',');
@@ -1242,8 +1254,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1230`;
-        versionChangelog.textContent = `스캔 로직 전면 재설계 (AI OCR + 코드 파싱)`;
+        versionText.textContent = `v20240722.1300`;
+        versionChangelog.textContent = `다중 송장 인식 및 분리 처리 기능 구현`;
     };
 
     const setupDelegatedEventListeners = () => {
