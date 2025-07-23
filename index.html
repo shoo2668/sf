@@ -29,17 +29,19 @@
             z-index: 50;
             padding: 1rem;
         }
+        /* ▼▼▼▼▼ 수정된 부분: 모달 크기 증가 ▼▼▼▼▼ */
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content {
             background-color: white;
             border-radius: 0.5rem;
             box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             padding: 1.5rem;
             width: 100%;
-            max-width: 28rem;
-            max-height: 90vh;
+            max-width: 32rem; /* 28rem -> 32rem */
+            max-height: 95vh; /* 90vh -> 95vh */
             display: flex;
             flex-direction: column;
         }
+        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         #smart-edit-scroll-area {
             flex-grow: 1;
             overflow-y: auto;
@@ -181,9 +183,8 @@
                     <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
                 </div>
                 
-                <div id="fixed-buttons-container" class="mt-2 space-y-2">
+                <div id="fixed-buttons-container" class="mt-2">
                     <div id="main-buttons" class="flex flex-wrap justify-center"></div>
-                    <div id="special-buttons" class="flex flex-wrap justify-center items-center"></div>
                 </div>
                 
                 <hr class="my-4 border-gray-300"/>
@@ -483,8 +484,7 @@
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
             const mainButtonsContainer = document.getElementById('main-buttons');
-            const specialButtonsContainer = document.getElementById('special-buttons');
-            [addressPiecesContainer, mainButtonsContainer, specialButtonsContainer].forEach(c => c.innerHTML = '');
+            [addressPiecesContainer, mainButtonsContainer].forEach(c => c.innerHTML = '');
             
             const createPieceButton = (text, colorClass, value, isHtml = false) => {
                 const button = document.createElement('button');
@@ -518,18 +518,18 @@
                 mainButtonsContainer.appendChild(createPieceButton(i.toString(), 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-md'));
             }
             
-            specialButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-md', ' ', true));
-            specialButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-md'));
-            specialButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-md'));
+            mainButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-1.5 rounded-md', ' ', true));
+            mainButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
+            mainButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
             
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
-            backspaceBtn.className = 'px-6 py-2 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-lg';
+            backspaceBtn.className = 'px-6 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
             backspaceBtn.onclick = () => {
                 editedAddressInput.value = editedAddressInput.value.slice(0, -1);
                 autoResizeTextarea({ target: editedAddressInput });
             };
-            specialButtonsContainer.appendChild(backspaceBtn);
+            mainButtonsContainer.appendChild(backspaceBtn);
 
             smartEditModal.style.display = 'flex';
         };
@@ -1118,8 +1118,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1800`;
-        versionChangelog.textContent = `스마트 편집 최종 UI/UX 개선`;
+        versionText.textContent = `v20240722.1830`;
+        versionChangelog.textContent = `스마트 편집 모달 레이아웃 및 UX 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1151,7 +1151,7 @@
                     break;
                 case 'sign-delivery': openSignatureModal(itemNo); break;
                 case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
-                case 'toggle-details': const details = document.querySelector(`[data-details-container="${itemNo}"]`); if (details) { details.style.display = details.style.display === 'none' ? '' : 'none'; button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; } break;
+                case 'toggle-details': const details = document.querySelector(`[data-details-container="${data.no}"]`); if (details) { details.style.display = details.style.display === 'none' ? '' : 'none'; button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; } break;
             }
         });
         deliveryCardsContainer.addEventListener('change', (event) => {
