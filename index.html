@@ -287,17 +287,17 @@
 
 **Examples to guide your tokenization:**
 
-*   **Source:** `(Seoul Gangdong-gu 40, Arisu-ro 50-gil, Godeokdong RAMIAN HILLSTAT E Godeok 115-2304)`
-    *   **Correct Output:** `{"receiverAddressComponents": ["서울", "강동구", "40", "아리수로", "50길", "고덕동", "래미안 힐스테이트 고덕", "115-2304"]}`
+*   **Source:** \`(Seoul Gangdong-gu 40, Arisu-ro 50-gil, Godeokdong RAMIAN HILLSTAT E Godeok 115-2304)\`
+    *   **Correct Output:** \`{"receiverAddressComponents": ["서울", "강동구", "40", "아리수로", "50길", "고덕동", "래미안 힐스테이트 고덕", "115-2304"]}\`
 
-*   **Source:** `(Seoul Songpa-gu 88 Jamsil-ro, Lake Palace 117-2901)`
-    *   **Correct Output:** `{"receiverAddressComponents": ["서울", "송파구", "88", "잠실로", "레이크팰리스", "117-2901"]}`
-
-*   **Source:** `(Gyeonggi-do, Hwaseong-si, Dongtan-daero... 101-202)`
-    *   **Correct Output:** `{"receiverAddressComponents": ["경기도", "화성시", "동탄대로", "101-202"]}`
+*   **Source:** \`(Seoul Songpa-gu 88 Jamsil-ro, Lake Palace 117-2901)\`
+    *   **Correct Output:** \`{"receiverAddressComponents": ["서울", "송파구", "88", "잠실로", "레이크팰리스", "117-2901"]}\`
     
-*   **Source:** `Baran-ri 10-2`
-    *   **Correct Output:** `{"receiverAddressComponents": ["발안리", "10-2"]}`
+*   **Source:** \`(Gyeonggi-do, Hwaseong-si, Dongtan-daero... 101-202)\`
+    *   **Correct Output:** \`{"receiverAddressComponents": ["경기도", "화성시", "동탄대로", "101-202"]}\`
+    
+*   **Source:** \`Baran-ri 10-2\`
+    *   **Correct Output:** \`{"receiverAddressComponents": ["발안리", "10-2"]}\`
 
 **Final Output Format:**
 Return only the JSON object. Do not include any text before or after it. It must be a single, valid JSON object with the "receiverAddressComponents" key.
