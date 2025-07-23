@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -29,7 +29,6 @@
             z-index: 50;
             padding: 1rem;
         }
-        /* 모달 구조 변경: Flexbox를 사용하여 하단 버튼 고정 */
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content {
             background-color: white;
             border-radius: 0.5rem;
@@ -37,17 +36,16 @@
             padding: 1.5rem;
             width: 100%;
             max-width: 28rem;
-            max-height: 90vh; /* 모달 높이 제한 */
-            display: flex; /* Flexbox 레이아웃 적용 */
-            flex-direction: column; /* 수직 방향으로 아이템 배치 */
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
         }
-        /* 스크롤이 필요한 콘텐츠 영역 */
         #smart-edit-scroll-area {
-            flex-grow: 1; /* 남은 공간을 모두 차지 */
-            overflow-y: auto; /* 내용이 넘칠 때만 스크롤바 표시 */
-            margin-bottom: 1rem; /* 하단 버튼 영역과의 간격 */
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
         }
-        #address-pieces-container button {
+        #address-pieces-container button, #detail-pieces-container button {
             margin: 0.25rem;
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
@@ -63,77 +61,19 @@
             height: 24px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes slideInLeft {
-            from { transform: translateX(-100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
+        @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .animate-slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
-        #delivery-cards-container {
-            transition: transform 0.1s ease-out;
-            will-change: transform;
-        }
-        #filter-buttons-container, #search-bar-container {
-            position: fixed;
-            left: 0;
-            width: 100vw;
-            will-change: transform, top;
-        }
-        #quick-scroll-container {
-            position: fixed;
-            top: 0;
-            right: 0;
-            height: 100%;
-            width: 40px;
-            display: none;
-            z-index: 40;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        #quick-scroll-handle {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            width: 24px;
-            height: 50px;
-            background-color: rgba(0, 0, 0, 0.25);
-            border-radius: 12px;
-            cursor: grab;
-            transition: background-color 0.2s;
-        }
-        #quick-scroll-handle:not(.active) {
-            transition: background-color 0.2s, top 0.15s ease-out;
-        }
-        #quick-scroll-handle.active {
-            background-color: rgba(37, 99, 235, 0.7);
-            cursor: grabbing;
-        }
-        #quick-scroll-bubble {
-            position: absolute;
-            right: 50px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 10px 20px;
-            background-color: rgba(0, 0, 0, 0.75);
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 700;
-            border-radius: 16px;
-            display: none;
-            pointer-events: none;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        #quick-scroll-handle.active ~ #quick-scroll-bubble {
-             transition: none;
-        }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
+        #filter-buttons-container, #search-bar-container { position: fixed; left: 0; width: 100vw; will-change: transform, top; }
+        #quick-scroll-container { position: fixed; top: 0; right: 0; height: 100%; width: 40px; display: none; z-index: 40; user-select: none; -webkit-user-select: none; }
+        #quick-scroll-handle { position: absolute; right: 8px; top: 50%; width: 24px; height: 50px; background-color: rgba(0, 0, 0, 0.25); border-radius: 12px; cursor: grab; transition: background-color 0.2s; }
+        #quick-scroll-handle:not(.active) { transition: background-color 0.2s, top 0.15s ease-out; }
+        #quick-scroll-handle.active { background-color: rgba(37, 99, 235, 0.7); cursor: grabbing; }
+        #quick-scroll-bubble { position: absolute; right: 50px; top: 50%; transform: translateY(-50%); padding: 10px 20px; background-color: rgba(0, 0, 0, 0.75); color: white; font-size: 1.5rem; font-weight: 700; border-radius: 16px; display: none; pointer-events: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        #quick-scroll-handle.active ~ #quick-scroll-bubble { transition: none; }
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -227,6 +167,7 @@
         </div>
     </div>
 
+    <!-- 스마트 편집 모달 -->
     <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
         <div class="smart-edit-modal-content">
             <div id="smart-edit-scroll-area">
@@ -238,26 +179,23 @@
                 </div>
 
                 <div class="mb-2">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-1">주소 조각 (클릭하여 추가)</h3>
-                    <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200">
-                        <!-- 주소 조각 버튼들이 여기에 동적으로 생성됩니다 -->
-                    </div>
+                    <h3 class="text-sm font-semibold text-gray-600 mb-1">기본주소 조각</h3>
+                    <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
                 </div>
-
-                <div id="fixed-buttons-container" class="mt-4 space-y-2">
-                    <div id="main-buttons" class="flex flex-wrap justify-center"></div>
-                    <div id="special-buttons" class="flex flex-wrap justify-center items-center"></div>
+                <div class="mb-2">
+                    <h3 class="text-sm font-semibold text-gray-600 mb-1">상세주소 조각</h3>
+                    <div id="detail-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
                 </div>
-
+                
                 <hr class="my-4 border-gray-300"/>
 
                 <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">수정할 주소</h3>
-                    <textarea id="edited-address-input" 
-                              class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" 
-                              rows="3" 
-                              placeholder="주소 조각을 클릭하거나 직접 입력하세요"
-                              ></textarea>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">기본 주소</h3>
+                    <textarea id="edited-base-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">상세 주소</h3>
+                    <textarea id="edited-detail-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
                 </div>
             </div>
             <div class="flex justify-between space-x-2 mt-auto pt-4 border-t border-gray-200">
@@ -268,17 +206,21 @@
     </div>
 
     <script type="text/javascript">
+        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 1: GEMINI_PROMPT ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
 
 **CRITICAL INSTRUCTIONS:**
 1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item.
 2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract "no", "hawbNo", "receiverName", "receiverPhone", "receiverAddress". The values must be the exact text from the image.
-3.  **TRANSLATE TO KOREAN (HANGUL):**
-    - If "receiverName" is in English or Romanized Korean, create a new field "receiverNameKorean" with the translated Hangul name.
-    - If "receiverAddress" is in English or Romanized Korean, create a new field "receiverAddressKorean" with the translated Hangul address.
-    - If the original is already in Hangul, copy it to the "Korean" fields.
+3.  **TRANSLATE AND SEPARATE ADDRESS:**
+    - If "receiverName" is in English/Romanized Korean, create a new field "receiverNameKorean" with the translated Hangul name. If it's already in Hangul, copy it.
+    - If "receiverAddress" is in English/Romanized Korean, translate it to Hangul.
+    - **Separate the translated Hangul address into "baseAddressKorean" and "detailAddressKorean".**
+    - "baseAddressKorean" should contain the main address (e.g., "서울 송파구 가락로 192"). This is the part a map can search.
+    - "detailAddressKorean" should contain the rest (e.g., "한양아파트 31동 302호").
+    - If there is no detail address, the "detailAddressKorean" field can be omitted.
 4.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of invoice objects.
-5.  **HANDLE MISSING DATA:** If a field is not found, omit that key from the JSON object. A "no" is essential.
+5.  **HANDLE MISSING DATA:** If a field is not found, omit that key. A "no" is essential.
 
 **Example of your required output format:**
 [
@@ -289,7 +231,8 @@
     "receiverNameKorean": "이응희",
     "receiverPhone": "010-6679-3641",
     "receiverAddress": "Seoul Songpa-gu Hanyang APT Garak-ro 192 302 Ho 31 Dong",
-    "receiverAddressKorean": "서울 송파구 가락로 192, 한양아파트 31동 302호"
+    "baseAddressKorean": "서울 송파구 가락로 192",
+    "detailAddressKorean": "한양아파트 31동 302호"
   },
   {
     "no": "2",
@@ -297,10 +240,11 @@
     "receiverName": "김철수",
     "receiverNameKorean": "김철수",
     "receiverAddress": "경기 성남시 분당구 판교역로 235",
-    "receiverAddressKorean": "경기 성남시 분당구 판교역로 235"
+    "baseAddressKorean": "경기 성남시 분당구 판교역로 235"
   }
 ]
 `;
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 1 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -420,13 +364,16 @@
             return '';
         };
         
-        const extractClipboardAddressPart = (address) => {
-            if (!address) return '';
-            const hyphenMatch = address.match(/\b(\d{2,4}-\d{2,4})\b/);
-            if (hyphenMatch) return hyphenMatch[1];
-            const dongHoMatch = address.match(/(\d+)\s*동\s*(\d+)\s*호/);
-            if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
-            return address;
+        const extractClipboardAddressPart = (item) => {
+            if (!item) return '';
+            const { baseAddress, detailAddress } = item;
+            if (detailAddress) {
+                const hyphenMatch = detailAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
+                if (hyphenMatch) return hyphenMatch[1];
+                const dongHoMatch = detailAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
+                if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
+            }
+            return baseAddress || '';
         };
 
         const isValidAddressForMap = (address) => {
@@ -482,7 +429,8 @@
         
         const smartEditModal = document.getElementById('smart-edit-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
-        const editedAddressInput = document.getElementById('edited-address-input');
+        const editedBaseAddressInput = document.getElementById('edited-base-address-input');
+        const editedDetailAddressInput = document.getElementById('edited-detail-address-input');
         const applySmartEditBtn = document.getElementById('apply-smart-edit-btn');
         const smartEditCancelBtn = document.getElementById('smart-edit-cancel');
 
@@ -532,65 +480,44 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
         
+        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 2: 스마트 편집 관련 함수들 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            editedAddressInput.value = item.receiverAddressKorean || '';
-            autoResizeTextarea({ target: editedAddressInput });
+            editedBaseAddressInput.value = item.baseAddress || '';
+            editedDetailAddressInput.value = item.detailAddress || '';
+            autoResizeTextarea({ target: editedBaseAddressInput });
+            autoResizeTextarea({ target: editedDetailAddressInput });
 
-            const koreanAddress = item.receiverAddressKorean || '';
             const addressPiecesContainer = document.getElementById('address-pieces-container');
-            const mainButtonsContainer = document.getElementById('main-buttons');
-            const specialButtonsContainer = document.getElementById('special-buttons');
+            const detailPiecesContainer = document.getElementById('detail-pieces-container');
+            [addressPiecesContainer, detailPiecesContainer].forEach(c => c.innerHTML = '');
             
-            [addressPiecesContainer, mainButtonsContainer, specialButtonsContainer].forEach(c => c.innerHTML = '');
-            
-            const textPieces = koreanAddress.split(/[\s,]+|\d+/).filter(p => p && p.trim() !== '' && isNaN(p));
-            textPieces.forEach(piece => createPieceButton(piece, 'bg-purple-100', 'text-purple-800', 'bg-purple-200', addressPiecesContainer));
-            
-            const numberPieces = koreanAddress.match(/\d[\d-]*/g) || [];
-            numberPieces.forEach(piece => createPieceButton(piece, 'bg-teal-100', 'text-teal-800', 'bg-teal-200', addressPiecesContainer));
-            
-            ['길', '번길', '동', '리'].forEach(unit => createPieceButton(unit, 'bg-blue-100', 'text-blue-800', 'bg-blue-200', mainButtonsContainer));
-            for (let i = 0; i <= 9; i++) {
-                createPieceButton(i.toString(), 'bg-green-100', 'text-green-800', 'bg-green-200', mainButtonsContainer);
-            }
-            
-            createPieceButton(' ', 'bg-gray-200', 'text-gray-800', 'bg-gray-300', specialButtonsContainer, ' ', true); // 빈칸
-            createPieceButton(',', 'bg-gray-200', 'text-gray-800', 'bg-gray-300', specialButtonsContainer);
-            createPieceButton('-', 'bg-gray-200', 'text-gray-800', 'bg-gray-300', specialButtonsContainer);
-            
-            const backspaceBtn = document.createElement('button');
-            backspaceBtn.innerHTML = '←';
-            backspaceBtn.className = 'px-6 py-2 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-lg';
-            backspaceBtn.onclick = () => {
-                editedAddressInput.value = editedAddressInput.value.slice(0, -1);
-                autoResizeTextarea({ target: editedAddressInput });
+            const createPieceButton = (text, targetInput, colorClass) => {
+                const button = document.createElement('button');
+                button.textContent = text;
+                button.className = `font-medium m-1 text-sm ${colorClass}`;
+                button.onclick = () => {
+                    targetInput.value += (targetInput.value ? ' ' : '') + text;
+                    autoResizeTextarea({ target: targetInput });
+                };
+                return button;
             };
-            specialButtonsContainer.appendChild(backspaceBtn);
+
+            const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
+            basePieces.forEach(piece => {
+                addressPiecesContainer.appendChild(createPieceButton(piece, editedBaseAddressInput, 'bg-blue-100 text-blue-800 hover:bg-blue-200'));
+            });
+
+            const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
+            detailPieces.forEach(piece => {
+                detailPiecesContainer.appendChild(createPieceButton(piece, editedDetailAddressInput, 'bg-green-100 text-green-800 hover:bg-green-200'));
+            });
 
             smartEditModal.style.display = 'flex';
-        };
-
-        const createPieceButton = (text, bgColor, textColor, hoverColor, container, value, isHtml = false) => {
-            const button = document.createElement('button');
-            if (isHtml) {
-                button.innerHTML = text;
-            } else {
-                button.textContent = text;
-            }
-            const finalValue = value !== undefined ? value : text;
-            button.className = `px-3 py-1.5 rounded-md ${bgColor} ${textColor} hover:${hoverColor} font-medium m-1 text-sm`;
-            button.onclick = () => {
-                const input = editedAddressInput;
-                const needsSpace = finalValue !== ' ' && finalValue !== ',' && finalValue !== '-' && input.value.length > 0 && !/[\s,-]$/.test(input.value);
-                input.value += (needsSpace && !/^\d$/.test(finalValue) ? ' ' : '') + finalValue;
-                autoResizeTextarea({ target: input });
-            };
-            container.appendChild(button);
         };
 
         const closeSmartEditModal = () => {
@@ -602,7 +529,8 @@
             if (currentEditItemNo === null) return;
             const itemIndex = deliveryItems.findIndex(item => item.no === currentEditItemNo);
             if (itemIndex > -1) {
-                deliveryItems[itemIndex].receiverAddressKorean = editedAddressInput.value.trim();
+                deliveryItems[itemIndex].baseAddress = editedBaseAddressInput.value.trim();
+                deliveryItems[itemIndex].detailAddress = editedDetailAddressInput.value.trim();
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(); 
                 showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
@@ -612,7 +540,9 @@
         
         applySmartEditBtn.addEventListener('click', applySmartEdit);
         smartEditCancelBtn.addEventListener('click', closeSmartEditModal);
-        editedAddressInput.addEventListener('input', autoResizeTextarea);
+        editedBaseAddressInput.addEventListener('input', autoResizeTextarea);
+        editedDetailAddressInput.addEventListener('input', autoResizeTextarea);
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 여기까지 수정된 부분 2 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
@@ -640,8 +570,8 @@
         };
         
         const openNaverMap = (item) => {
-            const addressForMapSearch = item.receiverAddressKorean || '';
-            const textToCopy = `${item.no}. ${extractClipboardAddressPart(item.receiverAddressKorean)}`;
+            const addressForMapSearch = item.baseAddress || '';
+            const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
             textarea.style.position = 'fixed';
@@ -687,8 +617,8 @@
             }
 
             deliveryCardsContainer.innerHTML = currentFilteredData.map(data => {
-                const fullAddress = data.receiverAddressKorean || '';
-                const isMapButtonActive = isValidAddressForMap(fullAddress);
+                const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
+                const isMapButtonActive = isValidAddressForMap(data.baseAddress);
                 return `
                     <div class="${data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white')} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
@@ -905,7 +835,8 @@
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
                 hawbNo: item.hawbNo || '',
-                receiverAddressKorean: item.receiverAddressKorean || item.receiverAddress || '',
+                baseAddress: item.baseAddressKorean || '',
+                detailAddress: item.detailAddressKorean || '',
                 receiverAddressOriginal: item.receiverAddress || '',
                 companyNameKorean: item.receiverNameKorean || item.receiverName || '',
                 receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
@@ -1019,7 +950,7 @@
                         if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
                         
                         const firstItem = importedData[0];
-                        if (importedData.length > 0 && typeof firstItem.no === 'undefined' && typeof firstItem.receiverAddressKorean === 'undefined') {
+                        if (importedData.length > 0 && typeof firstItem.no === 'undefined' && typeof firstItem.baseAddress === 'undefined') {
                            throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
                         }
                         
@@ -1166,8 +1097,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1630`;
-        versionChangelog.textContent = `스마트 편집 UI/UX 개선`;
+        versionText.textContent = `v20240722.1700`;
+        versionChangelog.textContent = `주소 분리 저장 및 스마트 편집 고도화`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1216,11 +1147,12 @@
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
+                // 이전 버전 데이터(receiverAddressKorean) 호환
                 deliveryItems = parsedItems.map(item => {
-                    if (item.baseAddress) {
-                        item.receiverAddressKorean = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
-                        delete item.baseAddress;
-                        delete item.detailAddress;
+                    if (item.receiverAddressKorean && !item.baseAddress) {
+                        item.baseAddress = item.receiverAddressKorean;
+                        item.detailAddress = '';
+                        delete item.receiverAddressKorean;
                     }
                     return item;
                 }).sort((a, b) => a.no - b.no);
