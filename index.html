@@ -956,7 +956,7 @@
                                 const no = parseInt(geminiItem.no || '0', 10);
                                 if (no === 0) continue;
 
-                                const { baseAddress, detailAddress } = parseAndReassembleAddress(geminiItem.receiverAddress);
+                                const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.receiverAddress);
                                 
                                 geminiItem.baseAddress = baseAddress;
                                 geminiItem.detailAddress = detailAddress;
