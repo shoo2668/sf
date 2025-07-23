@@ -16,7 +16,7 @@
             padding-bottom: 80px;
             overscroll-behavior-y: contain;
         }
-        .signature-modal, .confirmation-modal, .suggestion-modal, .address-selection-modal {
+        .signature-modal, .confirmation-modal, .smart-edit-modal {
             position: fixed;
             top: 0;
             left: 0;
@@ -30,7 +30,7 @@
             padding: 1rem;
         }
         /* 모달 구조 변경: Flexbox를 사용하여 하단 버튼 고정 */
-        .signature-modal-content, .confirmation-modal-content, .suggestion-modal-content, .address-selection-modal-content {
+        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content {
             background-color: white;
             border-radius: 0.5rem;
             box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -42,10 +42,18 @@
             flex-direction: column; /* 수직 방향으로 아이템 배치 */
         }
         /* 스크롤이 필요한 콘텐츠 영역 */
-        #address-modal-scroll-area {
+        #smart-edit-scroll-area {
             flex-grow: 1; /* 남은 공간을 모두 차지 */
             overflow-y: auto; /* 내용이 넘칠 때만 스크롤바 표시 */
             margin-bottom: 1rem; /* 하단 버튼 영역과의 간격 */
+        }
+        #address-pieces-container button {
+            margin: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
         }
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -219,40 +227,41 @@
         </div>
     </div>
 
-    <div id="address-selection-modal" class="address-selection-modal" style="display: none;">
-        <div class="address-selection-modal-content">
-            <div id="address-modal-scroll-area">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 편집</h2>
+    <!-- 스마트 편집 모달 -->
+    <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
+        <div class="smart-edit-modal-content">
+            <div id="smart-edit-scroll-area">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">주소 스마트 편집</h2>
                 
                 <div class="mb-4">
                     <h3 class="text-sm font-semibold text-gray-600 mb-1">AI 추출 원본 (참조용)</h3>
                     <p id="original-address-display" class="p-2 bg-gray-100 rounded-md text-gray-800 text-sm font-mono break-all"></p>
                 </div>
 
+                <div class="mb-2">
+                    <h3 class="text-sm font-semibold text-gray-600 mb-1">주소 조각 (클릭하여 추가)</h3>
+                    <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200">
+                        <!-- 주소 조각 버튼들이 여기에 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+
                 <hr class="my-4 border-gray-300"/>
 
                 <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">기본 주소</h3>
-                    <textarea id="base-address-direct-edit-input" 
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">수정할 주소</h3>
+                    <textarea id="edited-address-input" 
                               class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" 
-                              rows="1" 
-                              placeholder="예: 서울 강동구 아리수로50길 40"
+                              rows="3" 
+                              placeholder="주소 조각을 클릭하거나 직접 입력하세요"
                               ></textarea>
                 </div>
-                <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">상세 주소</h3>
-                    <textarea id="detail-address-direct-edit-input" 
-                              class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" 
-                              rows="1" 
-                              placeholder="예: 고덕동 래미안 힐스테이트 115-2304"
-                              ></textarea>
-                </div>
-                <div class="flex space-x-2 mt-4">
-                    <button id="apply-direct-edit-btn" class="flex-grow px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium">수정 적용</button>
+                <div class="flex space-x-2 mt-2">
+                    <button id="clear-edited-address-btn" class="flex-grow px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm font-medium">내용 지우기</button>
                 </div>
             </div>
-            <div class="flex justify-end space-x-2 mt-auto pt-4 border-t border-gray-200">
-                <button id="select-address-cancel" class="px-4 py-2 rounded-md bg-gray-400 text-gray-800 text-sm font-medium hover:bg-gray-500">닫기</button>
+            <div class="flex justify-between space-x-2 mt-auto pt-4 border-t border-gray-200">
+                <button id="smart-edit-cancel" class="w-1/3 px-4 py-2 rounded-md bg-gray-400 text-gray-800 text-sm font-medium hover:bg-gray-500">취소</button>
+                <button id="apply-smart-edit-btn" class="w-2/3 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
             </div>
         </div>
     </div>
@@ -414,27 +423,17 @@
             return '';
         };
         
-        const extractClipboardAddressPart = (item) => {
-            if (!item) return '';
-            const { baseAddress, detailAddress } = item;
-
-            if (detailAddress) {
-                const hyphenMatch = detailAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
-                if (hyphenMatch) return hyphenMatch[1];
-
-                const dongHoMatch = detailAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
-                if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
-            }
-
-            return baseAddress || '';
+        const extractClipboardAddressPart = (address) => {
+            if (!address) return '';
+            const hyphenMatch = address.match(/\b(\d{2,4}-\d{2,4})\b/);
+            if (hyphenMatch) return hyphenMatch[1];
+            const dongHoMatch = address.match(/(\d+)\s*동\s*(\d+)\s*호/);
+            if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
+            return address;
         };
 
         const isValidAddressForMap = (address) => {
             return !!(address && address.trim().length > 0);
-        };
-
-        const extractMapSearchQuery = (baseAddress) => {
-            return baseAddress || '';
         };
         
         // --- Global state and DOM elements ---
@@ -447,9 +446,7 @@
         let failedFileObjects = []; 
         let currentSignatureItemNo = null;
         let onConfirmCallback = null;
-        let currentAddressSelectionItemNo = null; 
-        let initialAddressForReset = {};
-        let smartEditPieces = [];
+        let currentEditItemNo = null; 
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -469,26 +466,30 @@
         const importDataInput = document.getElementById('importDataInput');
         const scanProgressText = document.getElementById('scan-progress-text');
         const selectedFilesDisplay = document.getElementById('selected-files-display');
+        
         const signatureModal = document.getElementById('signature-modal');
         const signatureTextInput = document.getElementById('signature-text-input');
         const clearSignatureBtn = document.getElementById('clearSignature');
         const cancelSignatureBtn = document.getElementById('cancelSignature');
         const saveSignatureBtn = document.getElementById('saveSignature');
+        
         const confirmationModal = document.getElementById('confirmation-modal');
         const confirmationModalTitle = document.getElementById('confirmation-modal-title');
         const confirmationModalMessage = document.getElementById('confirmation-modal-message');
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
+        
         const versionInfoContainer = document.getElementById('version-info-container');
         const versionText = document.getElementById('version-text');
         const versionChangelog = document.getElementById('version-changelog');
         
-        const addressSelectionModal = document.getElementById('address-selection-modal');
+        const smartEditModal = document.getElementById('smart-edit-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
-        const baseAddressDirectEditInput = document.getElementById('base-address-direct-edit-input');
-        const detailAddressDirectEditInput = document.getElementById('detail-address-direct-edit-input');
-        const applyDirectEditBtn = document.getElementById('apply-direct-edit-btn');
-        const selectAddressCancelBtn = document.getElementById('select-address-cancel');
+        const addressPiecesContainer = document.getElementById('address-pieces-container');
+        const editedAddressInput = document.getElementById('edited-address-input');
+        const clearEditedAddressBtn = document.getElementById('clear-edited-address-btn');
+        const applySmartEditBtn = document.getElementById('apply-smart-edit-btn');
+        const smartEditCancelBtn = document.getElementById('smart-edit-cancel');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -536,53 +537,51 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
 
-        const openAddressSelectionModal = (itemNo) => {
-            currentAddressSelectionItemNo = itemNo;
+        const openSmartEditModal = (itemNo) => {
+            currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
 
-            initialAddressForReset = { baseAddress: item.baseAddress || '', detailAddress: item.detailAddress || '' };
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            baseAddressDirectEditInput.value = item.baseAddress || '';
-            detailAddressDirectEditInput.value = item.detailAddress || '';
-            
-            setTimeout(() => {
-                autoResizeTextarea({ target: baseAddressDirectEditInput });
-                autoResizeTextarea({ target: detailAddressDirectEditInput });
-            }, 0);
+            editedAddressInput.value = item.receiverAddressKorean || '';
+            autoResizeTextarea({ target: editedAddressInput });
 
-            addressSelectionModal.style.display = 'flex';
+            addressPiecesContainer.innerHTML = '';
+            const pieces = (item.receiverAddressOriginal || '').split(/[\s,]+/).filter(p => p.trim() !== '');
+            pieces.forEach(piece => {
+                const button = document.createElement('button');
+                button.textContent = piece;
+                button.className = 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+                button.onclick = () => {
+                    editedAddressInput.value += (editedAddressInput.value ? ' ' : '') + piece;
+                    autoResizeTextarea({ target: editedAddressInput });
+                };
+                addressPiecesContainer.appendChild(button);
+            });
+            smartEditModal.style.display = 'flex';
         };
 
-        const closeAddressSelectionModal = () => {
-            addressSelectionModal.style.display = 'none';
-            currentAddressSelectionItemNo = null;
-            initialAddressForReset = {};
+        const closeSmartEditModal = () => {
+            smartEditModal.style.display = 'none';
+            currentEditItemNo = null;
         };
 
-        const applyNewAddress = (newBaseAddress, newDetailAddress) => {
-            if (currentAddressSelectionItemNo === null) return;
-            const itemIndex = deliveryItems.findIndex(item => item.no === currentAddressSelectionItemNo);
+        const applySmartEdit = () => {
+            if (currentEditItemNo === null) return;
+            const itemIndex = deliveryItems.findIndex(item => item.no === currentEditItemNo);
             if (itemIndex > -1) {
-                deliveryItems[itemIndex].baseAddress = newBaseAddress;
-                deliveryItems[itemIndex].detailAddress = newDetailAddress;
-                
+                deliveryItems[itemIndex].receiverAddressKorean = editedAddressInput.value.trim();
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(); 
                 showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
             }
-            closeAddressSelectionModal();
+            closeSmartEditModal();
         };
         
-        applyDirectEditBtn.addEventListener('click', () => {
-            const newBase = baseAddressDirectEditInput.value.trim();
-            const newDetail = detailAddressDirectEditInput.value.trim();
-            applyNewAddress(newBase, newDetail);
-        });
-
-        baseAddressDirectEditInput.addEventListener('input', autoResizeTextarea);
-        detailAddressDirectEditInput.addEventListener('input', autoResizeTextarea);
-        selectAddressCancelBtn.addEventListener('click', closeAddressSelectionModal);
+        applySmartEditBtn.addEventListener('click', applySmartEdit);
+        clearEditedAddressBtn.addEventListener('click', () => { editedAddressInput.value = ''; autoResizeTextarea({ target: editedAddressInput }); });
+        editedAddressInput.addEventListener('input', autoResizeTextarea);
+        smartEditCancelBtn.addEventListener('click', closeSmartEditModal);
         
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
@@ -610,8 +609,8 @@
         };
         
         const openNaverMap = (item) => {
-            const addressForMapSearch = extractMapSearchQuery(item.baseAddress);
-            const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
+            const addressForMapSearch = item.receiverAddressKorean || '';
+            const textToCopy = `${item.no}. ${extractClipboardAddressPart(item.receiverAddressKorean)}`;
             const textarea = document.createElement('textarea');
             textarea.value = textToCopy;
             textarea.style.position = 'fixed';
@@ -657,8 +656,8 @@
             }
 
             deliveryCardsContainer.innerHTML = currentFilteredData.map(data => {
-                const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
-                const isMapButtonActive = isValidAddressForMap(data.baseAddress);
+                const fullAddress = data.receiverAddressKorean || '';
+                const isMapButtonActive = isValidAddressForMap(fullAddress);
                 return `
                     <div class="${data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white')} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
@@ -678,7 +677,7 @@
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${data.status === '완료' ? 'style="display:none;"' : ''}>
                             <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between">
-                                <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-address-selection" data-no="${data.no}">${fullAddress}</p>
+                                <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
                                 <button data-action="open-naver-map" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button>
                             </div>${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
                             <div><p class="text-sm font-medium text-gray-700">회사명:</p><p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.companyNameOriginal})</p>` : ''}</div>
@@ -779,168 +778,7 @@
     });
 
     // --- Scan, Import, Export Logic ---
-    const parseAndReassembleAddress = (fullAddressText) => {
-        if (!fullAddressText) return { baseAddress: '', detailAddress: '' };
-
-        const components = fullAddressText
-            .replace(/P\d{12}/g, '') // 개인통관번호 제거
-            .replace(/,/g, ' ')     // 쉼표를 공백으로 변환
-            .split(/\s+/)
-            .filter(p => p);
-
-        const usedIndices = new Set();
-        const baseAddressParts = [];
-        const detailAddressParts = [];
-
-        const roadSuffixes = ['대로', '로', '번길', '길'];
-        const isNumeric = (str) => /^\d[\d-]*$/.test(str);
-
-        // 1. 시/도, 시/군/구 찾기
-        ['시', '도', '군', '구'].forEach(suffix => {
-            components.forEach((part, index) => {
-                if (part.endsWith(suffix) && !usedIndices.has(index)) {
-                    baseAddressParts.push(part);
-                    usedIndices.add(index);
-                }
-            });
-        });
-        
-        // 2. 도로명 + 건물번호 찾기
-        let roadNameFound = false;
-        for (let i = 0; i < components.length; i++) {
-            if (usedIndices.has(i)) continue;
-            
-            const part = components[i];
-            const hasRoadSuffix = roadSuffixes.some(s => part.endsWith(s));
-
-            if (hasRoadSuffix) {
-                let roadName = part;
-                usedIndices.add(i);
-
-                let nextIdx = i + 1;
-                while(nextIdx < components.length) {
-                    if (usedIndices.has(nextIdx)) { nextIdx++; continue; }
-                    const nextPart = components[nextIdx];
-                    if (roadSuffixes.some(s => nextPart.endsWith(s))) {
-                        roadName += nextPart;
-                        usedIndices.add(nextIdx);
-                        nextIdx++;
-                    } else { break; }
-                }
-
-                let buildingNumber = null;
-                let buildingNumberIdx = -1;
-                let searchIdx = i - 1; // 도로명 앞 숫자부터
-                while(searchIdx >= 0) {
-                    if(usedIndices.has(searchIdx)) { searchIdx--; continue; }
-                    if(isNumeric(components[searchIdx])) {
-                        buildingNumber = components[searchIdx];
-                        buildingNumberIdx = searchIdx;
-                        break;
-                    }
-                    searchIdx--;
-                }
-                if (!buildingNumber) { // 앞에서 못찾으면 뒤에서
-                     searchIdx = nextIdx;
-                     while(searchIdx < components.length) {
-                         if (usedIndices.has(searchIdx)) { searchIdx++; continue; }
-                         if (isNumeric(components[searchIdx])) {
-                             buildingNumber = components[searchIdx];
-                             buildingNumberIdx = searchIdx;
-                             break;
-                         }
-                         searchIdx++;
-                    }
-                }
-
-                baseAddressParts.push(roadName);
-                if (buildingNumber) {
-                    baseAddressParts.push(buildingNumber);
-                    usedIndices.add(buildingNumberIdx);
-                }
-                roadNameFound = true;
-                break; 
-            }
-        }
-        
-        if (!roadNameFound) {
-            ['동', '리'].forEach(suffix => {
-                 for (let i = 0; i < components.length; i++) {
-                    if (usedIndices.has(i) || roadNameFound) continue;
-                    if (components[i].endsWith(suffix)) {
-                        baseAddressParts.push(components[i]);
-                        usedIndices.add(i);
-                        const nextIdx = i + 1;
-                        if (nextIdx < components.length && !usedIndices.has(nextIdx) && isNumeric(components[nextIdx])) {
-                            baseAddressParts.push(components[nextIdx]);
-                            usedIndices.add(nextIdx);
-                        }
-                        break; 
-                    }
-                 }
-            });
-        }
-        
-        for (let i = 0; i < components.length; i++) {
-            if (!usedIndices.has(i)) {
-                detailAddressParts.push(components[i]);
-            }
-        }
-
-        return {
-            baseAddress: baseAddressParts.join(' ').trim(),
-            detailAddress: detailAddressParts.join(' ').trim()
-        };
-    };
-
-    const validateAddressWithKakao = async (addressText) => {
-        if (!addressText || !addressText.trim()) {
-            return { baseAddress: '', detailAddress: '' };
-        }
-    
-        try {
-            const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addressText)}`, {
-                headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
-            });
-    
-            if (!response.ok) {
-                console.warn(`Kakao API-Failed with status: ${response.status}. Falling back to parser.`);
-                return parseAndReassembleAddress(addressText);
-            }
-    
-            const data = await response.json();
-    
-            if (data.documents && data.documents.length > 0) {
-                const doc = data.documents[0];
-                const kakaoBaseAddress = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
-                
-                const cleanedOriginal = addressText.replace(/[\s,]/g, '');
-                const cleanedKakaoBase = kakaoBaseAddress.replace(/[\s,]/g, '');
-                
-                let detailAddress = '';
-                if (cleanedOriginal.startsWith(cleanedKakaoBase)) {
-                    const remainingText = addressText.substring(kakaoBaseAddress.length).trim();
-                    detailAddress = remainingText.replace(/^[,.\s]+/, '').trim();
-                } else {
-                    const parsed = parseAndReassembleAddress(addressText);
-                    detailAddress = parsed.detailAddress;
-                }
-
-                return {
-                    baseAddress: kakaoBaseAddress,
-                    detailAddress: detailAddress
-                };
-            } else {
-                console.warn(`Kakao API-No address found for: "${addressText}". Falling back to parser.`);
-                return parseAndReassembleAddress(addressText);
-            }
-        } catch (error) {
-            console.error('Error validating address with Kakao API:', error);
-            return parseAndReassembleAddress(addressText);
-        }
-    };
-    
-    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+    // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 수정된 부분 2: performScan 함수 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 3;
@@ -1011,18 +849,9 @@
                     if (requestObject) {
                         try {
                             const apiResultArray = await processApiRequest(requestObject);
-
                             for (const geminiItem of apiResultArray) {
                                 const no = parseInt(geminiItem.no || '0', 10);
                                 if (no === 0) continue;
-                                
-                                const addressToValidate = geminiItem.receiverAddressKorean || geminiItem.receiverAddress;
-                                const { baseAddress, detailAddress } = await validateAddressWithKakao(addressToValidate);
-                                
-                                geminiItem.baseAddress = baseAddress;
-                                geminiItem.detailAddress = detailAddress;
-                                geminiItem.receiverAddressOriginal = geminiItem.receiverAddress || ''; 
-                                
                                 tempMergedResults.set(no, geminiItem);
                             }
                         } catch (error) {
@@ -1047,13 +876,12 @@
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
                 hawbNo: item.hawbNo || '',
-                baseAddress: item.baseAddress || '',
-                detailAddress: item.detailAddress || '',
-                receiverAddressOriginal: item.receiverAddressOriginal || '',
-                companyNameKorean: item.receiverNameKorean || item.receiverName,
-                receiverNameKorean: item.receiverNameKorean || item.receiverName,
-                companyNameOriginal: item.receiverName,
-                receiverNameOriginal: item.receiverName,
+                receiverAddressKorean: item.receiverAddressKorean || item.receiverAddress || '',
+                receiverAddressOriginal: item.receiverAddress || '',
+                companyNameKorean: item.receiverNameKorean || item.receiverName || '',
+                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                companyNameOriginal: item.receiverName || '',
+                receiverNameOriginal: item.receiverName || '',
                 receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null
@@ -1164,19 +992,11 @@
                         if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
                         
                         const firstItem = importedData[0];
-                        if (importedData.length > 0 && typeof firstItem.no === 'undefined' && (typeof firstItem.baseAddress === 'undefined' && typeof firstItem.receiverAddressKorean === 'undefined')) {
+                        if (importedData.length > 0 && typeof firstItem.no === 'undefined' && typeof firstItem.receiverAddressKorean === 'undefined') {
                            throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
                         }
                         
-                        deliveryItems = importedData.map(item => {
-                            if (item.receiverAddressKorean && !item.baseAddress) {
-                                const parts = item.receiverAddressKorean.split(',');
-                                item.baseAddress = parts[0] ? parts[0].trim() : '';
-                                item.detailAddress = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
-                                delete item.receiverAddressKorean;
-                            }
-                            return item;
-                        });
+                        deliveryItems = importedData;
 
                         saveDeliveryItemsToLocalStorage();
                         updateFilterCounts();
@@ -1319,8 +1139,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1400`;
-        versionChangelog.textContent = `한글 번역 기능 추가 (Gemini Prompt 수정)`;
+        versionText.textContent = `v20240722.1500`;
+        versionChangelog.textContent = `스마트 편집 복원 및 주소 필드 단일화`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1332,15 +1152,11 @@
             
             if (!item) return; 
 
-            if (action === 'open-address-selection') {
-                openAddressSelectionModal(itemNo);
-                return; 
-            }
-
             const button = event.target.closest('[data-action]');
             if (!button) return; 
 
             switch (action) {
+                case 'open-smart-edit': openSmartEditModal(itemNo); break;
                 case 'open-naver-map': 
                     if (!button.disabled) {
                         openNaverMap(item);
@@ -1372,14 +1188,13 @@
             setupQuickScroll();
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
-                 let parsedItems = JSON.parse(storedItems);
-                 // 이전 버전 데이터 호환
-                 deliveryItems = parsedItems.map(item => {
-                    if (item.receiverAddressKorean && !item.baseAddress) {
-                        const parts = item.receiverAddressKorean.split(',');
-                        item.baseAddress = parts[0] ? parts[0].trim() : '';
-                        item.detailAddress = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
-                        delete item.receiverAddressKorean;
+                let parsedItems = JSON.parse(storedItems);
+                // 이전 버전 데이터(baseAddress) 호환
+                deliveryItems = parsedItems.map(item => {
+                    if (item.baseAddress) {
+                        item.receiverAddressKorean = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+                        delete item.baseAddress;
+                        delete item.detailAddress;
                     }
                     return item;
                 }).sort((a, b) => a.no - b.no);
