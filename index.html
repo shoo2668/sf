@@ -7,60 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html {
-            scroll-behavior: auto !important;
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding-bottom: 80px;
-            overscroll-behavior-y: contain;
-        }
-        .signature-modal, .confirmation-modal, .smart-edit-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 50;
-            padding: 1rem;
-        }
-        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content {
-            background-color: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            padding: 1.5rem;
-            width: 100%;
-            max-width: 32rem;
-            max-height: 95vh;
-            display: flex;
-            flex-direction: column;
-        }
-        #smart-edit-scroll-area {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 1rem;
-        }
-        #address-pieces-container button {
-            margin: 0.25rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #2563eb;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
+        html { scroll-behavior: auto !important; }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
+        .signature-modal, .confirmation-modal, .smart-edit-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
+        #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
+        #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color 0.2s; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
         @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -189,13 +142,34 @@
                 <hr class="my-4 border-gray-300"/>
 
                 <div class="mt-4">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">수정할 주소</h3>
-                    <textarea id="edited-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
+                    <div class="flex justify-between items-center mb-2">
+                         <h3 class="text-lg font-semibold text-gray-800">주소 조각 편집</h3>
+                         <div class="flex items-center space-x-2">
+                            <button id="reset-pieces-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            </button>
+                            <button id="apply-pieces-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
+                         </div>
+                    </div>
+                    <textarea id="pieces-address-input" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1" readonly></textarea>
                 </div>
+                
+                <div class="mt-4">
+                     <div class="flex justify-between items-center mb-2">
+                         <h3 class="text-lg font-semibold text-gray-800">직접 주소 편집</h3>
+                         <div class="flex items-center space-x-2">
+                             <button id="revert-direct-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.354 1.646a.5.5 0 010 .708L2.707 8l5.647 5.646a.5.5 0 01-.708.708l-6-6a.5.5 0 010-.708l6-6a.5.5 0 01.708 0z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M12.5 8a.5.5 0 01.5-.5h5a.5.5 0 010 1h-5a.5.5 0 01-.5-.5z" clip-rule="evenodd" /></svg>
+                            </button>
+                            <button id="apply-direct-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
+                         </div>
+                    </div>
+                    <textarea id="direct-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1"></textarea>
+                </div>
+
             </div>
-            <div class="flex justify-between space-x-2 mt-auto pt-4 border-t border-gray-200">
-                <button id="smart-edit-cancel" class="w-1/3 px-4 py-2 rounded-md bg-gray-400 text-gray-800 text-sm font-medium hover:bg-gray-500">취소</button>
-                <button id="apply-smart-edit-btn" class="w-2/3 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
+            <div class="flex justify-end mt-auto pt-4 border-t border-gray-200">
+                <button id="smart-edit-exit" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">나가기</button>
             </div>
         </div>
     </div>
@@ -422,9 +396,13 @@
         
         const smartEditModal = document.getElementById('smart-edit-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
-        const editedAddressInput = document.getElementById('edited-address-input');
-        const applySmartEditBtn = document.getElementById('apply-smart-edit-btn');
-        const smartEditCancelBtn = document.getElementById('smart-edit-cancel');
+        const piecesAddressInput = document.getElementById('pieces-address-input');
+        const directAddressInput = document.getElementById('direct-address-input');
+        const applyPiecesBtn = document.getElementById('apply-pieces-btn');
+        const resetPiecesBtn = document.getElementById('reset-pieces-btn');
+        const applyDirectBtn = document.getElementById('apply-direct-btn');
+        const revertDirectBtn = document.getElementById('revert-direct-btn');
+        const smartEditExitBtn = document.getElementById('smart-edit-exit');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -476,17 +454,20 @@
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
-
+            
+            const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+            
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            editedAddressInput.value = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
-            autoResizeTextarea({ target: editedAddressInput });
+            piecesAddressInput.value = '';
+            directAddressInput.value = originalFullAddress;
+            [piecesAddressInput, directAddressInput].forEach(el => autoResizeTextarea({target: el}));
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
             const numberButtonsContainer = document.getElementById('number-buttons');
             const unitButtonsContainer = document.getElementById('unit-buttons');
             [addressPiecesContainer, numberButtonsContainer, unitButtonsContainer].forEach(c => c.innerHTML = '');
             
-            const createPieceButton = (text, colorClass, value, isHtml = false) => {
+            const createPieceButton = (text, colorClass, value, isHtml = false, autoSpace = false) => {
                 const button = document.createElement('button');
                 if (isHtml) button.innerHTML = text;
                 else button.textContent = text;
@@ -494,23 +475,27 @@
                 const finalValue = value !== undefined ? value : text;
                 button.className = `flex-shrink-0 font-medium m-1 text-sm ${colorClass}`;
                 button.onclick = () => {
-                    const input = editedAddressInput;
+                    const input = piecesAddressInput;
                     let currentValue = input.value;
-                    const needsSpace = finalValue !== ' ' && finalValue !== ',' && finalValue !== '-' && currentValue.length > 0 && !/[\s,-]$/.test(currentValue);
                     
-                    input.value += (needsSpace ? ' ' : '') + finalValue;
+                    if (autoSpace) { // 주소 조각 버튼
+                         input.value += (currentValue.length > 0 ? ' ' : '') + finalValue;
+                    } else { // 고정 버튼
+                        const needsSpace = finalValue === ',' && currentValue.length > 0 && !/\s$/.test(currentValue);
+                        input.value += (needsSpace ? ' ' : '') + finalValue;
+                    }
                     autoResizeTextarea({ target: input });
                 };
                 return button;
             };
 
             const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
-            basePieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full')));
+            basePieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full', undefined, false, true)));
 
             if (item.detailAddress) {
-                addressPiecesContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full'));
+                addressPiecesContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full', undefined, false, true));
                 const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
-                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full')));
+                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full', undefined, false, true)));
             }
             
             for (let i = 0; i <= 9; i++) {
@@ -519,23 +504,23 @@
 
             ['길', '번길', '동', '리'].forEach(unit => unitButtonsContainer.appendChild(createPieceButton(unit, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-md')));
             unitButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md', ' ', true));
-            unitButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
+            unitButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md', ','));
             unitButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
             
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
             backspaceBtn.className = 'flex-shrink-0 w-12 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
             backspaceBtn.onclick = () => {
-                let currentValue = editedAddressInput.value;
+                let currentValue = piecesAddressInput.value;
                 if (currentValue.length > 0) {
                     const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
                     if (lastSpaceIndex > -1) {
-                        editedAddressInput.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
+                        piecesAddressInput.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
                     } else {
-                        editedAddressInput.value = '';
+                        piecesAddressInput.value = '';
                     }
                 }
-                autoResizeTextarea({ target: editedAddressInput });
+                autoResizeTextarea({ target: piecesAddressInput });
             };
             unitButtonsContainer.appendChild(backspaceBtn);
 
@@ -547,13 +532,11 @@
             currentEditItemNo = null;
         };
 
-        const applySmartEdit = () => {
-            if (currentEditItemNo === null) return;
+        const applyAddressEdit = (fullAddress) => {
+             if (currentEditItemNo === null) return;
             const itemIndex = deliveryItems.findIndex(item => item.no === currentEditItemNo);
             if (itemIndex > -1) {
-                const fullAddress = editedAddressInput.value.trim();
                 const commaIndex = fullAddress.indexOf(',');
-                
                 if (commaIndex > -1) {
                     deliveryItems[itemIndex].baseAddress = fullAddress.substring(0, commaIndex).trim();
                     deliveryItems[itemIndex].detailAddress = fullAddress.substring(commaIndex + 1).trim();
@@ -561,18 +544,34 @@
                     deliveryItems[itemIndex].baseAddress = fullAddress;
                     deliveryItems[itemIndex].detailAddress = '';
                 }
-
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(); 
                 showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
+                closeSmartEditModal();
             }
-            closeSmartEditModal();
         };
         
-        applySmartEditBtn.addEventListener('click', applySmartEdit);
-        smartEditCancelBtn.addEventListener('click', closeSmartEditModal);
-        editedAddressInput.addEventListener('input', autoResizeTextarea);
+        applyPiecesBtn.addEventListener('click', () => applyAddressEdit(piecesAddressInput.value.trim()));
+        applyDirectBtn.addEventListener('click', () => applyAddressEdit(directAddressInput.value.trim()));
+        
+        resetPiecesBtn.addEventListener('click', () => {
+            piecesAddressInput.value = '';
+            autoResizeTextarea({target: piecesAddressInput});
+        });
+        
+        revertDirectBtn.addEventListener('click', () => {
+            const item = deliveryItems.find(i => i.no === currentEditItemNo);
+            if(item) {
+                directAddressInput.value = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+                autoResizeTextarea({target: directAddressInput});
+            }
+        });
+        
+        smartEditExitBtn.addEventListener('click', closeSmartEditModal);
 
+        piecesAddressInput.addEventListener('input', autoResizeTextarea);
+        directAddressInput.addEventListener('input', autoResizeTextarea);
+        
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
         clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
@@ -1126,8 +1125,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1900`;
-        versionChangelog.textContent = `스마트 편집 최종 UX 개선 (단어 단위 백스페이스, 레이아웃)`;
+        versionText.textContent = `v20240722.2000`;
+        versionChangelog.textContent = `스마트 편집 최종 UX 개선 (2가지 편집모드 제공)`;
     };
 
     const setupDelegatedEventListeners = () => {
