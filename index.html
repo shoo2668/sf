@@ -164,7 +164,7 @@
                             <button id="apply-direct-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
                          </div>
                     </div>
-                    <textarea id="direct-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1"></textarea>
+                    <textarea id="direct-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
                 </div>
 
             </div>
@@ -460,7 +460,12 @@
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             piecesAddressInput.value = '';
             directAddressInput.value = originalFullAddress;
-            [piecesAddressInput, directAddressInput].forEach(el => autoResizeTextarea({target: el}));
+            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
+            setTimeout(() => {
+                autoResizeTextarea({target: piecesAddressInput});
+                autoResizeTextarea({target: directAddressInput});
+            }, 0);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
             const numberButtonsContainer = document.getElementById('number-buttons');
@@ -478,9 +483,9 @@
                     const input = piecesAddressInput;
                     let currentValue = input.value;
                     
-                    if (autoSpace) { // 주소 조각 버튼
+                    if (autoSpace) { // 주소 조각 버튼 (자동 띄어쓰기)
                          input.value += (currentValue.length > 0 ? ' ' : '') + finalValue;
-                    } else { // 고정 버튼
+                    } else { // 고정 버튼 (규칙에 따른 띄어쓰기)
                         const needsSpace = finalValue === ',' && currentValue.length > 0 && !/\s$/.test(currentValue);
                         input.value += (needsSpace ? ' ' : '') + finalValue;
                     }
@@ -509,7 +514,7 @@
             
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
-            backspaceBtn.className = 'flex-shrink-0 w-12 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
+            backspaceBtn.className = 'flex-shrink-0 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
             backspaceBtn.onclick = () => {
                 let currentValue = piecesAddressInput.value;
                 if (currentValue.length > 0) {
@@ -1125,8 +1130,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.2000`;
-        versionChangelog.textContent = `스마트 편집 최종 UX 개선 (2가지 편집모드 제공)`;
+        versionText.textContent = `v20240722.2100`;
+        versionChangelog.textContent = `스마트 편집 최종 UX 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
