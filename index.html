@@ -347,6 +347,30 @@
             return !!(address && address.trim().length > 0);
         };
         
+        // ▼▼▼▼▼ 수정된 부분 1: 카카오 API 함수 추가 ▼▼▼▼▼
+        const validateAddressWithKakao = async (baseAddress, detailAddress) => {
+            if (!baseAddress) {
+                return { baseAddress: '', detailAddress: detailAddress || '' };
+            }
+            try {
+                const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(baseAddress)}`, {
+                    headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
+                });
+                if (!response.ok) throw new Error('Kakao API call failed');
+                const data = await response.json();
+                if (data.documents && data.documents.length > 0) {
+                    const doc = data.documents[0];
+                    const kakaoBaseAddress = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
+                    return { baseAddress: kakaoBaseAddress, detailAddress: detailAddress || '' };
+                }
+                return { baseAddress, detailAddress: detailAddress || '' }; // 카카오가 못찾으면 원본 유지
+            } catch (error) {
+                console.error('Error validating address with Kakao API:', error);
+                return { baseAddress, detailAddress: detailAddress || '' }; // 에러나도 원본 유지
+            }
+        };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
         // --- Global state and DOM elements ---
         let deliveryItems = [];
         let searchTerm = '';
@@ -460,12 +484,10 @@
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             piecesAddressInput.value = '';
             directAddressInput.value = originalFullAddress;
-            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
             setTimeout(() => {
                 autoResizeTextarea({target: piecesAddressInput});
                 autoResizeTextarea({target: directAddressInput});
             }, 0);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
             const numberButtonsContainer = document.getElementById('number-buttons');
@@ -514,7 +536,7 @@
             
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
-            backspaceBtn.className = 'flex-shrink-0 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
+            backspaceBtn.className = 'flex-shrink-0 w-12 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
             backspaceBtn.onclick = () => {
                 let currentValue = piecesAddressInput.value;
                 if (currentValue.length > 0) {
@@ -772,6 +794,7 @@
     });
 
     // --- Scan, Import, Export Logic ---
+    // ▼▼▼▼▼ 수정된 부분 2: performScan 함수 ▼▼▼▼▼
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 3;
         const totalFiles = filesToScan.length;
@@ -806,7 +829,6 @@
                         contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
                         generationConfig: { temperature: 0, responseMimeType: "application/json" }
                     };
-
                     const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
                     const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
@@ -832,32 +854,34 @@
             }
             throw lastError;
         };
+        
+        const worker = async () => {
+            while (requestQueue.length > 0) {
+                const requestObject = requestQueue.shift(); 
+                if (requestObject) {
+                    try {
+                        const apiResultArray = await processApiRequest(requestObject);
+                        for (const geminiItem of apiResultArray) {
+                            const no = parseInt(geminiItem.no || '0', 10);
+                            if (no === 0) continue;
+                            
+                            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+                            geminiItem.baseAddressKorean = baseAddress;
+                            geminiItem.detailAddressKorean = detailAddress;
 
-        const workerPromises = [];
-        for (let i = 0; i < CONCURRENT_LIMIT; i++) {
-            const worker = async () => {
-                while (requestQueue.length > 0) {
-                    const requestObject = requestQueue.shift(); 
-                    if (requestObject) {
-                        try {
-                            const apiResultArray = await processApiRequest(requestObject);
-                            for (const geminiItem of apiResultArray) {
-                                const no = parseInt(geminiItem.no || '0', 10);
-                                if (no === 0) continue;
-                                tempMergedResults.set(no, geminiItem);
-                            }
-                        } catch (error) {
-                            console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
-                            failedFileObjectsForRetry.push(requestObject.file);
-                        } finally {
-                            updateApiProgress();
+                            tempMergedResults.set(no, geminiItem);
                         }
+                    } catch (error) {
+                        console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
+                        failedFileObjectsForRetry.push(requestObject.file);
+                    } finally {
+                        updateApiProgress();
                     }
                 }
-            };
-            workerPromises.push(worker());
-        }
+            }
+        };
 
+        const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
 
         let newCount = 0;
@@ -895,6 +919,7 @@
         }
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     
     scanAndGenerateButton.addEventListener('click', async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
@@ -1130,8 +1155,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.2100`;
-        versionChangelog.textContent = `스마트 편집 최종 UX 개선`;
+        versionText.textContent = `v20240723.0900`;
+        versionChangelog.textContent = `카카오 API 검증 추가`;
     };
 
     const setupDelegatedEventListeners = () => {
