@@ -29,19 +29,17 @@
             z-index: 50;
             padding: 1rem;
         }
-        /* ▼▼▼▼▼ 수정된 부분: 모달 크기 증가 ▼▼▼▼▼ */
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content {
             background-color: white;
             border-radius: 0.5rem;
             box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             padding: 1.5rem;
             width: 100%;
-            max-width: 32rem; /* 28rem -> 32rem */
-            max-height: 95vh; /* 90vh -> 95vh */
+            max-width: 32rem;
+            max-height: 95vh;
             display: flex;
             flex-direction: column;
         }
-        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         #smart-edit-scroll-area {
             flex-grow: 1;
             overflow-y: auto;
@@ -183,15 +181,16 @@
                     <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
                 </div>
                 
-                <div id="fixed-buttons-container" class="mt-2">
-                    <div id="main-buttons" class="flex flex-wrap justify-center"></div>
+                <div id="fixed-buttons-container" class="mt-2 space-y-2">
+                    <div id="number-buttons" class="flex flex-wrap justify-center"></div>
+                    <div id="unit-buttons" class="flex flex-wrap justify-center items-center"></div>
                 </div>
                 
                 <hr class="my-4 border-gray-300"/>
 
                 <div class="mt-4">
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">수정할 주소</h3>
-                    <textarea id="edited-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="3"></textarea>
+                    <textarea id="edited-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
                 </div>
             </div>
             <div class="flex justify-between space-x-2 mt-auto pt-4 border-t border-gray-200">
@@ -483,8 +482,9 @@
             autoResizeTextarea({ target: editedAddressInput });
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
-            const mainButtonsContainer = document.getElementById('main-buttons');
-            [addressPiecesContainer, mainButtonsContainer].forEach(c => c.innerHTML = '');
+            const numberButtonsContainer = document.getElementById('number-buttons');
+            const unitButtonsContainer = document.getElementById('unit-buttons');
+            [addressPiecesContainer, numberButtonsContainer, unitButtonsContainer].forEach(c => c.innerHTML = '');
             
             const createPieceButton = (text, colorClass, value, isHtml = false) => {
                 const button = document.createElement('button');
@@ -492,13 +492,13 @@
                 else button.textContent = text;
                 
                 const finalValue = value !== undefined ? value : text;
-                button.className = `font-medium m-1 text-sm ${colorClass}`;
+                button.className = `flex-shrink-0 font-medium m-1 text-sm ${colorClass}`;
                 button.onclick = () => {
                     const input = editedAddressInput;
-                    const needsSpace = finalValue !== ' ' && finalValue !== ',' && finalValue !== '-' && input.value.length > 0 && !/[\s,-]$/.test(input.value);
-                    const isNumber = /^\d$/.test(finalValue);
+                    let currentValue = input.value;
+                    const needsSpace = finalValue !== ' ' && finalValue !== ',' && finalValue !== '-' && currentValue.length > 0 && !/[\s,-]$/.test(currentValue);
                     
-                    input.value += (needsSpace && !isNumber ? ' ' : '') + finalValue;
+                    input.value += (needsSpace ? ' ' : '') + finalValue;
                     autoResizeTextarea({ target: input });
                 };
                 return button;
@@ -513,23 +513,31 @@
                 detailPieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full')));
             }
             
-            ['길', '번길', '동', '리'].forEach(unit => mainButtonsContainer.appendChild(createPieceButton(unit, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-md')));
             for (let i = 0; i <= 9; i++) {
-                mainButtonsContainer.appendChild(createPieceButton(i.toString(), 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-md'));
+                numberButtonsContainer.appendChild(createPieceButton(i.toString(), 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-md'));
             }
-            
-            mainButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-1.5 rounded-md', ' ', true));
-            mainButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
-            mainButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
+
+            ['길', '번길', '동', '리'].forEach(unit => unitButtonsContainer.appendChild(createPieceButton(unit, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-md')));
+            unitButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md', ' ', true));
+            unitButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
+            unitButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
             
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
-            backspaceBtn.className = 'px-6 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
+            backspaceBtn.className = 'flex-shrink-0 w-12 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
             backspaceBtn.onclick = () => {
-                editedAddressInput.value = editedAddressInput.value.slice(0, -1);
+                let currentValue = editedAddressInput.value;
+                if (currentValue.length > 0) {
+                    const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
+                    if (lastSpaceIndex > -1) {
+                        editedAddressInput.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
+                    } else {
+                        editedAddressInput.value = '';
+                    }
+                }
                 autoResizeTextarea({ target: editedAddressInput });
             };
-            mainButtonsContainer.appendChild(backspaceBtn);
+            unitButtonsContainer.appendChild(backspaceBtn);
 
             smartEditModal.style.display = 'flex';
         };
@@ -1118,8 +1126,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240722.1830`;
-        versionChangelog.textContent = `스마트 편집 모달 레이아웃 및 UX 개선`;
+        versionText.textContent = `v20240722.1900`;
+        versionChangelog.textContent = `스마트 편집 최종 UX 개선 (단어 단위 백스페이스, 레이아웃)`;
     };
 
     const setupDelegatedEventListeners = () => {
