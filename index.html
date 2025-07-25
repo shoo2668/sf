@@ -1041,11 +1041,12 @@
         }
     });
     
+    // ▼▼▼▼▼ 수정된 부분 1: setupQuickScroll 함수 전체 ▼▼▼▼▼
     const setupQuickScroll = () => {
         let isDragging = false;
         let cardElementsCache = [];
         let cardPositionsCache = [];
-        let lastScrolledIndex = -1;
+        let lastTargetIndex = -1;
         let headerHeight = 0;
 
         const onDragStart = (e) => {
@@ -1068,10 +1069,15 @@
             isDragging = false;
             quickScrollHandle.classList.remove('active');
             quickScrollBubble.style.display = 'none';
-            lastScrolledIndex = -1;
+
+            if (lastTargetIndex !== -1) {
+                const targetPosition = cardPositionsCache[lastTargetIndex];
+                window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                if (navigator.vibrate) navigator.vibrate(50);
+            }
+            lastTargetIndex = -1;
         };
 
-        // ▼▼▼▼▼ 수정된 부분 1: onDrag 함수 ▼▼▼▼▼
         const onDrag = (e) => {
             if (!isDragging) return;
             e.preventDefault();
@@ -1085,7 +1091,7 @@
             const pixelsPerCard = draggableAreaHeight / (cardCount - 1);
 
             let handleTop = clientY - (handleHeight / 2);
-            handleTop = Math.max(0, Math.min(window.innerHeight - handleHeight, handleTop));
+            handleTop = Math.max(0, Math.min(draggableAreaHeight, handleTop));
             
             const targetIndex = Math.round(handleTop / pixelsPerCard);
             const clampedIndex = Math.max(0, Math.min(cardCount - 1, targetIndex));
@@ -1093,21 +1099,15 @@
             quickScrollHandle.style.top = `${handleTop}px`;
             quickScrollBubble.style.top = `${handleTop + (handleHeight / 2)}px`;
 
-            if (clampedIndex !== -1 && cardElementsCache[clampedIndex]) {
-                quickScrollBubble.textContent = cardElementsCache[clampedIndex].dataset.no;
-
-                if (clampedIndex !== lastScrolledIndex) {
-                    const targetPosition = cardPositionsCache[clampedIndex];
-                    window.scrollTo({ top: targetPosition, behavior: 'auto' });
-                    
+            if (clampedIndex !== lastTargetIndex) {
+                 if (cardElementsCache[clampedIndex]) {
+                    quickScrollBubble.textContent = cardElementsCache[clampedIndex].dataset.no;
                     if (navigator.vibrate) navigator.vibrate(20); 
-                    lastScrolledIndex = clampedIndex;
                 }
+                lastTargetIndex = clampedIndex;
             }
         };
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
-        // ▼▼▼▼▼ 수정된 부분 2: updateHandleOnScroll 함수 ▼▼▼▼▼
         const updateHandleOnScroll = () => {
             if (isDragging) return; 
 
@@ -1160,9 +1160,9 @@
     };
     
     const setVersionInfo = () => {
-        // ▼▼▼▼▼ 수정된 부분 3: 버전 정보 업데이트 ▼▼▼▼▼
-        versionText.textContent = `v20240723.1000`;
-        versionChangelog.textContent = `퀵 스크롤 탐색 방식을 정밀 모드로 개선`;
+        // ▼▼▼▼▼ 수정된 부분 2: 버전 정보 업데이트 ▼▼▼▼▼
+        versionText.textContent = `v20240723.1100`;
+        versionChangelog.textContent = `퀵 스크롤을 '지정 후 이동' 방식으로 전면 개편`;
         // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
