@@ -534,7 +534,7 @@
             
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
-            backspaceBtn.className = 'flex-shrink-0 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
+            backspaceBtn.className = 'flex-shrink-0 w-12 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
             backspaceBtn.onclick = () => {
                 let currentValue = piecesAddressInput.value;
                 if (currentValue.length > 0) {
@@ -724,6 +724,323 @@
     const quickScrollHandle = document.getElementById('quick-scroll-handle');
     const quickScrollBubble = document.getElementById('quick-scroll-bubble');
     
+    const updateStickyHeaderPositions = () => {
+        requestAnimationFrame(() => {
+            let topOffset = 0;
+            const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
+            
+            searchBarContainer.classList.toggle('hidden', !isSearchVisible);
+            if (isSearchVisible) {
+                searchBarContainer.style.top = `${topOffset}px`; 
+                topOffset += searchBarContainer.offsetHeight;
+            }
+            
+            filterButtonsContainer.style.top = `${topOffset}px`;
+            topOffset += filterButtonsContainer.offsetHeight;
+            document.body.style.paddingTop = `${topOffset}px`;
+
+            const isScanVisible = activeFilter === '배송준비';
+            scanSectionContainer.classList.toggle('hidden', !isScanVisible);
+            dataManagementContainer.classList.toggle('hidden', !isScanVisible);
+            versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
+
+            const deliveryInProgressCount = deliveryItems.filter(item => item.status === '배송중').length;
+            quickScrollContainer.style.display = (activeFilter === '배송중' && deliveryInProgressCount > 0) ? 'block' : 'none';
+        });
+    };
+    
+    filterButtonsContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-filter]');
+        if (!button || button.dataset.filter === activeFilter) return;
+
+        filterScrollPositions[activeFilter] = window.scrollY;
+        activeFilter = button.dataset.filter;
+
+        filterButtonsContainer.querySelectorAll('button').forEach(btn => {
+            const isActive = btn.dataset.filter === activeFilter;
+            btn.classList.remove('bg-blue-500', 'text-white', 'shadow', 'bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+            if (isActive) {
+                btn.classList.add('bg-blue-500', 'text-white', 'shadow');
+            } else {
+                btn.classList.add('bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+            }
+        });
+
+        renderDeliveryCards();
+        updateStickyHeaderPositions();
+        button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
+    });
+
+    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.replace(/\D/g, ''); renderDeliveryCards(); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+    resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
+    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.replace(/\D/g, ''); renderDeliveryCards(); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+
+    deliverySheetImageInput.addEventListener('change', (event) => {
+        currentFileToScan = event.target.files;
+        selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
+    });
+    
+    clearAllCardsButton.addEventListener('click', () => {
+        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
+            deliveryItems = [];
+            saveDeliveryItemsToLocalStorage();
+            renderDeliveryCards();
+            updateFilterCounts();
+            showMessage("모든 카드가 삭제되었습니다.");
+        });
+    });
+
+    // --- Scan, Import, Export Logic ---
+    async function performScan(filesToScan) {
+        const CONCURRENT_LIMIT = 3;
+        const totalFiles = filesToScan.length;
+        let completedCount = 0;
+
+        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+        const resizePromises = filesToScan.map((file, index) => 
+            resizeImage(file).then(resizedObject => {
+                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
+                return resizedObject;
+            })
+        );
+        const resizedImageObjects = await Promise.all(resizePromises);
+        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
+        
+        const tempMergedResults = new Map();
+        const failedFileObjectsForRetry = [];
+        const requestQueue = [...resizedImageObjects]; 
+
+        const updateApiProgress = () => {
+            completedCount++;
+            scanProgressText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
+        };
+
+        const processApiRequest = async (resizedObject) => {
+            const { file, data: base64ImageData } = resizedObject;
+            let lastError = null;
+
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const payload = {
+                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
+                        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+                    };
+                    const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+
+                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                    
+                    const result = await response.json();
+
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                        if (Array.isArray(parsedData) && parsedData.length > 0) {
+                             return parsedData;
+                        }
+                    }
+                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                }
+            }
+            throw lastError;
+        };
+        
+        const worker = async () => {
+            while (requestQueue.length > 0) {
+                const requestObject = requestQueue.shift(); 
+                if (requestObject) {
+                    try {
+                        const apiResultArray = await processApiRequest(requestObject);
+                        for (const geminiItem of apiResultArray) {
+                            const no = parseInt(geminiItem.no || '0', 10);
+                            if (no === 0) continue;
+                            
+                            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+                            geminiItem.baseAddressKorean = baseAddress;
+                            geminiItem.detailAddressKorean = detailAddress;
+
+                            tempMergedResults.set(no, geminiItem);
+                        }
+                    } catch (error) {
+                        console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
+                        failedFileObjectsForRetry.push(requestObject.file);
+                    } finally {
+                        updateApiProgress();
+                    }
+                }
+            }
+        };
+
+        const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
+        await Promise.all(workerPromises);
+
+        let newCount = 0;
+        let updateCount = 0;
+        const allNewItems = Array.from(tempMergedResults.values()); 
+
+        if (allNewItems.length > 0) {
+            const finalItems = allNewItems.map(item => ({
+                no: parseInt(item.no, 10),
+                hawbNo: item.hawbNo || '',
+                baseAddress: item.baseAddressKorean || '',
+                detailAddress: item.detailAddressKorean || '',
+                receiverAddressOriginal: item.receiverAddress || '',
+                companyNameKorean: item.receiverNameKorean || item.receiverName || '',
+                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                companyNameOriginal: item.receiverName || '',
+                receiverNameOriginal: item.receiverName || '',
+                receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
+                status: '배송전', isHawbConfirmed: false,
+                deliveryCompletionTime: null, completionType: null, completionDetail: null
+            }));
+            
+            finalItems.forEach(newItem => {
+                const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
+                if (existingItemIndex > -1) {
+                    deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
+                    updateCount++;
+                } else {
+                    deliveryItems.push(newItem);
+                    newCount++;
+                }
+            });
+            deliveryItems.sort((a, b) => a.no - b.no);
+            saveDeliveryItemsToLocalStorage();
+        }
+        return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
+    }
+    
+    scanAndGenerateButton.addEventListener('click', async () => {
+        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
+        
+        scanLoadingIndicator.style.display = 'block';
+        scanErrorMessage.style.display = 'none';
+        failedFileObjects = []; 
+
+        try {
+            const initialFiles = Array.from(currentFileToScan);
+            const result = await performScan(initialFiles);
+
+            if (result.failedFiles.length === 0) {
+                showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다.`);
+            } else {
+                failedFileObjects = result.failedFiles;
+                const successCount = initialFiles.length - failedFileObjects.length;
+                const failedFileNames = failedFileObjects.map(f => f.name);
+                
+                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공.\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
+
+                const onRetry = async () => {
+                    scanLoadingIndicator.style.display = 'block';
+                    
+                    const retryResult = await performScan(failedFileObjects);
+
+                    scanLoadingIndicator.style.display = 'none';
+
+                    if (retryResult.failedFiles.length === 0) {
+                        showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
+                    } else {
+                        const stillFailingNames = retryResult.failedFiles.map(f => f.name);
+                        showMessage(`재시도 후에도 아래 ${stillFailingNames.length}개 파일이 실패했습니다.\n- ${stillFailingNames.join('\n- ')}`, '재시도 일부 실패');
+                    }
+                    renderDeliveryCards();
+                    updateFilterCounts();
+                };
+                openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
+            }
+        } catch (error) {
+            console.error("전체 스캔 프로세스 오류:", error);
+            scanErrorText.textContent = error.message;
+            scanErrorMessage.style.display = 'block';
+        } finally {
+            scanLoadingIndicator.style.display = 'none';
+            deliverySheetImageInput.value = '';
+            currentFileToScan = null;
+            selectedFilesDisplay.textContent = '선택된 파일 없음';
+            renderDeliveryCards();
+            updateFilterCounts();
+            updateStickyHeaderPositions();
+        }
+    });
+    
+    exportDataButton.addEventListener('click', () => {
+        if (deliveryItems.length === 0) { showMessage("저장할 데이터가 없습니다."); return; }
+        try {
+            const today = new Date();
+            const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const fileName = `SF-${formattedDate}.json`;
+            const dataStr = JSON.stringify(deliveryItems, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
+        } catch (error) {
+            showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
+        }
+    });
+
+    importDataInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        openConfirmationModal( `'${file.name}' 파일의 데이터로 현재 목록을 모두 덮어씁니다. 계속하시겠습니까?`, () => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
+                        
+                        const firstItem = importedData[0];
+                        if (importedData.length > 0 && typeof firstItem.no === 'undefined' && typeof firstItem.baseAddress === 'undefined') {
+                           throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
+                        }
+                        
+                        deliveryItems = importedData;
+
+                        saveDeliveryItemsToLocalStorage();
+                        updateFilterCounts();
+                        updateStickyHeaderPositions();
+                        renderDeliveryCards();
+                        showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
+                    } catch (error) {
+                        showMessage(`파일을 불러오는 중 오류가 발생했습니다: ${error.message}`, "오류");
+                    } finally {
+                        importDataInput.value = '';
+                    }
+                };
+                reader.onerror = () => { showMessage("파일을 읽는 데 실패했습니다.", "오류"); importDataInput.value = ''; };
+                reader.readAsText(file);
+            }
+        );
+    });
+
+    // --- Swipe & Initial Load ---
+    let touchStartX = 0, touchStartY = 0;
+    document.body.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, { passive: true });
+    document.body.addEventListener('touchmove', e => { if (Math.abs(e.touches[0].clientX - touchStartX) > 10 && Math.abs(e.touches[0].clientX - touchStartX) > Math.abs(e.touches[0].clientY - touchStartY)) e.preventDefault(); }, { passive: false });
+    document.body.addEventListener('touchend', e => {
+        const swipeDistanceX = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(swipeDistanceX) > 50 && Math.abs(swipeDistanceX) > Math.abs(e.changedTouches[0].clientY - touchStartY)) {
+            const currentIndex = filterCategories.indexOf(activeFilter);
+            const direction = swipeDistanceX > 0 ? -1 : 1;
+            const newIndex = Math.max(0, Math.min(filterCategories.length - 1, currentIndex + direction));
+            if (newIndex !== currentIndex) filterButtonsContainer.querySelector(`[data-filter="${filterCategories[newIndex]}"]`)?.click();
+        }
+    });
+    
     const setupQuickScroll = () => {
         let isDragging = false;
         let cardElementsCache = [];
@@ -754,37 +1071,43 @@
             lastScrolledIndex = -1;
         };
 
+        // ▼▼▼▼▼ 수정된 부분 1: onDrag 함수 ▼▼▼▼▼
         const onDrag = (e) => {
             if (!isDragging) return;
             e.preventDefault();
             
             const clientY = e.clientY || e.touches[0].clientY;
-            
+            const cardCount = cardElementsCache.length;
+            if (cardCount <= 1) return;
+
             const handleHeight = quickScrollHandle.offsetHeight;
-            const containerHeight = quickScrollContainer.clientHeight;
-            const usableHeight = containerHeight - handleHeight;
+            const draggableAreaHeight = window.innerHeight - handleHeight;
+            const pixelsPerCard = draggableAreaHeight / (cardCount - 1);
 
             let handleTop = clientY - (handleHeight / 2);
-            handleTop = Math.max(0, Math.min(usableHeight, handleTop));
-
+            handleTop = Math.max(0, Math.min(window.innerHeight - handleHeight, handleTop));
+            
+            const targetIndex = Math.round(handleTop / pixelsPerCard);
+            const clampedIndex = Math.max(0, Math.min(cardCount - 1, targetIndex));
+            
             quickScrollHandle.style.top = `${handleTop}px`;
-            quickScrollBubble.style.top = `${handleTop + handleHeight / 2}px`;
+            quickScrollBubble.style.top = `${handleTop + (handleHeight / 2)}px`;
 
-            let percentage = handleTop / usableHeight;
-            const targetIndex = Math.round(percentage * (cardElementsCache.length - 1));
+            if (clampedIndex !== -1 && cardElementsCache[clampedIndex]) {
+                quickScrollBubble.textContent = cardElementsCache[clampedIndex].dataset.no;
 
-            if (targetIndex !== lastScrolledIndex && cardElementsCache[targetIndex]) {
-                const targetCard = cardElementsCache[targetIndex];
-                quickScrollBubble.textContent = targetCard.dataset.no;
-
-                const targetPosition = cardPositionsCache[targetIndex];
-                window.scrollTo({ top: targetPosition, behavior: 'auto' });
-                
-                if (navigator.vibrate) navigator.vibrate(20); 
-                lastScrolledIndex = targetIndex;
+                if (clampedIndex !== lastScrolledIndex) {
+                    const targetPosition = cardPositionsCache[clampedIndex];
+                    window.scrollTo({ top: targetPosition, behavior: 'auto' });
+                    
+                    if (navigator.vibrate) navigator.vibrate(20); 
+                    lastScrolledIndex = clampedIndex;
+                }
             }
         };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
+        // ▼▼▼▼▼ 수정된 부분 2: updateHandleOnScroll 함수 ▼▼▼▼▼
         const updateHandleOnScroll = () => {
             if (isDragging) return; 
 
@@ -792,22 +1115,33 @@
             const currentScroll = window.scrollY;
             
             cardElementsCache = Array.from(deliveryCardsContainer.querySelectorAll('[data-no]'));
+            const cardCount = cardElementsCache.length;
+            if(cardCount === 0) return;
+
             cardPositionsCache = cardElementsCache.map(card => card.offsetTop - headerHeight);
-            if(cardPositionsCache.length === 0) return;
 
-            let currentIndex = cardPositionsCache.findIndex(pos => pos >= currentScroll);
-            if (currentIndex === -1) currentIndex = cardPositionsCache.length - 1;
-
-            const percentage = cardPositionsCache.length > 1 ? currentIndex / (cardPositionsCache.length - 1) : 0;
+            let closestIndex = 0;
+            for(let i=0; i < cardPositionsCache.length; i++) {
+                if (cardPositionsCache[i] <= currentScroll + 1) {
+                    closestIndex = i;
+                } else {
+                    break;
+                }
+            }
             
             const handleHeight = quickScrollHandle.offsetHeight;
-            const containerHeight = quickScrollContainer.clientHeight;
-            const usableHeight = containerHeight - handleHeight;
-            
-            let handleTop = percentage * usableHeight;
+            if (cardCount <= 1) {
+                quickScrollHandle.style.top = `calc(50% - ${handleHeight / 2}px)`;
+                return;
+            }
+
+            const draggableAreaHeight = window.innerHeight - handleHeight;
+            const pixelsPerCard = draggableAreaHeight / (cardCount - 1);
+            let handleTop = closestIndex * pixelsPerCard;
             
             quickScrollHandle.style.top = `${handleTop}px`;
         };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         quickScrollContainer.addEventListener('mousedown', onDragStart);
         quickScrollContainer.addEventListener('touchstart', onDragStart, { passive: false });
@@ -826,8 +1160,10 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.1100`;
-        versionChangelog.textContent = `빠른 스크롤 인덱스 기반으로 개선`;
+        // ▼▼▼▼▼ 수정된 부분 3: 버전 정보 업데이트 ▼▼▼▼▼
+        versionText.textContent = `v20240723.1000`;
+        versionChangelog.textContent = `퀵 스크롤 탐색 방식을 정밀 모드로 개선`;
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
     const setupDelegatedEventListeners = () => {
