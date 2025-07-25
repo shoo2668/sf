@@ -362,10 +362,10 @@
                     const kakaoBaseAddress = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
                     return { baseAddress: kakaoBaseAddress, detailAddress: detailAddress || '' };
                 }
-                return { baseAddress, detailAddress: detailAddress || '' };
+                return { baseAddress, detailAddress: detailAddress || '' }; // 카카오가 못찾으면 원본 유지
             } catch (error) {
                 console.error('Error validating address with Kakao API:', error);
-                return { baseAddress, detailAddress: detailAddress || '' };
+                return { baseAddress, detailAddress: detailAddress || '' }; // 에러나도 원본 유지
             }
         };
 
@@ -472,6 +472,7 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
         
+        // ▼▼▼▼▼ 수정된 부분 2: 스마트 편집 관련 함수들 ▼▼▼▼▼
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
@@ -482,6 +483,7 @@
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             piecesAddressInput.value = '';
             directAddressInput.value = originalFullAddress;
+
             setTimeout(() => {
                 autoResizeTextarea({target: piecesAddressInput});
                 autoResizeTextarea({target: directAddressInput});
@@ -503,9 +505,9 @@
                     const input = piecesAddressInput;
                     let currentValue = input.value;
                     
-                    if (autoSpace) { // 주소 조각 버튼
+                    if (autoSpace) { // 주소 조각 버튼 (자동 띄어쓰기)
                          input.value += (currentValue.length > 0 ? ' ' : '') + finalValue;
-                    } else { // 고정 버튼
+                    } else { // 고정 버튼 (규칙에 따른 띄어쓰기)
                         const needsSpace = finalValue === ',' && currentValue.length > 0 && !/\s$/.test(currentValue);
                         input.value += (needsSpace ? ' ' : '') + finalValue;
                     }
@@ -596,11 +598,12 @@
 
         piecesAddressInput.addEventListener('input', autoResizeTextarea);
         directAddressInput.addEventListener('input', autoResizeTextarea);
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
         clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
-        cancelSignatureBtn.addEventListener('click', closeSignatureModal);
+        cancelSignatureBtn.addEventListener('click', closeSignatureBtn);
         saveSignatureBtn.addEventListener('click', saveSignature);
 
         const saveDeliveryItemsToLocalStorage = () => {
@@ -724,6 +727,7 @@
     const quickScrollHandle = document.getElementById('quick-scroll-handle');
     const quickScrollBubble = document.getElementById('quick-scroll-bubble');
     
+    // ▼▼▼▼▼ 수정된 부분 3: 빠른 스크롤 함수 ▼▼▼▼▼
     const setupQuickScroll = () => {
         let isDragging = false;
         let cardElementsCache = [];
@@ -759,53 +763,53 @@
             e.preventDefault();
             
             const clientY = e.clientY || e.touches[0].clientY;
-            const containerTop = quickScrollContainer.getBoundingClientRect().top;
-            const containerHeight = quickScrollContainer.offsetHeight;
             
-            let percentage = (clientY - containerTop) / containerHeight;
-            percentage = Math.max(0, Math.min(1, percentage));
+            const handleHeight = quickScrollHandle.offsetHeight;
+            const containerHeight = quickScrollContainer.clientHeight;
+            const usableHeight = containerHeight - handleHeight;
 
+            let handleTop = clientY - (handleHeight / 2);
+            handleTop = Math.max(0, Math.min(usableHeight, handleTop));
+
+            quickScrollHandle.style.top = `${handleTop}px`;
+            quickScrollBubble.style.top = `${handleTop + handleHeight / 2}px`;
+
+            let percentage = handleTop / usableHeight;
             const targetIndex = Math.round(percentage * (cardElementsCache.length - 1));
 
-            const handleHeight = quickScrollHandle.offsetHeight;
-            let handleTop = clientY - containerTop - (handleHeight / 2);
-            handleTop = Math.max(0, Math.min(containerHeight - handleHeight, handleTop));
-            quickScrollHandle.style.top = `${handleTop}px`;
-            quickScrollBubble.style.top = `${handleTop + (handleHeight / 2)}px`;
+            if (targetIndex !== lastScrolledIndex && cardElementsCache[targetIndex]) {
+                const targetCard = cardElementsCache[targetIndex];
+                quickScrollBubble.textContent = targetCard.dataset.no;
 
-            if (targetIndex !== -1 && cardElementsCache[targetIndex]) {
-                quickScrollBubble.textContent = cardElementsCache[targetIndex].dataset.no;
-
-                if (targetIndex !== lastScrolledIndex) {
-                    const targetPosition = cardPositionsCache[targetIndex];
-                    window.scrollTo({ top: targetPosition, behavior: 'auto' });
-                    
-                    if (navigator.vibrate) navigator.vibrate(20); 
-                    lastScrolledIndex = targetIndex;
-                }
+                const targetPosition = cardPositionsCache[targetIndex];
+                window.scrollTo({ top: targetPosition, behavior: 'auto' });
+                
+                if (navigator.vibrate) navigator.vibrate(20); 
+                lastScrolledIndex = targetIndex;
             }
         };
 
         const updateHandleOnScroll = () => {
-            if (isDragging || !cardElementsCache.length) return; 
+            if (isDragging) return; 
 
             headerHeight = filterButtonsContainer.offsetTop + filterButtonsContainer.offsetHeight;
             const currentScroll = window.scrollY;
             
-            let closestIndex = 0;
-            for(let i=0; i<cardPositionsCache.length; i++) {
-                if (cardPositionsCache[i] <= currentScroll + 1) {
-                    closestIndex = i;
-                } else {
-                    break;
-                }
-            }
-            
-            const percentage = cardPositionsCache.length > 1 ? closestIndex / (cardElementsCache.length - 1) : 0; 
-            const containerHeight = quickScrollContainer.offsetHeight;
-            const handleHeight = quickScrollHandle.offsetHeight;
+            cardElementsCache = Array.from(deliveryCardsContainer.querySelectorAll('[data-no]'));
+            cardPositionsCache = cardElementsCache.map(card => card.offsetTop - headerHeight);
+            if(cardPositionsCache.length === 0) return;
 
-            let handleTop = percentage * (containerHeight - handleHeight);
+            let currentIndex = cardPositionsCache.findIndex(pos => pos >= currentScroll);
+            if (currentIndex === -1) currentIndex = cardPositionsCache.length - 1;
+
+            const percentage = cardPositionsCache.length > 1 ? currentIndex / (cardPositionsCache.length - 1) : 0;
+            
+            const handleHeight = quickScrollHandle.offsetHeight;
+            const containerHeight = quickScrollContainer.clientHeight;
+            const usableHeight = containerHeight - handleHeight;
+            
+            let handleTop = percentage * usableHeight;
+            
             quickScrollHandle.style.top = `${handleTop}px`;
         };
 
@@ -821,17 +825,14 @@
         let scrollTimeout;
         window.addEventListener('scroll', () => {
              clearTimeout(scrollTimeout);
-             scrollTimeout = setTimeout(() => {
-                cardElementsCache = Array.from(deliveryCardsContainer.querySelectorAll('[data-no]'));
-                cardPositionsCache = cardElementsCache.map(card => card.offsetTop - headerHeight);
-                updateHandleOnScroll();
-             }, 100);
+             scrollTimeout = setTimeout(updateHandleOnScroll, 100);
         });
     };
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     
     const setVersionInfo = () => {
         versionText.textContent = `v20240723.1000`;
-        versionChangelog.textContent = `빠른 스크롤 인덱스 기반으로 수정`;
+        versionChangelog.textContent = `빠른 스크롤 인덱스 기반으로 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
