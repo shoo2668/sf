@@ -472,7 +472,6 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
         
-        // ▼▼▼▼▼ 수정된 부분 2: 스마트 편집 관련 함수들 ▼▼▼▼▼
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
@@ -483,7 +482,6 @@
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             piecesAddressInput.value = '';
             directAddressInput.value = originalFullAddress;
-
             setTimeout(() => {
                 autoResizeTextarea({target: piecesAddressInput});
                 autoResizeTextarea({target: directAddressInput});
@@ -598,12 +596,11 @@
 
         piecesAddressInput.addEventListener('input', autoResizeTextarea);
         directAddressInput.addEventListener('input', autoResizeTextarea);
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
         clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
-        cancelSignatureBtn.addEventListener('click', closeSignatureBtn);
+        cancelSignatureBtn.addEventListener('click', closeSignatureModal);
         saveSignatureBtn.addEventListener('click', saveSignature);
 
         const saveDeliveryItemsToLocalStorage = () => {
@@ -727,7 +724,6 @@
     const quickScrollHandle = document.getElementById('quick-scroll-handle');
     const quickScrollBubble = document.getElementById('quick-scroll-bubble');
     
-    // ▼▼▼▼▼ 수정된 부분 3: 빠른 스크롤 함수 ▼▼▼▼▼
     const setupQuickScroll = () => {
         let isDragging = false;
         let cardElementsCache = [];
@@ -828,10 +824,9 @@
              scrollTimeout = setTimeout(updateHandleOnScroll, 100);
         });
     };
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.1000`;
+        versionText.textContent = `v20240723.1100`;
         versionChangelog.textContent = `빠른 스크롤 인덱스 기반으로 개선`;
     };
 
