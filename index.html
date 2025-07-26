@@ -21,7 +21,9 @@
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
         #filter-buttons-container, #search-bar-container { position: fixed; left: 0; width: 100vw; will-change: transform, top; }
-        #quick-scroll-container { position: fixed; top: 0; right: 0; height: 100%; width: 40px; display: none; z-index: 40; user-select: none; -webkit-user-select: none; }
+        /* ▼▼▼▼▼ 수정된 부분 1: 퀵 스크롤 컨테이너 CSS ▼▼▼▼▼ */
+        #quick-scroll-container { position: fixed; bottom: 0; right: 0; height: 40%; width: 40px; display: none; z-index: 40; user-select: none; -webkit-user-select: none; }
+        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         #quick-scroll-handle { position: absolute; right: 8px; top: 50%; width: 24px; height: 50px; background-color: rgba(0, 0, 0, 0.25); border-radius: 12px; cursor: grab; transition: background-color 0.2s; }
         #quick-scroll-handle:not(.active) { transition: background-color 0.2s, top 0.15s ease-out; }
         #quick-scroll-handle.active { background-color: rgba(37, 99, 235, 0.7); cursor: grabbing; }
@@ -1041,7 +1043,7 @@
         }
     });
     
-    // ▼▼▼▼▼ 수정된 부분 1: setupQuickScroll 함수 전체 ▼▼▼▼▼
+    // ▼▼▼▼▼ 수정된 부분 2: setupQuickScroll 함수 전체 ▼▼▼▼▼
     const setupQuickScroll = () => {
         let isDragging = false;
         let cardElementsCache = [];
@@ -1094,13 +1096,15 @@
             const cardCount = cardElementsCache.length;
             if (cardCount <= 1) return;
 
+            const containerRect = quickScrollContainer.getBoundingClientRect();
             const handleHeight = quickScrollHandle.offsetHeight;
-            const draggableAreaHeight = window.innerHeight - handleHeight;
-            
-            let handleTop = clientY - (handleHeight / 2);
+            const draggableAreaHeight = containerRect.height - handleHeight;
+
+            let relativeY = clientY - containerRect.top;
+            let handleTop = relativeY - (handleHeight / 2);
             handleTop = Math.max(0, Math.min(draggableAreaHeight, handleTop));
 
-            const percentage = handleTop / draggableAreaHeight;
+            const percentage = draggableAreaHeight > 0 ? handleTop / draggableAreaHeight : 0;
             const targetIndex = Math.round(percentage * (cardCount - 1));
             const clampedIndex = Math.max(0, Math.min(cardCount - 1, targetIndex));
             
@@ -1131,7 +1135,8 @@
             const cardCount = cardElementsCache.length;
             if(cardCount <= 1) {
                 const handleHeight = quickScrollHandle.offsetHeight;
-                quickScrollHandle.style.top = `calc(50% - ${handleHeight / 2}px)`;
+                const containerHeight = quickScrollContainer.offsetHeight;
+                quickScrollHandle.style.top = `${(containerHeight - handleHeight) / 2}px`;
                 return;
             }
 
@@ -1147,7 +1152,8 @@
             }
             
             const handleHeight = quickScrollHandle.offsetHeight;
-            const draggableAreaHeight = window.innerHeight - handleHeight;
+            const containerHeight = quickScrollContainer.offsetHeight;
+            const draggableAreaHeight = containerHeight - handleHeight;
             const percentage = closestIndex / (cardCount - 1);
             let handleTop = percentage * draggableAreaHeight;
             
@@ -1172,9 +1178,9 @@
     };
     
     const setVersionInfo = () => {
-        // ▼▼▼▼▼ 수정된 부분 2: 버전 정보 업데이트 ▼▼▼▼▼
-        versionText.textContent = `v20240723.1300`;
-        versionChangelog.textContent = `퀵 스크롤을 의도에 맞게 '실시간 카드 단위 점프' 방식으로 최종 수정`;
+        // ▼▼▼▼▼ 수정된 부분 3: 버전 정보 업데이트 ▼▼▼▼▼
+        versionText.textContent = `v20240723.1400`;
+        versionChangelog.textContent = `퀵 스크롤 영역을 하단 40%로 조정 및 관련 로직 수정`;
         // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
