@@ -1046,7 +1046,7 @@
         let isDragging = false;
         let cardElementsCache = [];
         let cardPositionsCache = [];
-        let lastTargetIndex = -1;
+        let lastScrolledIndex = -1;
         let headerHeight = 0;
 
         const onDragStart = (e) => {
@@ -1061,6 +1061,18 @@
             headerHeight = filterButtonsContainer.offsetTop + filterButtonsContainer.offsetHeight;
             cardPositionsCache = cardElementsCache.map(card => card.offsetTop - headerHeight);
             
+            // 드래그 시작 시 현재 스크롤 위치를 기반으로 초기 인덱스 설정
+            const currentScroll = window.scrollY;
+            let initialIndex = 0;
+            for(let i=0; i < cardPositionsCache.length; i++) {
+                if (cardPositionsCache[i] <= currentScroll + 1) {
+                    initialIndex = i;
+                } else {
+                    break;
+                }
+            }
+            lastScrolledIndex = initialIndex;
+
             onDrag(e);
         };
         
@@ -1069,13 +1081,7 @@
             isDragging = false;
             quickScrollHandle.classList.remove('active');
             quickScrollBubble.style.display = 'none';
-
-            if (lastTargetIndex !== -1) {
-                const targetPosition = cardPositionsCache[lastTargetIndex];
-                window.scrollTo({ top: targetPosition, behavior: 'smooth' });
-                if (navigator.vibrate) navigator.vibrate(50);
-            }
-            lastTargetIndex = -1;
+            lastScrolledIndex = -1;
         };
 
         const onDrag = (e) => {
@@ -1099,12 +1105,16 @@
             quickScrollHandle.style.top = `${handleTop}px`;
             quickScrollBubble.style.top = `${handleTop + (handleHeight / 2)}px`;
 
-            if (clampedIndex !== lastTargetIndex) {
-                 if (cardElementsCache[clampedIndex]) {
+            if (clampedIndex !== lastScrolledIndex) {
+                if (cardElementsCache[clampedIndex]) {
                     quickScrollBubble.textContent = cardElementsCache[clampedIndex].dataset.no;
+                    
+                    const targetPosition = cardPositionsCache[clampedIndex];
+                    window.scrollTo({ top: targetPosition, behavior: 'auto' });
+                    
                     if (navigator.vibrate) navigator.vibrate(20); 
                 }
-                lastTargetIndex = clampedIndex;
+                lastScrolledIndex = clampedIndex;
             }
         };
 
@@ -1161,8 +1171,8 @@
     
     const setVersionInfo = () => {
         // ▼▼▼▼▼ 수정된 부분 2: 버전 정보 업데이트 ▼▼▼▼▼
-        versionText.textContent = `v20240723.1100`;
-        versionChangelog.textContent = `퀵 스크롤을 '지정 후 이동' 방식으로 전면 개편`;
+        versionText.textContent = `v20240723.1200`;
+        versionChangelog.textContent = `퀵 스크롤을 실시간 카드 단위 점프 방식으로 개선`;
         // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
