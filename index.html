@@ -1208,6 +1208,16 @@
     };
     
     const sortDeliveryItems = async (forceRefresh = false) => {
+        // ▼▼▼▼▼ 수정된 부분 1: 안전장치 추가 ▼▼▼▼▼
+        if (!geocoder) {
+            showMessage('지도 서비스가 아직 로딩되지 않았습니다. 잠시 후 다시 시도해주세요.', '오류');
+            currentSortOrder = 'number';
+            sortOrderButton.textContent = '순번순';
+            updateStickyHeaderPositions();
+            return;
+        }
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
         if (currentSortOrder === 'number') {
             renderDeliveryCards();
             updateStickyHeaderPositions();
@@ -1274,7 +1284,7 @@
             renderDeliveryCards();
             
         } catch (error) {
-            // ▼▼▼▼▼ 수정된 부분 3: 상세 오류 메시지 표시 ▼▼▼▼▼
+            // ▼▼▼▼▼ 수정된 부분 2: 상세 오류 메시지 표시 강화 ▼▼▼▼▼
             let errorMessage = '위치를 가져오는 데 실패했습니다.';
             if (error && error.code) {
                 switch (error.code) {
@@ -1311,8 +1321,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.1700`;
-        versionChangelog.textContent = `위치 정보 오류 시 상세 메시지 표시 기능 추가`;
+        versionText.textContent = `v20240723.1800`;
+        versionChangelog.textContent = `지도 SDK 로딩 안정성 강화 및 오류 디버깅`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1359,15 +1369,19 @@
             setupDelegatedEventListeners();
             setupQuickScroll();
             
+            // ▼▼▼▼▼ 수정된 부분 3: SDK 로딩 성공/실패 처리 로직 수정 ▼▼▼▼▼
             if (typeof kakao !== "undefined" && kakao.maps) {
                 kakao.maps.load(() => {
                     geocoder = new kakao.maps.services.Geocoder();
-                    setupSortButtons(); // SDK 로딩 완료 후 버튼 이벤트 설정
+                    setupSortButtons(); // SDK 로딩이 성공했을 때만 버튼 이벤트 완벽히 설정
                 });
             } else {
                 console.error("Kakao maps SDK is not loaded.");
-                setupSortButtons(); 
+                // SDK 로딩 실패 시, 버튼 클릭하면 오류 메시지만 보여주도록 설정
+                sortOrderButton.textContent = '지도API 오류';
+                sortOrderButton.disabled = true;
             }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
