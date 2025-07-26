@@ -6,9 +6,7 @@
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- ▼▼▼▼▼ 수정된 부분 1: 카카오맵 SDK에 API 키 직접 삽입 ▼▼▼▼▼ -->
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=2342aad8b15d534cb60fb824f71a97f1&libraries=services"></script>
-    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     <style>
         html { scroll-behavior: auto !important; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
@@ -220,9 +218,7 @@
 ]
 `;
         
-        // ▼▼▼▼▼ 수정된 부분 2: 카카오 API 키 변수 선언 위치 변경 및 값 삽입 ▼▼▼▼▼
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
@@ -390,6 +386,7 @@
         let onConfirmCallback = null;
         let currentEditItemNo = null; 
         let currentSortOrder = 'number'; // 'number' or 'distance'
+        let geocoder; // Kakao Geocoder 객체
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -1238,7 +1235,6 @@
             const itemsWithoutCoords = itemsToSort.filter(item => !item.lat || !item.lng);
             if (itemsWithoutCoords.length > 0) {
                 showMessage(`<div class="spinner mx-auto"></div><p class="mt-2">배송지 좌표 변환 중... (0/${itemsWithoutCoords.length})</p>`, '알림');
-                const geocoder = new kakao.maps.services.Geocoder();
                 
                 const geocodePromises = itemsWithoutCoords.map((item, index) => {
                     return new Promise((resolve) => {
@@ -1278,7 +1274,7 @@
             renderDeliveryCards();
             
         } catch (error) {
-            let errorMessage = '위치 정보를 가져오는 데 실패했습니다.';
+            let errorMessage = '위치를 가져오는 데 실패했습니다.';
             if (error.code === 1) errorMessage = '위치 정보 접근이 거부되었습니다. 브라우저/OS 설정을 확인해주세요.';
             else if (error.code === 2) errorMessage = '위치 정보를 사용할 수 없습니다 (네트워크 오류 등).';
             else if (error.code === 3) errorMessage = '위치 정보를 가져오는 데 시간이 너무 오래 걸립니다.';
@@ -1309,8 +1305,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.1500`;
-        versionChangelog.textContent = `거리순 정렬 기능 추가 및 퀵스크롤 연동/영역 조정`;
+        versionText.textContent = `v20240723.1600`;
+        versionChangelog.textContent = `카카오맵 SDK 로딩 시점 문제 해결`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1356,7 +1352,20 @@
             setVersionInfo();
             setupDelegatedEventListeners();
             setupQuickScroll();
-            setupSortButtons(); // 정렬 버튼 이벤트 리스너 설정
+            
+            // ▼▼▼▼▼ 수정된 부분 3: kakao.maps.load() 사용 ▼▼▼▼▼
+            if (typeof kakao !== "undefined" && kakao.maps) {
+                kakao.maps.load(() => {
+                    geocoder = new kakao.maps.services.Geocoder();
+                    setupSortButtons(); // SDK 로딩 완료 후 버튼 이벤트 설정
+                });
+            } else {
+                console.error("Kakao maps SDK is not loaded.");
+                // SDK 로딩 실패 시에도 버튼은 보이도록 처리 (기능은 동작 안함)
+                setupSortButtons(); 
+            }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
