@@ -6,7 +6,9 @@
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=2342aad8b15d534cb60fb824f71a97f1&libraries=services"></script>
+    <!-- ▼▼▼▼▼ 수정된 부분 1: onload="initialize" 추가 ▼▼▼▼▼ -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=2342aad8b15d534cb60fb824f71a97f1&libraries=services" onload="initialize()"></script>
+    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     <style>
         html { scroll-behavior: auto !important; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
@@ -1292,12 +1294,10 @@
 
     const setupSortButtons = () => {
         sortOrderButton.addEventListener('click', () => {
-            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
             if (currentSortOrder === 'number' && !geocoder) {
                 showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
                 return;
             }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             currentSortOrder = (currentSortOrder === 'number') ? 'distance' : 'number';
             sortOrderButton.textContent = (currentSortOrder === 'number') ? '순번순' : '거리순';
@@ -1311,19 +1311,17 @@
         });
 
         refreshLocationButton.addEventListener('click', () => {
-            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
             if (!geocoder) {
                 showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
                 return;
             }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             sortDeliveryItems(true);
         });
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.2000`;
-        versionChangelog.textContent = `지도 SDK 로딩 안정성 강화 최종 수정`;
+        versionText.textContent = `v20240723.2100`;
+        versionChangelog.textContent = `지도 SDK 로딩 및 초기화 로직 최종 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1364,14 +1362,14 @@
         });
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // ▼▼▼▼▼ 수정된 부분 2: initialize 함수 및 DOMContentLoaded 제거 ▼▼▼▼▼
+    function initialize() {
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
             setupQuickScroll();
-            
-            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
-            setupSortButtons(); // 버튼 이벤트 리스너를 먼저 설정
+            setupSortButtons();
+
             if (typeof kakao !== "undefined" && kakao.maps) {
                 kakao.maps.load(() => {
                     try {
@@ -1380,13 +1378,14 @@
                     } catch (e) {
                         console.error("Kakao Geocoder 초기화 실패:", e);
                         sortOrderButton.textContent = '지도 초기화 오류';
+                        sortOrderButton.disabled = true;
                     }
                 });
             } else {
                 console.error("Kakao maps SDK가 로드되지 않았습니다.");
                 sortOrderButton.textContent = '지도API 로딩 실패';
+                sortOrderButton.disabled = true;
             }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
@@ -1413,7 +1412,8 @@
             console.error("초기화 오류:", error);
             document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
         }
-    });
+    }
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 </script>
 </body>
 </html>
