@@ -1208,7 +1208,6 @@
     };
     
     const sortDeliveryItems = async (forceRefresh = false) => {
-        // ▼▼▼▼▼ 수정된 부분 1: 안전장치 추가 ▼▼▼▼▼
         if (!geocoder) {
             showMessage('지도 서비스가 아직 로딩되지 않았습니다. 잠시 후 다시 시도해주세요.', '오류');
             currentSortOrder = 'number';
@@ -1216,7 +1215,6 @@
             updateStickyHeaderPositions();
             return;
         }
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         if (currentSortOrder === 'number') {
             renderDeliveryCards();
@@ -1284,7 +1282,6 @@
             renderDeliveryCards();
             
         } catch (error) {
-            // ▼▼▼▼▼ 수정된 부분 2: 상세 오류 메시지 표시 강화 ▼▼▼▼▼
             let errorMessage = '위치를 가져오는 데 실패했습니다.';
             if (error && error.code) {
                 switch (error.code) {
@@ -1294,7 +1291,6 @@
                 }
             }
             showMessage(`${errorMessage}<br><br><small>상세: ${error.message}</small>`, '오류');
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             
             currentSortOrder = 'number'; // 오류 발생 시 순번순으로 복귀
             sortOrderButton.textContent = '순번순';
@@ -1308,6 +1304,12 @@
             sortOrderButton.textContent = (currentSortOrder === 'number') ? '순번순' : '거리순';
             
             if (currentSortOrder === 'distance') {
+                if (!geocoder) {
+                    showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
+                    currentSortOrder = 'number';
+                    sortOrderButton.textContent = '순번순';
+                    return;
+                }
                 sortDeliveryItems();
             } else {
                 renderDeliveryCards();
@@ -1316,13 +1318,17 @@
         });
 
         refreshLocationButton.addEventListener('click', () => {
+            if (!geocoder) {
+                showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
+                return;
+            }
             sortDeliveryItems(true);
         });
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.1800`;
-        versionChangelog.textContent = `지도 SDK 로딩 안정성 강화 및 오류 디버깅`;
+        versionText.textContent = `v20240723.1900`;
+        versionChangelog.textContent = `지도 SDK 로딩 안정성 강화 및 오류 디버깅 최종 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1369,16 +1375,21 @@
             setupDelegatedEventListeners();
             setupQuickScroll();
             
-            // ▼▼▼▼▼ 수정된 부분 3: SDK 로딩 성공/실패 처리 로직 수정 ▼▼▼▼▼
+            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
             if (typeof kakao !== "undefined" && kakao.maps) {
                 kakao.maps.load(() => {
-                    geocoder = new kakao.maps.services.Geocoder();
-                    setupSortButtons(); // SDK 로딩이 성공했을 때만 버튼 이벤트 완벽히 설정
+                    try {
+                        geocoder = new kakao.maps.services.Geocoder();
+                        setupSortButtons(); // SDK 로딩 성공 시, 정상적으로 이벤트 리스너 설정
+                    } catch (e) {
+                        console.error("Kakao Geocoder 초기화 실패:", e);
+                        sortOrderButton.textContent = '지도 초기화 오류';
+                        sortOrderButton.disabled = true;
+                    }
                 });
             } else {
-                console.error("Kakao maps SDK is not loaded.");
-                // SDK 로딩 실패 시, 버튼 클릭하면 오류 메시지만 보여주도록 설정
-                sortOrderButton.textContent = '지도API 오류';
+                console.error("Kakao maps SDK가 로드되지 않았습니다.");
+                sortOrderButton.textContent = '지도API 로딩 실패';
                 sortOrderButton.disabled = true;
             }
             // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
