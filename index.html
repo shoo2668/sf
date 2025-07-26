@@ -1208,14 +1208,6 @@
     };
     
     const sortDeliveryItems = async (forceRefresh = false) => {
-        if (!geocoder) {
-            showMessage('지도 서비스가 아직 로딩되지 않았습니다. 잠시 후 다시 시도해주세요.', '오류');
-            currentSortOrder = 'number';
-            sortOrderButton.textContent = '순번순';
-            updateStickyHeaderPositions();
-            return;
-        }
-
         if (currentSortOrder === 'number') {
             renderDeliveryCards();
             updateStickyHeaderPositions();
@@ -1300,16 +1292,17 @@
 
     const setupSortButtons = () => {
         sortOrderButton.addEventListener('click', () => {
+            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
+            if (currentSortOrder === 'number' && !geocoder) {
+                showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
+                return;
+            }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
             currentSortOrder = (currentSortOrder === 'number') ? 'distance' : 'number';
             sortOrderButton.textContent = (currentSortOrder === 'number') ? '순번순' : '거리순';
             
             if (currentSortOrder === 'distance') {
-                if (!geocoder) {
-                    showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
-                    currentSortOrder = 'number';
-                    sortOrderButton.textContent = '순번순';
-                    return;
-                }
                 sortDeliveryItems();
             } else {
                 renderDeliveryCards();
@@ -1318,17 +1311,19 @@
         });
 
         refreshLocationButton.addEventListener('click', () => {
+            // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
             if (!geocoder) {
                 showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
                 return;
             }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             sortDeliveryItems(true);
         });
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.1900`;
-        versionChangelog.textContent = `지도 SDK 로딩 안정성 강화 및 오류 디버깅 최종 수정`;
+        versionText.textContent = `v20240723.2000`;
+        versionChangelog.textContent = `지도 SDK 로딩 안정성 강화 최종 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1376,21 +1371,20 @@
             setupQuickScroll();
             
             // ▼▼▼▼▼ 수정된 부분 ▼▼▼▼▼
+            setupSortButtons(); // 버튼 이벤트 리스너를 먼저 설정
             if (typeof kakao !== "undefined" && kakao.maps) {
                 kakao.maps.load(() => {
                     try {
                         geocoder = new kakao.maps.services.Geocoder();
-                        setupSortButtons(); // SDK 로딩 성공 시, 정상적으로 이벤트 리스너 설정
+                        console.log("Kakao Geocoder가 성공적으로 초기화되었습니다.");
                     } catch (e) {
                         console.error("Kakao Geocoder 초기화 실패:", e);
                         sortOrderButton.textContent = '지도 초기화 오류';
-                        sortOrderButton.disabled = true;
                     }
                 });
             } else {
                 console.error("Kakao maps SDK가 로드되지 않았습니다.");
                 sortOrderButton.textContent = '지도API 로딩 실패';
-                sortOrderButton.disabled = true;
             }
             // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
