@@ -1274,11 +1274,17 @@
             renderDeliveryCards();
             
         } catch (error) {
+            // ▼▼▼▼▼ 수정된 부분 3: 상세 오류 메시지 표시 ▼▼▼▼▼
             let errorMessage = '위치를 가져오는 데 실패했습니다.';
-            if (error.code === 1) errorMessage = '위치 정보 접근이 거부되었습니다. 브라우저/OS 설정을 확인해주세요.';
-            else if (error.code === 2) errorMessage = '위치 정보를 사용할 수 없습니다 (네트워크 오류 등).';
-            else if (error.code === 3) errorMessage = '위치 정보를 가져오는 데 시간이 너무 오래 걸립니다.';
-            showMessage(errorMessage, '오류');
+            if (error && error.code) {
+                switch (error.code) {
+                    case 1: errorMessage = '오류: 위치 정보 접근이 거부되었습니다. 사이트 권한을 다시 확인해주세요.'; break;
+                    case 2: errorMessage = '오류: 위치 정보를 사용할 수 없습니다. (네트워크 또는 GPS 문제)'; break;
+                    case 3: errorMessage = '오류: 위치 정보를 가져오는 데 시간이 초과되었습니다.'; break;
+                }
+            }
+            showMessage(`${errorMessage}<br><br><small>상세: ${error.message}</small>`, '오류');
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             
             currentSortOrder = 'number'; // 오류 발생 시 순번순으로 복귀
             sortOrderButton.textContent = '순번순';
@@ -1305,8 +1311,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.1600`;
-        versionChangelog.textContent = `카카오맵 SDK 로딩 시점 문제 해결`;
+        versionText.textContent = `v20240723.1700`;
+        versionChangelog.textContent = `위치 정보 오류 시 상세 메시지 표시 기능 추가`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1353,7 +1359,6 @@
             setupDelegatedEventListeners();
             setupQuickScroll();
             
-            // ▼▼▼▼▼ 수정된 부분 3: kakao.maps.load() 사용 ▼▼▼▼▼
             if (typeof kakao !== "undefined" && kakao.maps) {
                 kakao.maps.load(() => {
                     geocoder = new kakao.maps.services.Geocoder();
@@ -1361,10 +1366,8 @@
                 });
             } else {
                 console.error("Kakao maps SDK is not loaded.");
-                // SDK 로딩 실패 시에도 버튼은 보이도록 처리 (기능은 동작 안함)
                 setupSortButtons(); 
             }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
