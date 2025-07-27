@@ -1153,18 +1153,9 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240724.1400`;
-        versionChangelog.textContent = `뒤로가기 방지 기능 추가`;
+        versionText.textContent = `v20240724.1500`;
+        versionChangelog.textContent = `뒤로가기 확인창 기능 추가`;
     };
-
-    // ▼▼▼▼▼ 수정된 부분 1: 뒤로가기 방지 함수 추가 ▼▼▼▼▼
-    const setupBackButtonInterceptor = () => {
-        history.pushState(null, '', location.href);
-        window.addEventListener('popstate', () => {
-            history.forward();
-        });
-    };
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
     const setupDelegatedEventListeners = () => {
         deliveryCardsContainer.addEventListener('click', (event) => {
@@ -1209,7 +1200,14 @@
             setVersionInfo();
             setupDelegatedEventListeners();
             setupQuickScroll();
-            setupBackButtonInterceptor(); // ▼▼▼▼▼ 수정된 부분 2: 함수 호출 추가 ▼▼▼▼▼
+            
+            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 확인창 로직 추가 ▼▼▼▼▼
+            window.addEventListener('beforeunload', (event) => {
+                event.preventDefault();
+                event.returnValue = ''; // 표준에서는 이 부분이 필요
+            });
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
