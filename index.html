@@ -20,7 +20,7 @@
         .animate-slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
-        #filter-buttons-container { position: fixed; left: 0; width: 100vw; will-change: transform, top; }
+        #filter-buttons-container { position: fixed; top: 0; left: 0; width: 100vw; will-change: transform, top; }
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
@@ -37,10 +37,8 @@
         .number-jump-item.active:hover { background-color: #1d4ed8; }
         .number-jump-item.inactive { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
         .number-jump-item.placeholder { background-color: transparent; }
-        /* ▼▼▼▼▼ 수정된 부분 1: 하단 검색창 CSS 추가 ▼▼▼▼▼ */
         #search-bar-container { position: fixed; bottom: 0; left: 0; width: 100vw; z-index: 46; transition: transform 0.3s ease-out; background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; }
         #search-bar-container.hidden { transform: translateY(100%); }
-        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -105,7 +103,6 @@
         <button id="fab-sort-no-completed" class="fab-button sort-by-no" title="순번순 정렬">1</button>
     </div>
 
-    <!-- ▼▼▼▼▼ 수정된 부분 2: 검색창 HTML 위치 이동 ▼▼▼▼▼ -->
     <div id="search-bar-container">
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
@@ -116,7 +113,6 @@
             </div>
         </div>
     </div>
-    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
 
     <div id="number-jump-modal" class="number-jump-modal" style="display: none;">
         <div class="number-jump-modal-content">
@@ -902,6 +898,7 @@
         document.getElementById('count-완료').textContent = deliveryItems.filter(item => item.status === '완료').length;
     };
     
+    // ▼▼▼▼▼ 수정된 부분 3: updateStickyHeaderPositions 함수 수정 ▼▼▼▼▼
     const updateStickyHeaderPositions = () => {
         requestAnimationFrame(() => {
             const topOffset = filterButtonsContainer.offsetHeight;
@@ -920,8 +917,14 @@
 
             const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
             searchBarContainer.style.display = isSearchVisible ? 'block' : 'none';
+            if (isSearchVisible) {
+                searchBarContainer.classList.remove('hidden');
+            } else {
+                searchBarContainer.classList.add('hidden');
+            }
         });
     };
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     
     filterButtonsContainer.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-filter]');
@@ -1222,8 +1225,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1500`;
-        versionChangelog.textContent = `하단 검색창 UI, 전체 필터 UI 개선`;
+        versionText.textContent = `v20240725.1510`;
+        versionChangelog.textContent = `하단 검색창 도입 및 UI 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1397,17 +1400,20 @@
                 showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
             });
 
-            // ▼▼▼▼▼ 수정된 부분 3: 스크롤 이벤트 리스너 추가 (하단 검색창) ▼▼▼▼▼
+            // 스크롤 이벤트
             window.addEventListener('scroll', () => {
                 const currentScrollY = window.scrollY;
                 if (currentScrollY > lastScrollY) { // Scrolling down
                     searchBarContainer.classList.add('hidden');
+                    fabContainerInProgress.classList.add('hidden');
+                    fabContainerCompleted.classList.add('hidden');
                 } else { // Scrolling up
                     searchBarContainer.classList.remove('hidden');
+                    fabContainerInProgress.classList.remove('hidden');
+                    fabContainerCompleted.classList.remove('hidden');
                 }
                 lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
             });
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
