@@ -180,6 +180,32 @@
     </div>
 
     <script type="text/javascript">
+        // ▼▼▼▼▼ 수정된 부분 2: initializeKakaoMap 함수를 전역 스코프로 이동 ▼▼▼▼▼
+        let geocoder; // Kakao Geocoder 객체 (전역 변수로 유지)
+        function initializeKakaoMap() {
+            if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                try {
+                    geocoder = new kakao.maps.services.Geocoder();
+                    console.log("✅ Kakao Geocoder가 성공적으로 초기화되었습니다.");
+                } catch (e) {
+                    console.error("❌ Kakao Geocoder 초기화 실패:", e);
+                    const sortOrderButton = document.getElementById('sort-order-button');
+                    if(sortOrderButton) {
+                        sortOrderButton.textContent = '지도 초기화 오류';
+                        sortOrderButton.disabled = true;
+                    }
+                }
+            } else {
+                console.error("❌ Kakao maps SDK가 로드되지 않았습니다.");
+                const sortOrderButton = document.getElementById('sort-order-button');
+                if(sortOrderButton) {
+                    sortOrderButton.textContent = '지도API 로딩 실패';
+                    sortOrderButton.disabled = true;
+                }
+            }
+        }
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
 
 **CRITICAL INSTRUCTIONS:**
@@ -386,7 +412,7 @@
         let onConfirmCallback = null;
         let currentEditItemNo = null; 
         let currentSortOrder = 'number'; // 'number' or 'distance'
-        let geocoder; // Kakao Geocoder 객체
+        // let geocoder; // 전역 스코프로 이동됨
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -1292,16 +1318,15 @@
 
     const setupSortButtons = () => {
         sortOrderButton.addEventListener('click', () => {
+            if (currentSortOrder === 'number' && !geocoder) {
+                showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
+                return;
+            }
+
             currentSortOrder = (currentSortOrder === 'number') ? 'distance' : 'number';
             sortOrderButton.textContent = (currentSortOrder === 'number') ? '순번순' : '거리순';
             
             if (currentSortOrder === 'distance') {
-                if (!geocoder) {
-                    showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
-                    currentSortOrder = 'number'; // 상태 원상 복구
-                    sortOrderButton.textContent = '순번순';
-                    return;
-                }
                 sortDeliveryItems();
             } else {
                 renderDeliveryCards();
@@ -1367,15 +1392,15 @@
             kakao.maps.load(() => {
                 try {
                     geocoder = new kakao.maps.services.Geocoder();
-                    console.log("Kakao Geocoder가 성공적으로 초기화되었습니다.");
+                    console.log("✅ Kakao Geocoder가 성공적으로 초기화되었습니다.");
                 } catch (e) {
-                    console.error("Kakao Geocoder 초기화 실패:", e);
+                    console.error("❌ Kakao Geocoder 초기화 실패:", e);
                     sortOrderButton.textContent = '지도 초기화 오류';
                     sortOrderButton.disabled = true;
                 }
             });
         } else {
-            console.error("Kakao maps SDK가 로드되지 않았습니다.");
+            console.error("❌ Kakao maps SDK가 로드되지 않았습니다.");
             sortOrderButton.textContent = '지도API 로딩 실패';
             sortOrderButton.disabled = true;
         }
