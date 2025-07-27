@@ -27,6 +27,9 @@
         #quick-scroll-handle.active { background-color: rgba(37, 99, 235, 0.7); cursor: grabbing; }
         #quick-scroll-bubble { position: absolute; right: 50px; top: 50%; transform: translateY(-50%); padding: 10px 20px; background-color: rgba(0, 0, 0, 0.75); color: white; font-size: 1.5rem; font-weight: 700; border-radius: 16px; display: none; pointer-events: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         #quick-scroll-handle.active ~ #quick-scroll-bubble { transition: none; }
+        #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
+        .toast-message.show { opacity: 1; transform: translateY(0); }
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -95,6 +98,8 @@
         <div id="quick-scroll-bubble">1</div>
     </div>
 
+    <div id="toast-container"></div>
+
     <div id="signature-modal" class="signature-modal" style="display: none;">
         <div class="signature-modal-content">
             <h2 class="text-xl font-semibold mb-4 text-gray-800">서명 입력</h2>
@@ -112,8 +117,10 @@
     <div id="confirmation-modal" class="confirmation-modal" style="display: none;">
         <div class="confirmation-modal-content">
             <h2 class="text-xl font-semibold mb-4 text-gray-800" id="confirmation-modal-title">확인</h2>
-            <p class="text-base text-gray-700 mb-6" id="confirmation-modal-message"></p>
-            <div class="flex justify-between space-x-2 mt-4">
+            <div id="confirmation-modal-body">
+                <p class="text-base text-gray-700 mb-6" id="confirmation-modal-message"></p>
+            </div>
+            <div class="flex justify-between space-x-2 mt-4" id="confirmation-modal-buttons">
                 <button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
                 <button id="confirmOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">확인</button>
             </div>
@@ -248,10 +255,47 @@
             });
         };
 
-        const cleanStringForDisplay = (str) => {
-            if (typeof str !== 'string' || !str) return '';
-            return str.replace(/[\n\\]/g, '').trim();
+        // ▼▼▼▼▼ 수정된 부분 1: 위치 정보 획득 헬퍼 함수 추가 ▼▼▼▼▼
+        const getCurrentLocation = (timeout = 10000) => {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    return reject(new Error('Geolocation is not supported by this browser.'));
+                }
+
+                const timer = setTimeout(() => {
+                    reject(new Error('Geolocation timeout.'));
+                }, timeout);
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        clearTimeout(timer);
+                        resolve({
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            timestamp: position.timestamp
+                        });
+                    },
+                    (error) => {
+                        clearTimeout(timer);
+                        let errorMessage = 'An unknown error occurred.';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = "User denied the request for Geolocation.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = "Location information is unavailable.";
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = "The request to get user location timed out.";
+                                break;
+                        }
+                        reject(new Error(errorMessage));
+                    },
+                    { enableHighAccuracy: true, timeout: timeout, maximumAge: 0 }
+                );
+            });
         };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const formatSinglePhoneNumber = (phoneNumber) => {
             if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
@@ -409,6 +453,8 @@
         const confirmationModal = document.getElementById('confirmation-modal');
         const confirmationModalTitle = document.getElementById('confirmation-modal-title');
         const confirmationModalMessage = document.getElementById('confirmation-modal-message');
+        const confirmationModalBody = document.getElementById('confirmation-modal-body');
+        const confirmationModalButtons = document.getElementById('confirmation-modal-buttons');
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
         
@@ -425,6 +471,8 @@
         const applyDirectBtn = document.getElementById('apply-direct-btn');
         const revertDirectBtn = document.getElementById('revert-direct-btn');
         const smartEditExitBtn = document.getElementById('smart-edit-exit');
+        
+        const toastContainer = document.getElementById('toast-container');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -432,19 +480,21 @@
         const saveSignature = () => {
             if (currentSignatureItemNo === null) return;
             const signatureText = signatureTextInput.value.trim();
-            if (signatureText === '') { showMessage('서명 내용을 입력해주세요.'); return; }
+            if (signatureText === '') { showToastMessage('서명 내용을 입력해주세요.'); return; }
             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
             handleStatusChange(currentSignatureItemNo, '완료', currentTime, '서명', signatureText);
             closeSignatureModal();
-            showMessage('서명이 성공적으로 저장되었습니다.', '성공');
+            showToastMessage('서명이 성공적으로 저장되었습니다.');
         };
         
         const openConfirmationModal = (message, onOk, okText = '확인', cancelText = '취소') => {
             confirmationModalTitle.textContent = '확인';
             confirmationModalMessage.textContent = message;
+            confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6" id="confirmation-modal-message">${message}</p>`;
             confirmOkButton.textContent = okText;
             confirmCancelButton.textContent = cancelText;
             confirmCancelButton.style.display = '';
+            confirmationModalButtons.style.display = 'flex';
             onConfirmCallback = onOk;
             confirmationModal.style.display = 'flex';
         };
@@ -452,19 +502,46 @@
         const closeConfirmationModal = () => { 
             confirmationModal.style.display = 'none'; 
             onConfirmCallback = null; 
-            confirmCancelButton.style.display = ''; 
-            confirmOkButton.textContent = '확인';
-            confirmCancelButton.textContent = '취소';
         };
 
         const showMessage = (message, title = '알림') => {
             confirmationModalTitle.textContent = title;
-            confirmationModalMessage.textContent = message;
+            confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6">${message}</p>`;
             confirmCancelButton.style.display = 'none';
             confirmOkButton.textContent = '확인';
+            confirmationModalButtons.style.display = 'flex';
             onConfirmCallback = closeConfirmationModal;
             confirmationModal.style.display = 'flex';
         };
+
+        // ▼▼▼▼▼ 수정된 부분 2: 로딩 메시지 및 토스트 메시지 함수 추가 ▼▼▼▼▼
+        const showLoadingMessage = (message) => {
+            confirmationModalTitle.textContent = '처리 중';
+            confirmationModalBody.innerHTML = `<div class="flex flex-col items-center justify-center p-4"><div class="spinner mb-4"></div><p class="text-base text-gray-700">${message}</p></div>`;
+            confirmationModalButtons.style.display = 'none';
+            confirmationModal.style.display = 'flex';
+        };
+
+        const showToastMessage = (message, duration = 2000) => {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.className = 'toast-message';
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                });
+            }, duration);
+        };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const autoResizeTextarea = (event) => {
             const textarea = event.target;
@@ -571,7 +648,7 @@
                 }
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(); 
-                showMessage('주소가 성공적으로 변경되었습니다.', '변경 완료');
+                showToastMessage('주소가 성공적으로 변경되었습니다.');
                 closeSmartEditModal();
             }
         };
@@ -613,14 +690,74 @@
             renderDeliveryCards();
             updateFilterCounts();
         };
-        const handleCheckboxToggleAndResetSearch = (itemNo, newCheckboxState) => {
-            deliveryItems = deliveryItems.map(item => item.no === itemNo ? { ...item, isHawbConfirmed: newCheckboxState, status: newCheckboxState ? '배송중' : '배송전', deliveryCompletionTime: newCheckboxState ? item.deliveryCompletionTime : null, completionType: newCheckboxState ? item.completionType : null, completionDetail: newCheckboxState ? item.completionDetail : null } : item);
-            saveDeliveryItemsToLocalStorage();
-            searchTerm = '';
-            invoiceNumberInput.value = '';
-            renderDeliveryCards();
-            updateFilterCounts();
+
+        // ▼▼▼▼▼ 수정된 부분 3: handleCheckboxToggleAndResetSearch 함수 전체 수정 ▼▼▼▼▼
+        const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
+            const checkbox = document.querySelector(`input[data-action="toggle-hawb-confirm"][data-no="${itemNo}"]`);
+            if (!checkbox) return;
+
+            if (newCheckboxState) { // 체크박스를 켤 때 (체크인)
+                checkbox.disabled = true;
+                showLoadingMessage('위치 정보 확인 중...');
+
+                try {
+                    const locationData = await getCurrentLocation();
+                    
+                    deliveryItems = deliveryItems.map(item => 
+                        item.no === itemNo 
+                            ? { 
+                                ...item, 
+                                isHawbConfirmed: true, 
+                                status: '배송중', 
+                                checkInLocation: locationData, // 위치 정보 저장
+                                deliveryCompletionTime: null, 
+                                completionType: null, 
+                                completionDetail: null 
+                              } 
+                            : item
+                    );
+                    
+                    saveDeliveryItemsToLocalStorage();
+                    searchTerm = '';
+                    invoiceNumberInput.value = '';
+                    renderDeliveryCards();
+                    updateFilterCounts();
+                    closeConfirmationModal(); // 로딩 메시지 닫기
+                    showToastMessage('체크인 완료. 위치가 저장되었습니다.');
+
+                } catch (error) {
+                    console.error("체크인 실패 (위치 정보 획득 오류):", error.message);
+                    closeConfirmationModal(); // 로딩 메시지 닫기
+                    showMessage(`체크인 실패: ${error.message}`, '오류');
+                    checkbox.checked = false; // 실패했으므로 체크박스 원상 복구
+                } finally {
+                    checkbox.disabled = false;
+                }
+
+            } else { // 체크박스를 끌 때 (체크인 취소)
+                deliveryItems = deliveryItems.map(item => 
+                    item.no === itemNo 
+                        ? { 
+                            ...item, 
+                            isHawbConfirmed: false, 
+                            status: '배송전', 
+                            checkInLocation: null, // 위치 정보 초기화
+                            deliveryCompletionTime: null, 
+                            completionType: null, 
+                            completionDetail: null 
+                          } 
+                        : item
+                );
+                
+                saveDeliveryItemsToLocalStorage();
+                searchTerm = '';
+                invoiceNumberInput.value = '';
+                renderDeliveryCards();
+                updateFilterCounts();
+                showToastMessage('체크인이 취소되었습니다.');
+            }
         };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const openNaverMap = (item) => {
             const addressForMapSearch = item.baseAddress || '';
@@ -787,12 +924,11 @@
             saveDeliveryItemsToLocalStorage();
             renderDeliveryCards();
             updateFilterCounts();
-            showMessage("모든 카드가 삭제되었습니다.");
+            showToastMessage("모든 카드가 삭제되었습니다.");
         });
     });
 
     // --- Scan, Import, Export Logic ---
-    // ▼▼▼▼▼ 수정된 부분 2: performScan 함수 ▼▼▼▼▼
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 3;
         const totalFiles = filesToScan.length;
@@ -899,7 +1035,8 @@
                 receiverNameOriginal: item.receiverName || '',
                 receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
                 status: '배송전', isHawbConfirmed: false,
-                deliveryCompletionTime: null, completionType: null, completionDetail: null
+                deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                checkInLocation: null // 위치 정보 필드 추가
             }));
             
             finalItems.forEach(newItem => {
@@ -917,7 +1054,6 @@
         }
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     
     scanAndGenerateButton.addEventListener('click', async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
@@ -988,7 +1124,7 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
+            showToastMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
         } catch (error) {
             showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
         }
@@ -1153,8 +1289,10 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240724.1500`;
-        versionChangelog.textContent = `뒤로가기 확인창 기능 추가`;
+        // ▼▼▼▼▼ 수정된 부분 4: 버전 정보 업데이트 ▼▼▼▼▼
+        versionText.textContent = `v20240725.1000`;
+        versionChangelog.textContent = `체크인 시 위치 정보 저장 기능 추가 및 안정화`;
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1162,12 +1300,12 @@
             const targetElement = event.target;
             const action = targetElement.dataset.action;
             const itemNo = parseInt(targetElement.dataset.no);
-            const item = deliveryItems.find(i => i.no === itemNo);
             
-            if (!item) return; 
-
             const button = event.target.closest('[data-action]');
             if (!button) return; 
+
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) return; 
 
             switch (action) {
                 case 'open-smart-edit': openSmartEditModal(itemNo); break;
@@ -1186,12 +1324,21 @@
                     break;
                 case 'sign-delivery': openSignatureModal(itemNo); break;
                 case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
-                case 'toggle-details': const details = document.querySelector(`[data-details-container="${data.no}"]`); if (details) { details.style.display = details.style.display === 'none' ? '' : 'none'; button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; } break;
+                case 'toggle-details': 
+                    const details = document.querySelector(`[data-details-container="${itemNo}"]`); 
+                    if (details) { 
+                        details.style.display = details.style.display === 'none' ? '' : 'none'; 
+                        button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; 
+                    } 
+                    break;
             }
         });
         deliveryCardsContainer.addEventListener('change', (event) => {
             const checkbox = event.target.closest('[data-action="toggle-hawb-confirm"]');
-            if (checkbox) handleCheckboxToggleAndResetSearch(parseInt(checkbox.dataset.no), checkbox.checked);
+            if (checkbox) {
+                event.preventDefault(); // 기본 동작을 막아 즉시 상태 변경 방지
+                handleCheckboxToggleAndResetSearch(parseInt(checkbox.dataset.no), checkbox.checked);
+            }
         });
     };
 
@@ -1201,12 +1348,10 @@
             setupDelegatedEventListeners();
             setupQuickScroll();
             
-            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 확인창 로직 추가 ▼▼▼▼▼
             window.addEventListener('beforeunload', (event) => {
                 event.preventDefault();
-                event.returnValue = ''; // 표준에서는 이 부분이 필요
+                event.returnValue = '';
             });
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
@@ -1216,6 +1361,10 @@
                         item.baseAddress = item.receiverAddressKorean;
                         item.detailAddress = '';
                         delete item.receiverAddressKorean;
+                    }
+                    // 이전 버전 데이터 호환성을 위해 checkInLocation 필드 추가
+                    if (typeof item.checkInLocation === 'undefined') {
+                        item.checkInLocation = null;
                     }
                     return item;
                 }).sort((a, b) => a.no - b.no);
