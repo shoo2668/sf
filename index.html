@@ -113,11 +113,13 @@
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-2/5 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="scanBarcodeButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100 hidden">
+                <!-- ▼▼▼▼▼ 수정된 부분 1: 바코드 스캔 버튼 HTML 수정 (hidden 클래스 제거) ▼▼▼▼▼ -->
+                <button id="scanBarcodeButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m-4-12v8m8-8v8m-6-4h4" />
                     </svg>
                 </button>
+                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
                 <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
                 <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">초기화</button>
             </div>
@@ -1263,8 +1265,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1900`;
-        versionChangelog.textContent = `안정 버전으로 복귀. AI 추출 방식 재검토.`;
+        versionText.textContent = `v20240725.1920`;
+        versionChangelog.textContent = `바코드 스캐너 기능 추가 및 활성화 버그 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1314,6 +1316,51 @@
         });
     };
 
+    // ▼▼▼▼▼ 수정된 부분 4: 바코드 스캐너 로직 추가 ▼▼▼▼▼
+    const startScanner = async () => {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            scannerVideo.srcObject = cameraStream;
+            await scannerVideo.play();
+            barcodeScannerModal.style.display = 'flex';
+
+            const barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
+            
+            const detectBarcode = async () => {
+                if (!cameraStream) return;
+                try {
+                    const barcodes = await barcodeDetector.detect(scannerVideo);
+                    if (barcodes.length > 0) {
+                        const scannedValue = barcodes[0].rawValue;
+                        invoiceNumberInput.value = scannedValue.replace(/\D/g, '');
+                        searchButton.click();
+                        stopScanner();
+                        if (navigator.vibrate) navigator.vibrate(200);
+                    } else {
+                        requestAnimationFrame(detectBarcode);
+                    }
+                } catch (e) {
+                    console.error('Barcode detection failed:', e);
+                    requestAnimationFrame(detectBarcode);
+                }
+            };
+            requestAnimationFrame(detectBarcode);
+
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            showMessage('카메라를 사용할 수 없습니다. 권한을 확인해주세요.', '오류');
+        }
+    };
+
+    const stopScanner = () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+        barcodeScannerModal.style.display = 'none';
+    };
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
     document.addEventListener('DOMContentLoaded', () => {
         try {
             setVersionInfo();
@@ -1323,6 +1370,14 @@
                 event.preventDefault();
                 event.returnValue = '';
             });
+
+            // ▼▼▼▼▼ 수정된 부분 5: 바코드 스캐너 이벤트 리스너 연결 및 기능 감지 ▼▼▼▼▼
+            if ('BarcodeDetector' in window) {
+                scanBarcodeButton.classList.remove('hidden');
+                scanBarcodeButton.addEventListener('click', startScanner);
+            }
+            cancelScanBtn.addEventListener('click', stopScanner);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
