@@ -113,15 +113,15 @@
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-2/5 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="scanBarcodeButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100 hidden">
+                <!-- ▼▼▼▼▼ 수정된 부분 1: 바코드 스캔 버튼 HTML 수정 (hidden 클래스 제거) ▼▼▼▼▼ -->
+                <button id="scanBarcodeButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m-4-12v8m8-8v8m-6-4h4" />
                     </svg>
                 </button>
-                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
-                <!-- ▼▼▼▼▼ 수정된 부분 1: '초기화' 버튼 텍스트를 '지움'으로 변경 ▼▼▼▼▼ -->
-                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
                 <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
+                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
+                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">초기화</button>
             </div>
         </div>
     </div>
@@ -1015,7 +1015,7 @@
 
     // --- Scan, Import, Export Logic ---
     async function performScan(filesToScan) {
-        const CONCURRENT_LIMIT = 4;
+        const CONCURRENT_LIMIT = 3;
         const totalFiles = filesToScan.length;
         let completedCount = 0;
 
@@ -1143,7 +1143,6 @@
     scanAndGenerateButton.addEventListener('click', async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
         
-        const startTime = Date.now();
         scanLoadingIndicator.style.display = 'block';
         scanErrorMessage.style.display = 'none';
         failedFileObjects = []; 
@@ -1151,20 +1150,15 @@
         try {
             const initialFiles = Array.from(currentFileToScan);
             const result = await performScan(initialFiles);
-            const endTime = Date.now();
-            const elapsedTime = Math.round((endTime - startTime) / 1000);
-            const minutes = Math.floor(elapsedTime / 60);
-            const seconds = elapsedTime % 60;
-            const timeString = `(소요 시간: ${minutes}분 ${seconds}초)`;
 
             if (result.failedFiles.length === 0) {
-                showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다. ${timeString}`);
+                showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다.`);
             } else {
                 failedFileObjects = result.failedFiles;
                 const successCount = initialFiles.length - failedFileObjects.length;
                 const failedFileNames = failedFileObjects.map(f => f.name);
                 
-                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공. ${timeString}\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
+                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공.\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
 
                 const onRetry = async () => {
                     scanLoadingIndicator.style.display = 'block';
@@ -1271,7 +1265,7 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1930`;
+        versionText.textContent = `v20240725.1920`;
         versionChangelog.textContent = `바코드 스캐너 기능 추가 및 활성화 버그 수정`;
     };
 
@@ -1322,6 +1316,7 @@
         });
     };
 
+    // ▼▼▼▼▼ 수정된 부분 4: 바코드 스캐너 로직 추가 ▼▼▼▼▼
     const startScanner = async () => {
         try {
             cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -1364,6 +1359,7 @@
         }
         barcodeScannerModal.style.display = 'none';
     };
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
     document.addEventListener('DOMContentLoaded', () => {
         try {
@@ -1375,11 +1371,13 @@
                 event.returnValue = '';
             });
 
+            // ▼▼▼▼▼ 수정된 부분 5: 바코드 스캐너 이벤트 리스너 연결 및 기능 감지 ▼▼▼▼▼
             if ('BarcodeDetector' in window) {
                 scanBarcodeButton.classList.remove('hidden');
                 scanBarcodeButton.addEventListener('click', startScanner);
             }
             cancelScanBtn.addEventListener('click', stopScanner);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
