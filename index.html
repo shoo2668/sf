@@ -24,9 +24,11 @@
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
-        .fab-container { position: fixed; bottom: 2rem; right: 1.5rem; z-index: 45; display: none; flex-direction: column; gap: 0.75rem; transition: opacity 0.15s ease-out; }
+        /* ▼▼▼▼▼ 수정된 부분 1: 플로팅 버튼 애니메이션 수정 ▼▼▼▼▼ */
+        .fab-container { position: fixed; bottom: 2rem; right: 1.5rem; z-index: 45; display: none; flex-direction: column; gap: 0.75rem; transform: scale(1); opacity: 1; transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; }
         .fab-container.visible { display: flex; }
-        .fab-container.hidden { opacity: 0; pointer-events: none; }
+        .fab-container.hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
+        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         .fab-button { width: 56px; height: 56px; border-radius: 50%; background-color: #1f2937; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: none; cursor: pointer; transition: background-color 0.2s; font-size: 1.25rem; font-weight: 600; }
         .fab-button:hover { background-color: #374151; }
         .fab-button.sort-by-no { background-color: #4b5563; }
@@ -208,7 +210,6 @@
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼ 수정된 부분 1: GEMINI_PROMPT 수정 ▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
@@ -262,7 +263,6 @@
   }
 ]
 `;
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -700,7 +700,7 @@
                 deliveryItems[itemIndex].addressLocation = null;
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(activeFilter); 
-                showToastMessage('주소가 성공적으로 변경되었습니다. 체크인 시 좌표를 다시 가져옵니다.');
+                showToastMessage('주소가 성공적으로 변경되었습니다.');
                 closeSmartEditModal();
             }
         };
@@ -1084,7 +1084,6 @@
         const allNewItems = Array.from(tempMergedResults.values()); 
 
         if (allNewItems.length > 0) {
-            // ▼▼▼▼▼ 수정된 부분 4: performScan 함수 수정 (새로운 필드 추가) ▼▼▼▼▼
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
                 hawbNo: item.hawbNo || '',
@@ -1100,7 +1099,6 @@
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
                 addressLocation: null
             }));
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             
             finalItems.forEach(newItem => {
                 const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
@@ -1243,8 +1241,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1600`;
-        versionChangelog.textContent = `AI 프롬프트 개선 (회사/이름 분리 추출)`;
+        versionText.textContent = `v20240725.1510`;
+        versionChangelog.textContent = `하단 검색창 도입 및 UI 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1437,11 +1435,6 @@
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
                 deliveryItems = parsedItems.map(item => {
-                    if (item.receiverAddressKorean && !item.baseAddress) {
-                        item.baseAddress = item.receiverAddressKorean;
-                        item.detailAddress = '';
-                        delete item.receiverAddressKorean;
-                    }
                     if (typeof item.addressLocation === 'undefined') {
                         item.addressLocation = null;
                     }
