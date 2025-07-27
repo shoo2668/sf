@@ -6,8 +6,8 @@
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- ▼▼▼▼▼ 수정된 부분 1: 카카오맵 SDK 스크립트 태그 완전 제거 ▼▼▼▼▼ -->
-    <!-- (JavaScript에서 필요할 때 동적으로 로드합니다) -->
+    <!-- ▼▼▼▼▼ 수정된 부분 1: onload="initializeKakaoMap()" 추가 ▼▼▼▼▼ -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=21af20c08ad70255961949dfc7812f18&libraries=services" onload="initializeKakaoMap()"></script>
     <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     <style>
         html { scroll-behavior: auto !important; }
@@ -182,6 +182,32 @@
     </div>
 
     <script type="text/javascript">
+        // ▼▼▼▼▼ 수정된 부분 2: initializeKakaoMap 함수를 전역 스코프로 이동 및 정의 ▼▼▼▼▼
+        let geocoder; // Kakao Geocoder 객체 (전역 변수)
+        function initializeKakaoMap() {
+            if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                try {
+                    geocoder = new kakao.maps.services.Geocoder();
+                    console.log("✅ Kakao Geocoder가 성공적으로 초기화되었습니다.");
+                } catch (e) {
+                    console.error("❌ Kakao Geocoder 초기화 실패:", e);
+                    const sortOrderButton = document.getElementById('sort-order-button');
+                    if(sortOrderButton) {
+                        sortOrderButton.textContent = '지도 초기화 오류';
+                        sortOrderButton.disabled = true;
+                    }
+                }
+            } else {
+                console.error("❌ Kakao maps SDK가 로드되지 않았습니다.");
+                const sortOrderButton = document.getElementById('sort-order-button');
+                if(sortOrderButton) {
+                    sortOrderButton.textContent = '지도API 로딩 실패';
+                    sortOrderButton.disabled = true;
+                }
+            }
+        }
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
 
 **CRITICAL INSTRUCTIONS:**
@@ -388,7 +414,7 @@
         let onConfirmCallback = null;
         let currentEditItemNo = null; 
         let currentSortOrder = 'number'; // 'number' or 'distance'
-        let geocoder; // Kakao Geocoder 객체
+        // let geocoder; // 전역 스코프로 이동됨
         let isKakaoSdkLoading = false; // 카카오 SDK 로딩 상태 플래그
 
         const searchBarContainer = document.getElementById('search-bar-container');
