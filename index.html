@@ -6,9 +6,8 @@
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- ▼▼▼▼▼ 수정된 부분 1: onload="initializeKakaoMap()" 추가 ▼▼▼▼▼ -->
+    <!-- 카카오 지도 SDK 로드 (onload로 초기화 함수 호출) -->
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=21af20c08ad70255961949dfc7812f18&libraries=services" onload="initializeKakaoMap()"></script>
-    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     <style>
         html { scroll-behavior: auto !important; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
@@ -182,31 +181,43 @@
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼ 수정된 부분 2: initializeKakaoMap 함수를 전역 스코프로 이동 및 정의 ▼▼▼▼▼
-        let geocoder; // Kakao Geocoder 객체 (전역 변수)
+        // 전역 변수 선언
+        let geocoder = null; // Kakao Geocoder 객체
+        let isMapInitialized = false; // 지도 초기화 상태 플래그
+        let deliveryItems = [];
+        let searchTerm = '';
+        let activeFilter = '전체';
+        const filterCategories = ['배송준비', '전체', '배송전', '배송중', '완료'];
+        let filterScrollPositions = {};
+        let currentFileToScan = null;
+        let failedFileObjects = []; 
+        let currentSignatureItemNo = null;
+        let onConfirmCallback = null;
+        let currentEditItemNo = null; 
+        let currentSortOrder = 'number'; // 'number' or 'distance'
+        
+        // Kakao 지도 초기화 함수
         function initializeKakaoMap() {
-            if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-                try {
-                    geocoder = new kakao.maps.services.Geocoder();
-                    console.log("✅ Kakao Geocoder가 성공적으로 초기화되었습니다.");
-                } catch (e) {
-                    console.error("❌ Kakao Geocoder 초기화 실패:", e);
-                    const sortOrderButton = document.getElementById('sort-order-button');
-                    if(sortOrderButton) {
-                        sortOrderButton.textContent = '지도 초기화 오류';
-                        sortOrderButton.disabled = true;
+            if (typeof kakao !== "undefined" && kakao.maps) {
+                kakao.maps.load(() => {
+                    try {
+                        geocoder = new kakao.maps.services.Geocoder();
+                        isMapInitialized = true;
+                        console.log("✅ Kakao Geocoder 초기화 완료");
+                        // 정렬 버튼 활성화
+                        document.getElementById('sort-order-button').disabled = false;
+                    } catch (e) {
+                        console.error("❌ Kakao Geocoder 초기화 실패:", e);
+                        document.getElementById('sort-order-button').textContent = '지도 초기화 오류';
+                        document.getElementById('sort-order-button').disabled = true;
                     }
-                }
+                });
             } else {
                 console.error("❌ Kakao maps SDK가 로드되지 않았습니다.");
-                const sortOrderButton = document.getElementById('sort-order-button');
-                if(sortOrderButton) {
-                    sortOrderButton.textContent = '지도API 로딩 실패';
-                    sortOrderButton.disabled = true;
-                }
+                document.getElementById('sort-order-button').textContent = '지도API 로딩 실패';
+                document.getElementById('sort-order-button').disabled = true;
             }
         }
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information.
 
@@ -243,8 +254,7 @@
     "receiverAddress": "경기 성남시 분당구 판교역로 235",
     "baseAddressKorean": "경기 성남시 분당구 판교역로 235"
   }
-]
-`;
+]`;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -402,21 +412,7 @@
             }
         };
 
-        // --- Global state and DOM elements ---
-        let deliveryItems = [];
-        let searchTerm = '';
-        let activeFilter = '전체';
-        const filterCategories = ['배송준비', '전체', '배송전', '배송중', '완료'];
-        let filterScrollPositions = {};
-        let currentFileToScan = null;
-        let failedFileObjects = []; 
-        let currentSignatureItemNo = null;
-        let onConfirmCallback = null;
-        let currentEditItemNo = null; 
-        let currentSortOrder = 'number'; // 'number' or 'distance'
-        // let geocoder; // 전역 스코프로 이동됨
-        let isKakaoSdkLoading = false; // 카카오 SDK 로딩 상태 플래그
-
+        // DOM elements
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
         const searchButton = document.getElementById('searchButton');
@@ -1243,6 +1239,15 @@
             return;
         }
 
+        // 지도 서비스 초기화 확인
+        if (!geocoder) {
+            showMessage('지도 서비스가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.', '알림');
+            currentSortOrder = 'number';
+            sortOrderButton.textContent = '순번순';
+            updateStickyHeaderPositions();
+            return;
+        }
+
         const itemsToSort = deliveryItems.filter(item => item.status === '배송중');
         if (itemsToSort.length === 0) {
             renderDeliveryCards();
@@ -1261,7 +1266,7 @@
             });
             const userCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
 
-            const itemsWithoutCoords = itemsToSort.filter(item => !item.lat || !item.lng);
+            const itemsWithoutCoords = itemsToSort.filter(item => !item.lat || !item.lng || forceRefresh);
             if (itemsWithoutCoords.length > 0) {
                 showMessage(`<div class="spinner mx-auto"></div><p class="mt-2">배송지 좌표 변환 중... (0/${itemsWithoutCoords.length})</p>`, '알림');
                 
@@ -1322,7 +1327,7 @@
     const setupSortButtons = () => {
         sortOrderButton.addEventListener('click', () => {
             if (currentSortOrder === 'number' && !geocoder) {
-                showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
+                showMessage('지도 서비스가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.', '알림');
                 return;
             }
 
@@ -1339,7 +1344,7 @@
 
         refreshLocationButton.addEventListener('click', () => {
             if (!geocoder) {
-                showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
+                showMessage('지도 서비스가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.', '알림');
                 return;
             }
             sortDeliveryItems(true);
@@ -1389,26 +1394,7 @@
         });
     };
 
-    // ▼▼▼▼▼ 수정된 부분 2: 초기화 로직 분리 및 DOMContentLoaded 복원 ▼▼▼▼▼
-    function initializeKakaoMap() {
-        if (typeof kakao !== "undefined" && kakao.maps) {
-            kakao.maps.load(() => {
-                try {
-                    geocoder = new kakao.maps.services.Geocoder();
-                    console.log("✅ Kakao Geocoder가 성공적으로 초기화되었습니다.");
-                } catch (e) {
-                    console.error("❌ Kakao Geocoder 초기화 실패:", e);
-                    sortOrderButton.textContent = '지도 초기화 오류';
-                    sortOrderButton.disabled = true;
-                }
-            });
-        } else {
-            console.error("❌ Kakao maps SDK가 로드되지 않았습니다.");
-            sortOrderButton.textContent = '지도API 로딩 실패';
-            sortOrderButton.disabled = true;
-        }
-    }
-
+    // 초기화 함수
     document.addEventListener('DOMContentLoaded', () => {
         try {
             // 지도와 관련 없는 핵심 기능들 먼저 초기화
@@ -1443,7 +1429,6 @@
             document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
         }
     });
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 </script>
 </body>
 </html>
