@@ -9,7 +9,7 @@
     <style>
         html { scroll-behavior: smooth !important; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
-        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal, .barcode-scanner-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color: 0.2s; }
@@ -24,11 +24,9 @@
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
-        /* ▼▼▼▼▼ 수정된 부분 1: 플로팅 버튼 애니메이션 수정 ▼▼▼▼▼ */
-        .fab-container { position: fixed; bottom: 2rem; right: 1.5rem; z-index: 45; display: none; flex-direction: column; gap: 0.75rem; transform: scale(1); opacity: 1; transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; }
+        .fab-container { position: fixed; bottom: 2rem; right: 1.5rem; z-index: 45; display: none; flex-direction: column; gap: 0.75rem; transition: opacity 0.15s ease-out; }
         .fab-container.visible { display: flex; }
-        .fab-container.hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
-        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
+        .fab-container.hidden { opacity: 0; pointer-events: none; }
         .fab-button { width: 56px; height: 56px; border-radius: 50%; background-color: #1f2937; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: none; cursor: pointer; transition: background-color 0.2s; font-size: 1.25rem; font-weight: 600; }
         .fab-button:hover { background-color: #374151; }
         .fab-button.sort-by-no { background-color: #4b5563; }
@@ -41,6 +39,13 @@
         .number-jump-item.placeholder { background-color: transparent; }
         #search-bar-container { position: fixed; bottom: 0; left: 0; width: 100vw; z-index: 46; transition: transform 0.3s ease-out; background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; }
         #search-bar-container.hidden { transform: translateY(100%); }
+        /* ▼▼▼▼▼ 수정된 부분 1: 바코드 스캐너 모달 CSS 추가 ▼▼▼▼▼ */
+        .barcode-scanner-modal { background-color: rgba(0,0,0,0.85); }
+        #scanner-video { width: 100%; height: 100%; object-fit: cover; }
+        #scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #scanner-guide { width: 80%; max-width: 400px; height: 120px; border: 2px solid rgba(255, 255, 255, 0.7); border-radius: 1rem; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); }
+        #cancel-scan-btn { position: absolute; bottom: 4rem; padding: 0.75rem 1.5rem; background-color: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 9999px; font-weight: 600; }
+        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -110,11 +115,28 @@
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-2/5 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="searchButton" class="w-3/10 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
-                <button id="resetButton" class="w-3/10 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">초기화</button>
+                <!-- ▼▼▼▼▼ 수정된 부분 2: 바코드 스캔 버튼 추가 ▼▼▼▼▼ -->
+                <button id="scanButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m-4-12v8m8-8v8m-6-4h4" />
+                    </svg>
+                </button>
+                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
+                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
+                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">초기화</button>
             </div>
         </div>
     </div>
+
+    <!-- ▼▼▼▼▼ 수정된 부분 3: 바코드 스캐너 모달 HTML 추가 ▼▼▼▼▼ -->
+    <div id="barcode-scanner-modal" class="barcode-scanner-modal" style="display: none;">
+        <video id="scanner-video" playsinline></video>
+        <div id="scanner-overlay">
+            <div id="scanner-guide"></div>
+            <button id="cancel-scan-btn">닫기</button>
+        </div>
+    </div>
+    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
 
     <div id="number-jump-modal" class="number-jump-modal" style="display: none;">
         <div class="number-jump-modal-content">
@@ -467,6 +489,7 @@
         let currentEditItemNo = null; 
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
+        let cameraStream = null; // For barcode scanner
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -527,6 +550,11 @@
         const numberJumpModal = document.getElementById('number-jump-modal');
         const numberJumpList = document.getElementById('number-jump-list');
         const numberJumpClose = document.getElementById('number-jump-close');
+
+        const scanButton = document.getElementById('scanButton');
+        const barcodeScannerModal = document.getElementById('barcode-scanner-modal');
+        const scannerVideo = document.getElementById('scanner-video');
+        const cancelScanBtn = document.getElementById('cancel-scan-btn');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
