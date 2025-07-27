@@ -6,9 +6,7 @@
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- ▼▼▼▼▼ 수정된 부분 1: 카카오맵 SDK 스크립트 태그 제거 ▼▼▼▼▼ -->
-    <!-- (JavaScript에서 동적으로 로드하도록 변경됨) -->
-    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=21af20c08ad70255961949dfc7812f18&libraries=services" onload="initializeKakaoMap()"></script>
     <style>
         html { scroll-behavior: auto !important; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
@@ -1294,15 +1292,16 @@
 
     const setupSortButtons = () => {
         sortOrderButton.addEventListener('click', () => {
-            if (currentSortOrder === 'number' && !geocoder) {
-                showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
-                return;
-            }
-
             currentSortOrder = (currentSortOrder === 'number') ? 'distance' : 'number';
             sortOrderButton.textContent = (currentSortOrder === 'number') ? '순번순' : '거리순';
             
             if (currentSortOrder === 'distance') {
+                if (!geocoder) {
+                    showMessage('지도 서비스가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.', '알림');
+                    currentSortOrder = 'number'; // 상태 원상 복구
+                    sortOrderButton.textContent = '순번순';
+                    return;
+                }
                 sortDeliveryItems();
             } else {
                 renderDeliveryCards();
@@ -1320,8 +1319,8 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240724.1100`;
-        versionChangelog.textContent = `올바른 카카오 API 키 적용 및 초기화 로직 수정`;
+        versionText.textContent = `v20240724.1200`;
+        versionChangelog.textContent = `올바른 카카오 API 키 적용 및 초기화 로직 최종 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1376,7 +1375,6 @@
                 }
             });
         } else {
-            // 이 경우는 onload 자체가 실패한 경우이므로 거의 발생하지 않음
             console.error("Kakao maps SDK가 로드되지 않았습니다.");
             sortOrderButton.textContent = '지도API 로딩 실패';
             sortOrderButton.disabled = true;
