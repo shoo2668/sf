@@ -24,12 +24,15 @@
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
-        #fab-container { position: fixed; bottom: 2rem; right: 1.5rem; z-index: 45; display: none; flex-direction: column; gap: 0.75rem; }
-        #fab-container.visible { display: flex; }
+        /* ▼▼▼▼▼ 수정된 부분 1: 플로팅 버튼 CSS 수정 및 추가 ▼▼▼▼▼ */
+        .fab-container { position: fixed; bottom: 2rem; right: 1.5rem; z-index: 45; display: none; flex-direction: column; gap: 0.75rem; transition: transform 0.3s ease-out, opacity 0.3s ease-out; }
+        .fab-container.visible { display: flex; }
+        .fab-container.hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
         .fab-button { width: 56px; height: 56px; border-radius: 50%; background-color: #1f2937; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: none; cursor: pointer; transition: background-color 0.2s; font-size: 1.25rem; font-weight: 600; }
         .fab-button:hover { background-color: #374151; }
         .fab-button.sort-by-no { background-color: #4b5563; }
-        .fab-button.sort-by-distance { background-color: #2563eb; }
+        .fab-button.sort-by-distance, .fab-button.sort-by-time { background-color: #2563eb; }
+        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         #number-jump-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; overflow-y: auto; padding: 0.5rem; margin: -0.5rem; max-height: 60vh; }
         .number-jump-item { min-width: 50px; padding: 0.75rem; border-radius: 0.5rem; font-weight: 600; text-align: center; transition: background-color 0.2s, color 0.2s; }
         .number-jump-item.active { background-color: #2563eb; color: white; cursor: pointer; }
@@ -101,11 +104,17 @@
     
     <div id="toast-container"></div>
 
-    <div id="fab-container">
+    <!-- ▼▼▼▼▼ 수정된 부분 2: 플로팅 버튼 HTML 수정 및 추가 ▼▼▼▼▼ -->
+    <div id="fab-container-inprogress" class="fab-container">
         <button id="fab-sort-distance" class="fab-button sort-by-distance" title="거리순 정렬">@</button>
         <button id="fab-sort-no" class="fab-button sort-by-no" title="순번순 정렬">#</button>
         <button id="fab-jump-no" class="fab-button" title="번호로 이동">1</button>
     </div>
+    <div id="fab-container-completed" class="fab-container">
+        <button id="fab-sort-time" class="fab-button sort-by-time" title="완료시간순 정렬">時</button>
+        <button id="fab-sort-no-completed" class="fab-button sort-by-no" title="순번순 정렬">1</button>
+    </div>
+    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
 
     <div id="number-jump-modal" class="number-jump-modal" style="display: none;">
         <div class="number-jump-modal-content">
@@ -440,7 +449,7 @@
         let currentSignatureItemNo = null;
         let onConfirmCallback = null;
         let currentEditItemNo = null; 
-        let currentSortOrder = 'no'; // 'no' or 'distance'
+        let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -490,10 +499,13 @@
         const smartEditExitBtn = document.getElementById('smart-edit-exit');
         
         const toastContainer = document.getElementById('toast-container');
-        const fabContainer = document.getElementById('fab-container');
+        const fabContainerInProgress = document.getElementById('fab-container-inprogress');
         const fabSortNo = document.getElementById('fab-sort-no');
         const fabSortDistance = document.getElementById('fab-sort-distance');
         const fabJumpNo = document.getElementById('fab-jump-no');
+        const fabContainerCompleted = document.getElementById('fab-container-completed');
+        const fabSortTime = document.getElementById('fab-sort-time');
+        const fabSortNoCompleted = document.getElementById('fab-sort-no-completed');
         
         const numberJumpModal = document.getElementById('number-jump-modal');
         const numberJumpList = document.getElementById('number-jump-list');
@@ -822,7 +834,7 @@
                     <button data-action="open-naver-map" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button>
                 ` : '';
 
-                // ▼▼▼▼▼ 수정된 부분 1: 하단 버튼 너비 클래스 제거 ▼▼▼▼▼
+                // ▼▼▼▼▼ 수정된 부분 3: 하단 버튼 너비 클래스 수정 ▼▼▼▼▼
                 return `
                     <div class="${data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white')} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -855,7 +867,7 @@
                             <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
                             ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                         </div>
-                        ${data.status === '배송중' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2"><button data-action="identity-verification" data-no="${data.no}" class="px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
+                        ${data.status === '배송중' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
                         ${data.status === '완료' ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
                 </div>
             `;
@@ -897,8 +909,11 @@
             dataManagementContainer.classList.toggle('hidden', !isScanVisible);
             versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
 
-            const deliveryInProgressCount = deliveryItems.filter(item => item.status === '배송중').length;
-            fabContainer.classList.toggle('visible', activeFilter === '배송중' && deliveryInProgressCount > 0);
+            const inProgressCount = deliveryItems.filter(item => item.status === '배송중').length;
+            fabContainerInProgress.classList.toggle('visible', activeFilter === '배송중' && inProgressCount > 0);
+            
+            const completedCount = deliveryItems.filter(item => item.status === '완료').length;
+            fabContainerCompleted.classList.toggle('visible', activeFilter === '완료' && completedCount > 0);
         });
     };
     
@@ -919,7 +934,7 @@
             }
         });
         
-        if (activeFilter === '배송중') {
+        if (activeFilter === '배송중' || activeFilter === '완료') {
             currentSortOrder = 'no';
             deliveryItems.sort((a, b) => a.no - b.no);
         }
@@ -1201,9 +1216,9 @@
     });
     
     const setVersionInfo = () => {
-        // ▼▼▼▼▼ 수정된 부분 2: 버전 정보 업데이트 ▼▼▼▼▼
+        // ▼▼▼▼▼ 수정된 부분 4: 버전 정보 업데이트 ▼▼▼▼▼
         versionText.textContent = `v20240725.1410`;
-        versionChangelog.textContent = `카드 UI(거리, 버튼) 개선, 번호이동 버그 수정`;
+        versionChangelog.textContent = `UI 개선(버튼, 스크롤), 완료 필터 정렬 기능 추가`;
         // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
@@ -1264,6 +1279,8 @@
                 event.returnValue = '';
             });
 
+            // ▼▼▼▼▼ 수정된 부분 5: 이벤트 리스너 추가 및 수정 ▼▼▼▼▼
+            // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
                 currentSortOrder = 'no';
                 deliveryItems.sort((a, b) => a.no - b.no);
@@ -1352,6 +1369,43 @@
             numberJumpClose.addEventListener('click', () => {
                 numberJumpModal.style.display = 'none';
             });
+
+            // '완료' FAB 이벤트
+            fabSortNoCompleted.addEventListener('click', () => {
+                currentSortOrder = 'no';
+                deliveryItems.sort((a, b) => a.no - b.no);
+                renderDeliveryCards(activeFilter);
+                showToastMessage('순번순으로 정렬되었습니다.');
+            });
+
+            fabSortTime.addEventListener('click', () => {
+                currentSortOrder = 'time';
+                const completedItems = deliveryItems.filter(item => item.status === '완료');
+                const otherItems = deliveryItems.filter(item => item.status !== '완료');
+                
+                completedItems.sort((a, b) => {
+                    if (!a.deliveryCompletionTime) return 1;
+                    if (!b.deliveryCompletionTime) return -1;
+                    return b.deliveryCompletionTime.localeCompare(a.deliveryCompletionTime);
+                });
+
+                deliveryItems = [...completedItems, ...otherItems];
+                renderDeliveryCards(activeFilter);
+                showToastMessage('완료시간순으로 정렬되었습니다.');
+            });
+
+            // 스크롤 시 FAB 숨김/표시 이벤트
+            let scrollTimer;
+            window.addEventListener('scroll', () => {
+                fabContainerInProgress.classList.add('hidden');
+                fabContainerCompleted.classList.add('hidden');
+                clearTimeout(scrollTimer);
+                scrollTimer = setTimeout(() => {
+                    fabContainerInProgress.classList.remove('hidden');
+                    fabContainerCompleted.classList.remove('hidden');
+                }, 250);
+            });
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
