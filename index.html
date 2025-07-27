@@ -208,13 +208,14 @@
     </div>
 
     <script type="text/javascript">
+        // ▼▼▼▼▼ 수정된 부분 1: GEMINI_PROMPT 수정 ▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
 
 1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
 
-2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverPhone", "receiverCompanyName", and "receiverName".
+2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
 
 3.  **SEPARATE COMPANY AND PERSONAL NAME:**
     *   **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
@@ -261,6 +262,7 @@
   }
 ]
 `;
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -603,74 +605,60 @@
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
+            const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+            
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            
-            directAddressInput.value = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
-            
             piecesAddressInput.value = '';
+            directAddressInput.value = originalFullAddress;
             setTimeout(() => {
                 autoResizeTextarea({target: piecesAddressInput});
                 autoResizeTextarea({target: directAddressInput});
             }, 0);
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
-            addressPiecesContainer.innerHTML = '';
-
-            if (item.receiverAddressOriginal) {
-                const standardAddressKeywords = ['seoul', 'busan', 'incheon', 'daegu', 'gwangju', 'daejeon', 'ulsan', 'gyeonggi', 'gangwon', 'chungcheong', 'jeolla', 'gyeongsang', 'jeju', 'do', 'si', 'gun', 'gu', 'eup', 'myeon', 'dong', 'ri', 'ga', 'ro', 'gil', 'daero', 'beon-gil', 'block', 'unit', 'street'];
-                const addressSuffixes = ['-ro', '-gil', '-daero', '-gu', '-si', '-do'];
-                const translationMap = { 'seoul': '서울', 'songpa-gu': '송파구', 'gangdong-gu': '강동구', 'block': '블록', 'street': '길', 'unit': '호', 'ro': '로', 'gil': '길', 'gu': '구', 'si': '시', 'do': '도', 'dong': '동', 'ri': '리' };
-
-                const pieces = item.receiverAddressOriginal.split(/[\s,-]+/).filter(Boolean);
-                
-                const isStandardComponent = (piece) => {
-                    const lowercasedPiece = piece.toLowerCase();
-                    if (!isNaN(parseFloat(lowercasedPiece)) && isFinite(lowercasedPiece)) return true; // 숫자
-                    if (standardAddressKeywords.includes(lowercasedPiece)) return true; // 키워드
-                    if (addressSuffixes.some(suffix => lowercasedPiece.endsWith(suffix))) return true; // 접미사
-                    return false;
-                };
-
-                const translatedPieces = pieces
-                    .filter(isStandardComponent)
-                    .map(piece => {
-                        const lowercasedPiece = piece.toLowerCase();
-                        return translationMap[lowercasedPiece] || piece;
-                    });
-
-                const createPieceButton = (text) => {
-                    const button = document.createElement('button');
-                    button.textContent = text;
-                    button.className = 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full';
-                    button.onclick = () => {
-                        const input = piecesAddressInput;
-                        input.value += (input.value.length > 0 ? ' ' : '') + text;
-                        autoResizeTextarea({ target: input });
-                    };
-                    return button;
-                };
-
-                translatedPieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece)));
-            }
-
             const numberButtonsContainer = document.getElementById('number-buttons');
             const unitButtonsContainer = document.getElementById('unit-buttons');
-            [numberButtonsContainer, unitButtonsContainer].forEach(c => c.innerHTML = '');
+            [addressPiecesContainer, numberButtonsContainer, unitButtonsContainer].forEach(c => c.innerHTML = '');
             
-            const createFixedButton = (text, value) => {
+            const createPieceButton = (text, colorClass, value, isHtml = false, autoSpace = false) => {
                 const button = document.createElement('button');
-                button.textContent = text;
-                button.className = 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md';
+                if (isHtml) button.innerHTML = text;
+                else button.textContent = text;
+                
+                const finalValue = value !== undefined ? value : text;
+                button.className = `flex-shrink-0 font-medium m-1 text-sm ${colorClass}`;
                 button.onclick = () => {
                     const input = piecesAddressInput;
-                    input.value += value !== undefined ? value : text;
+                    let currentValue = input.value;
+                    
+                    if (autoSpace) { // 주소 조각 버튼 (자동 띄어쓰기)
+                         input.value += (currentValue.length > 0 ? ' ' : '') + finalValue;
+                    } else { // 고정 버튼 (규칙에 따른 띄어쓰기)
+                        const needsSpace = finalValue === ',' && currentValue.length > 0 && !/\s$/.test(currentValue);
+                        input.value += (needsSpace ? ' ' : '') + finalValue;
+                    }
                     autoResizeTextarea({ target: input });
                 };
                 return button;
             };
+
+            const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
+            basePieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full', undefined, false, true)));
+
+            if (item.detailAddress) {
+                addressPiecesContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full', undefined, false, true));
+                const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
+                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full', undefined, false, true)));
+            }
             
-            for (let i = 0; i <= 9; i++) { numberButtonsContainer.appendChild(createFixedButton(i.toString())); }
-            ['길', '번길', '동', '리', ' ', ',', '-'].forEach(unit => unitButtonsContainer.appendChild(createFixedButton(unit)));
+            for (let i = 0; i <= 9; i++) {
+                numberButtonsContainer.appendChild(createPieceButton(i.toString(), 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-md'));
+            }
+
+            ['길', '번길', '동', '리'].forEach(unit => unitButtonsContainer.appendChild(createPieceButton(unit, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-md')));
+            unitButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md', ' ', true));
+            unitButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md', ','));
+            unitButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
             
             const backspaceBtn = document.createElement('button');
             backspaceBtn.innerHTML = '←';
@@ -712,7 +700,7 @@
                 deliveryItems[itemIndex].addressLocation = null;
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(activeFilter); 
-                showToastMessage('주소가 성공적으로 변경되었습니다.');
+                showToastMessage('주소가 성공적으로 변경되었습니다. 체크인 시 좌표를 다시 가져옵니다.');
                 closeSmartEditModal();
             }
         };
@@ -1096,12 +1084,13 @@
         const allNewItems = Array.from(tempMergedResults.values()); 
 
         if (allNewItems.length > 0) {
+            // ▼▼▼▼▼ 수정된 부분 4: performScan 함수 수정 (새로운 필드 추가) ▼▼▼▼▼
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
-                receiverAddressOriginal: item.receiverAddressOriginal || '',
+                receiverAddressOriginal: item.receiverAddress || '',
                 companyNameOriginal: item.receiverCompanyName || '',
                 receiverNameOriginal: item.receiverName || '',
                 companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
@@ -1111,6 +1100,7 @@
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
                 addressLocation: null
             }));
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             
             finalItems.forEach(newItem => {
                 const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
@@ -1253,8 +1243,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1510`;
-        versionChangelog.textContent = `하단 검색창 도입 및 UI 개선`;
+        versionText.textContent = `v20240725.1600`;
+        versionChangelog.textContent = `AI 프롬프트 개선 (회사/이름 분리 추출)`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1447,6 +1437,11 @@
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
                 deliveryItems = parsedItems.map(item => {
+                    if (item.receiverAddressKorean && !item.baseAddress) {
+                        item.baseAddress = item.receiverAddressKorean;
+                        item.detailAddress = '';
+                        delete item.receiverAddressKorean;
+                    }
                     if (typeof item.addressLocation === 'undefined') {
                         item.addressLocation = null;
                     }
