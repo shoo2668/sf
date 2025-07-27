@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,7 @@
         .signature-modal, .confirmation-modal, .smart-edit-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
-        #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color 0.2s; }
+        #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color: 0.2s; }
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
@@ -22,8 +22,8 @@
         #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
         #filter-buttons-container, #search-bar-container { position: fixed; left: 0; width: 100vw; will-change: transform, top; }
         #quick-scroll-container { position: fixed; top: 0; right: 0; height: 100%; width: 40px; display: none; z-index: 40; user-select: none; -webkit-user-select: none; }
-        #quick-scroll-handle { position: absolute; right: 8px; top: 50%; width: 24px; height: 50px; background-color: rgba(0, 0, 0, 0.25); border-radius: 12px; cursor: grab; transition: background-color 0.2s; }
-        #quick-scroll-handle:not(.active) { transition: background-color 0.2s, top 0.15s ease-out; }
+        #quick-scroll-handle { position: absolute; right: 8px; top: 50%; width: 24px; height: 50px; background-color: rgba(0, 0, 0, 0.25); border-radius: 12px; cursor: grab; transition: background-color: 0.2s; }
+        #quick-scroll-handle:not(.active) { transition: background-color: 0.2s, top 0.15s ease-out; }
         #quick-scroll-handle.active { background-color: rgba(37, 99, 235, 0.7); cursor: grabbing; }
         #quick-scroll-bubble { position: absolute; right: 50px; top: 50%; transform: translateY(-50%); padding: 10px 20px; background-color: rgba(0, 0, 0, 0.75); color: white; font-size: 1.5rem; font-weight: 700; border-radius: 16px; display: none; pointer-events: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         #quick-scroll-handle.active ~ #quick-scroll-bubble { transition: none; }
@@ -347,7 +347,6 @@
             return !!(address && address.trim().length > 0);
         };
         
-        // ▼▼▼▼▼ 수정된 부분 1: 카카오 API 함수 추가 ▼▼▼▼▼
         const validateAddressWithKakao = async (baseAddress, detailAddress) => {
             if (!baseAddress) {
                 return { baseAddress: '', detailAddress: detailAddress || '' };
@@ -369,7 +368,6 @@
                 return { baseAddress, detailAddress: detailAddress || '' }; // 에러나도 원본 유지
             }
         };
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         // --- Global state and DOM elements ---
         let deliveryItems = [];
@@ -1155,9 +1153,18 @@
     };
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240723.0900`;
-        versionChangelog.textContent = `카카오 API 검증 추가(롤백)`;
+        versionText.textContent = `v20240724.1400`;
+        versionChangelog.textContent = `뒤로가기 방지 기능 추가`;
     };
+
+    // ▼▼▼▼▼ 수정된 부분 1: 뒤로가기 방지 함수 추가 ▼▼▼▼▼
+    const setupBackButtonInterceptor = () => {
+        history.pushState(null, '', location.href);
+        window.addEventListener('popstate', () => {
+            history.forward();
+        });
+    };
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
     const setupDelegatedEventListeners = () => {
         deliveryCardsContainer.addEventListener('click', (event) => {
@@ -1202,6 +1209,7 @@
             setVersionInfo();
             setupDelegatedEventListeners();
             setupQuickScroll();
+            setupBackButtonInterceptor(); // ▼▼▼▼▼ 수정된 부분 2: 함수 호출 추가 ▼▼▼▼▼
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
