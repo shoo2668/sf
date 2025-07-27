@@ -791,7 +791,6 @@
         };
         
         // --- Render function ---
-        // ▼▼▼▼▼ 수정된 부분 3: renderDeliveryCards 함수 수정 (UI 개선) ▼▼▼▼▼
         const renderDeliveryCards = (currentFilter, animationClass = '') => {
             if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
 
@@ -823,6 +822,7 @@
                     <button data-action="open-naver-map" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button>
                 ` : '';
 
+                // ▼▼▼▼▼ 수정된 부분 1: 하단 버튼 너비 클래스 제거 ▼▼▼▼▼
                 return `
                     <div class="${data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white')} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -855,10 +855,11 @@
                             <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
                             ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                         </div>
-                        ${data.status === '배송중' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2"><button data-action="identity-verification" data-no="${data.no}" class="w-2/5 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="w-2/5 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="w-1/5 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
+                        ${data.status === '배송중' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2"><button data-action="identity-verification" data-no="${data.no}" class="px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
                         ${data.status === '완료' ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
                 </div>
             `;
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         }).join('');
         
         if (animationClass) {
@@ -867,7 +868,6 @@
             setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); animation = ''; }, 300);
         }
     };
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
     // --- UI Update & Event Listener Setup ---
     const updateFilterCounts = () => {
@@ -1201,9 +1201,9 @@
     });
     
     const setVersionInfo = () => {
-        // ▼▼▼▼▼ 수정된 부분 4: 버전 정보 업데이트 ▼▼▼▼▼
-        versionText.textContent = `v20240725.1400`;
-        versionChangelog.textContent = `거리 표시 위치 및 하단 버튼 UI 개선`;
+        // ▼▼▼▼▼ 수정된 부분 2: 버전 정보 업데이트 ▼▼▼▼▼
+        versionText.textContent = `v20240725.1410`;
+        versionChangelog.textContent = `카드 UI(거리, 버튼) 개선, 번호이동 버그 수정`;
         // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
@@ -1305,7 +1305,6 @@
                 }
             });
 
-            // ▼▼▼▼▼ 수정된 부분 5: 번호 이동 모달 로직 수정 (버그 수정 및 UI 개선) ▼▼▼▼▼
             fabJumpNo.addEventListener('click', () => {
                 numberJumpList.innerHTML = '';
                 if (deliveryItems.length === 0) {
@@ -1328,7 +1327,7 @@
                         btn.onclick = () => {
                             const targetCard = document.querySelector(`[data-no="${i}"]`);
                             if (targetCard) {
-                                const headerOffset = filterButtonsContainer.offsetHeight + searchBarContainer.offsetHeight;
+                                const headerOffset = filterButtonsContainer.offsetHeight + (searchBarContainer.classList.contains('hidden') ? 0 : searchBarContainer.offsetHeight);
                                 const elementPosition = targetCard.getBoundingClientRect().top;
                                 const offsetPosition = elementPosition + window.pageYOffset - headerOffset - 10;
                                 
@@ -1353,7 +1352,6 @@
             numberJumpClose.addEventListener('click', () => {
                 numberJumpModal.style.display = 'none';
             });
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
