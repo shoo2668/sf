@@ -257,29 +257,25 @@
 
 **CRITICAL STEP-BY-STEP INSTRUCTIONS:**
 
-1.  **SCAN AND IDENTIFY BLOCKS:** Scan the document from top to bottom. The document is composed of repeating pairs: a 'Delivery Block' and a 'Tracking Number Line'.
+1.  **DOCUMENT STRUCTURE:** The document is a table where each delivery is a **ROW**. Each row is visually separated by a **THICK HORIZONTAL LINE**. Treat each row as a distinct, separate item.
 
-2.  **DEFINE THE PAIR:**
-    *   A **'Delivery Block'** contains the recipient's information (e.g., 'MINWOO KWON', address, phone number).
-    *   A **'Tracking Number Line'** is the line located **IMMEDIATELY BENEATH** a Delivery Block. It contains a barcode and a long tracking number, which often starts with '1Z'.
+2.  **PAIRING LOGIC (MOST IMPORTANT):**
+    *   Within each row, find the main 'Delivery Block' (containing recipient name, address, etc.).
+    *   The 'hawbNo' (Tracking Number) for that block is located in the line **IMMEDIATELY BENEATH** it, often next to a barcode.
+    *   **CRITICAL RULE:** NEVER associate a Delivery Block with any text or tracking number that appears *ABOVE* it or in a different row.
+    *   **EXAMPLE:** The 'MINWOO KWON' block at the top MUST be paired with the tracking number '1Z423R3V6793903541' found below it.
 
-3.  **EXECUTE THE PAIRING LOGIC:**
-    *   For each 'Delivery Block' you find, you MUST extract the 'hawbNo' from the 'Tracking Number Line' that is **DIRECTLY BELOW IT**.
-    *   **CRITICAL RULE:** NEVER associate a Delivery Block with any text or tracking number that appears *ABOVE* it.
-    *   **EXAMPLE:** The 'MINWOO KWON' block at the top MUST be paired with the tracking number '1Z423R3V6793903541' found below it, NOT with the 'AM...' text in the document header.
+3.  **HANDLING INCOMPLETE BLOCKS (For page breaks):**
+    *   If a block at the **bottom of the page** is missing its 'hawbNo' below it, extract all available information and output it with "hawbNo": null.
+    *   If a block at the **top of the page** is missing most information but has a 'hawbNo', extract the 'hawbNo' and any other text.
 
-4.  **ASSIGN SEQUENCE NUMBER ('no') AUTOMATICALLY:**
-    *   Assign a sequential number to the "no" field for each correctly paired block, starting from 1.
-    *   The pair that appears highest on the page should be "no": 1. The next pair down should be "no": 2, and so on.
-    *   **DO NOT look for a handwritten number.** You must generate the sequence number based on the block's vertical position.
+4.  **DATA EXTRACTION & FORMATTING:**
+    *   **'no' (Sequence Number):** DO NOT look for a handwritten number. You MUST assign a sequential number starting from 1 based on the row's vertical position on the page.
+    *   **Original English Data:** You MUST include the original English text for "receiverName" and "receiverCompanyName" in the final JSON.
+    *   **Translation:** Translate names and address to standard Korean.
+    *   **Address Separation:** Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".
 
-5.  **EXTRACT, TRANSLATE, AND SEPARATE:**
-    *   From the 'Delivery Block', extract "receiverName", "receiverCompanyName", "receiverAddress", and "receiverPhone".
-    *   Intelligently separate the company name and personal name. If a name contains "CO.", "LTD", or "INC", it's a company. Otherwise, it's a personal name.
-    *   Translate all extracted information (names, address) to standard Korean.
-    *   Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".
-
-6.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects, where each object represents one correctly paired delivery.
+5.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects. Each object must contain "no", "hawbNo", "receiverName", "receiverCompanyName", "receiverAddress", "receiverPhone", and their Korean translations.
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -458,7 +454,7 @@
                 const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(baseAddress)}`, {
                     headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
                 });
-                if (!response.ok) throw new Error('Kakao API call failed');
+                if (!response.ok) throw new Error('Kakao Geocoding API call failed');
                 const data = await response.json();
                 if (data.documents && data.documents.length > 0) {
                     const doc = data.documents[0];
@@ -1003,19 +999,18 @@
 
     // --- Scan, Import, Export Logic ---
     async function performScan(filesToScan, prompt) {
+        const CONCURRENT_WORKERS = 2; // 동시에 실행할 최대 작업 수 (API 속도 제한 방지)
         const totalFiles = filesToScan.length;
-        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+        let processedCount = 0;
 
+        scanProgressText.textContent = `이미지 정렬 및 리사이징 준비...`;
         const sortedFiles = [...filesToScan].sort((a, b) => a.name.localeCompare(b.name));
-
-        const resizePromises = sortedFiles.map((file, index) => 
-            resizeImage(file).then(resizedObject => {
-                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
-                return { file: resizedObject.file, data: resizedObject.data };
-            })
-        );
-        const resizedImageObjects = await Promise.all(resizePromises);
-        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
+        
+        const resizedImageObjects = await Promise.all(sortedFiles.map(file => resizeImage(file)));
+        
+        const resultsMap = new Map();
+        const failedFiles = [];
+        const requestQueue = [...resizedImageObjects];
 
         const processApiRequest = async (resizedObject) => {
             const { file, data: base64ImageData } = resizedObject;
@@ -1029,61 +1024,95 @@
                     const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                     const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) throw new Error(`API 요청 실패 (상태: ${response.status})`);
+                    if (!response.ok) {
+                        if (response.status === 429) { // Rate limit detected
+                           console.warn(`API 속도 제한 감지 (${file.name}). ${attempt * 2}초 후 재시도...`);
+                           await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // 재시도 전 대기시간 증가
+                           continue; // 다음 재시도 실행
+                        }
+                        throw new Error(`API 요청 실패 (상태: ${response.status})`);
+                    }
                     
                     const result = await response.json();
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                         if (Array.isArray(parsedData)) {
-                            return { file, data: parsedData };
+                            return parsedData;
                         }
                     }
                     throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
                 } catch (error) {
                     if (attempt < 3) {
                         console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     } else {
-                        throw error; // Rethrow after final attempt
+                        throw error;
                     }
                 }
             }
         };
 
-        const apiPromises = resizedImageObjects.map(processApiRequest);
-        const results = await Promise.allSettled(apiPromises);
-
-        let allNewItems = [];
-        let failedFileObjectsForRetry = [];
-        let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
-
-        scanProgressText.textContent = `API 응답 처리 중...`;
-        
-        for (const result of results) {
-            if (result.status === 'fulfilled') {
-                const { data: apiResultArray } = result.value;
-                for (const geminiItem of apiResultArray) {
-                    lastSuccessfulNo++;
-                    const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-                    geminiItem.baseAddressKorean = baseAddress;
-                    geminiItem.detailAddressKorean = detailAddress;
-                    geminiItem.no = lastSuccessfulNo;
-                    allNewItems.push(geminiItem);
+        const worker = async () => {
+            while (requestQueue.length > 0) {
+                const requestObject = requestQueue.shift();
+                if (requestObject) {
+                    try {
+                        const apiResultArray = await processApiRequest(requestObject);
+                        resultsMap.set(requestObject.file.name, apiResultArray);
+                    } catch (error) {
+                        console.error(`파일(${requestObject.file.name}) 최종 스캔 실패:`, error);
+                        failedFiles.push(requestObject.file);
+                    } finally {
+                        processedCount++;
+                        scanProgressText.textContent = `API 처리 중 (${processedCount}/${totalFiles})...`;
+                    }
                 }
-            } else {
-                console.error(`파일 스캔 오류:`, result.reason);
-                // Find the original file object to add to the retry list
-                const failedRequest = result.reason.request; // This part is conceptual, need to trace back the file
-                // For simplicity, we can't easily get the file object back here without more complex promise chaining.
-                // We will mark the scan as partially failed. A more robust implementation would track file objects through promises.
+            }
+        };
+
+        const workerPromises = Array.from({ length: CONCURRENT_WORKERS }, worker);
+        await Promise.all(workerPromises);
+
+        // --- 후처리 병합 (Post-processing Merge) 로직 시작 ---
+        let allItemsFromAI = [];
+        for (const file of sortedFiles) {
+            if (resultsMap.has(file.name)) {
+                allItemsFromAI.push(...resultsMap.get(file.name));
             }
         }
-        
-        // This part is a simplification. A full implementation would need to map failed promises back to their original files.
-        // For now, we check which files from the original sorted list did not produce successful results.
-        const successfulFiles = new Set(results.filter(r => r.status === 'fulfilled').map(r => r.value.file.name));
-        failedFileObjectsForRetry = sortedFiles.filter(f => !successfulFiles.has(f.name));
 
+        const stitchedItems = [];
+        for (let i = 0; i < allItemsFromAI.length; i++) {
+            const currentItem = allItemsFromAI[i];
+            const prevItem = stitchedItems.length > 0 ? stitchedItems[stitchedItems.length - 1] : null;
+
+            const isBottomPiece = (!currentItem.receiverName || !currentItem.receiverAddress) && currentItem.hawbNo;
+            const isTopPiece = prevItem && (prevItem.receiverName || prevItem.receiverAddress) && !prevItem.hawbNo;
+
+            if (isTopPiece && isBottomPiece) {
+                // Merge current (bottom) piece into previous (top) piece
+                prevItem.hawbNo = currentItem.hawbNo;
+                if (currentItem.receiverAddress) prevItem.receiverAddress += ` ${currentItem.receiverAddress}`;
+                if (currentItem.receiverPhone) prevItem.receiverPhone = currentItem.receiverPhone;
+                if (currentItem.receiverName) prevItem.receiverName = currentItem.receiverName;
+                // ... 다른 필드들도 필요에 따라 병합
+            } else {
+                stitchedItems.push(currentItem);
+            }
+        }
+        // --- 후처리 병합 로직 종료 ---
+
+        let allNewItems = [];
+        let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
+
+        for (const geminiItem of stitchedItems) {
+            lastSuccessfulNo++;
+            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+            geminiItem.baseAddressKorean = baseAddress;
+            geminiItem.detailAddressKorean = detailAddress;
+            geminiItem.no = lastSuccessfulNo;
+            allNewItems.push(geminiItem);
+        }
 
         let newCount = 0;
         let updateCount = 0;
@@ -1118,7 +1147,7 @@
             deliveryItems.sort((a, b) => a.no - b.no);
             saveDeliveryItemsToLocalStorage();
         }
-        return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
+        return { newCount, updateCount, failedFiles: failedFiles };
     }
     
     const startFullScanProcess = async () => {
@@ -1252,8 +1281,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.1200`;
-        versionChangelog.textContent = `스캔 로직을 병렬 처리(속도)와 순차 조립(정확성) 하이브리드 방식으로 개선`;
+        versionText.textContent = `v20240726.1600`;
+        versionChangelog.textContent = `UPS 스캔 로직 전면 개선 (속도, 정확도, 페이지 나뉨, 데이터 보존 문제 해결)`;
     };
 
     const setupDelegatedEventListeners = () => {
