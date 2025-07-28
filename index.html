@@ -76,13 +76,12 @@
 
     <div id="scan-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
         <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
-        <!-- ▼▼▼▼▼ 수정된 부분 1: 스캔 버튼 UI 변경 ▼▼▼▼▼ -->
-        <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
-            <input type="file" id="scanImageInput" accept="image/*" multiple class="hidden"/>
-            <label for="scanImageInput" id="sfScanButton" class="flex-1 w-full text-sm text-blue-700 py-3 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">SF Express 스캔</label>
-            <label for="scanImageInput" id="upsScanButton" class="flex-1 w-full text-sm text-yellow-700 py-3 px-4 rounded-md border border-yellow-300 bg-yellow-50 font-semibold cursor-pointer hover:bg-yellow-100 text-center whitespace-nowrap">UPS 스캔</label>
+        <input type="file" id="scanImageInput" accept="image/*" multiple class="hidden"/>
+        <div class="flex items-center space-x-3 mb-3">
+            <label for="scanImageInput" id="sfScanButton" class="flex-1 w-full text-sm text-white py-3 px-4 rounded-md bg-gray-800 font-semibold cursor-pointer hover:bg-gray-700 text-center whitespace-nowrap">SF 사진 선택</label>
+            <label for="scanImageInput" id="upsScanButton" class="flex-1 w-full text-sm text-yellow-400 py-3 px-4 rounded-md bg-[#331a00] font-semibold cursor-pointer hover:bg-[#5a3a1a] text-center whitespace-nowrap">UPS 사진 선택</label>
         </div>
-        <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
+        <button id="scanAndGenerateButton" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
         <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
         <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
             <div class="spinner mx-auto mb-2"></div>
@@ -228,7 +227,6 @@
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼ 수정된 부분 2: 프롬프트 분리 ▼▼▼▼▼
         const GEMINI_PROMPT_SF = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
@@ -280,7 +278,6 @@
 
 6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 `;
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -486,6 +483,7 @@
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
         let cameraStream = null; // For barcode scanner
+        let scanType = 'sf'; // 'sf' or 'ups'
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -496,6 +494,7 @@
         const scanImageInput = document.getElementById('scanImageInput');
         const sfScanButton = document.getElementById('sfScanButton');
         const upsScanButton = document.getElementById('upsScanButton');
+        const scanAndGenerateButton = document.getElementById('scanAndGenerateButton');
         const scanLoadingIndicator = document.getElementById('scan-loading-indicator');
         const scanErrorMessage = document.getElementById('scan-error-message');
         const scanErrorText = document.getElementById('scan-error-text');
@@ -999,23 +998,9 @@
     resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
     invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.replace(/\D/g, ''); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
 
-    deliverySheetImageInput.addEventListener('change', (event) => {
-        currentFileToScan = event.target.files;
-        selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
-    });
-    
-    clearAllCardsButton.addEventListener('click', () => {
-        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
-            deliveryItems = [];
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            showToastMessage("모든 카드가 삭제되었습니다.");
-        });
-    });
-
     // --- Scan, Import, Export Logic ---
-    async function performScan(filesToScan) {
+    // ▼▼▼▼▼ 수정된 부분 3: performScan 함수에 prompt 매개변수 추가 ▼▼▼▼▼
+    async function performScan(filesToScan, prompt) {
         const CONCURRENT_LIMIT = 4;
         const totalFiles = filesToScan.length;
         let completedCount = 0;
@@ -1046,7 +1031,7 @@
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                     const payload = {
-                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
+                        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
                         generationConfig: { temperature: 0, responseMimeType: "application/json" }
                     };
                     const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
@@ -1141,7 +1126,7 @@
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
     
-    scanAndGenerateButton.addEventListener('click', async () => {
+    const startFullScanProcess = async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
         
         const startTime = Date.now();
@@ -1149,9 +1134,11 @@
         scanErrorMessage.style.display = 'none';
         failedFileObjects = []; 
 
+        const promptToUse = scanType === 'ups' ? GEMINI_PROMPT_UPS : GEMINI_PROMPT_SF;
+
         try {
             const initialFiles = Array.from(currentFileToScan);
-            const result = await performScan(initialFiles);
+            const result = await performScan(initialFiles, promptToUse);
             const endTime = Date.now();
             const elapsedTime = Math.round((endTime - startTime) / 1000);
             const minutes = Math.floor(elapsedTime / 60);
@@ -1169,9 +1156,7 @@
 
                 const onRetry = async () => {
                     scanLoadingIndicator.style.display = 'block';
-                    
-                    const retryResult = await performScan(failedFileObjects);
-
+                    const retryResult = await performScan(failedFileObjects, promptToUse);
                     scanLoadingIndicator.style.display = 'none';
 
                     if (retryResult.failedFiles.length === 0) {
@@ -1191,14 +1176,14 @@
             scanErrorMessage.style.display = 'block';
         } finally {
             scanLoadingIndicator.style.display = 'none';
-            deliverySheetImageInput.value = '';
+            scanImageInput.value = '';
             currentFileToScan = null;
             selectedFilesDisplay.textContent = '선택된 파일 없음';
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
             updateStickyHeaderPositions();
         }
-    });
+    };
     
     exportDataButton.addEventListener('click', () => {
         if (deliveryItems.length === 0) { showMessage("저장할 데이터가 없습니다."); return; }
@@ -1272,8 +1257,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1930`;
-        versionChangelog.textContent = `바코드 스캐너 기능 추가 및 활성화 버그 수정`;
+        versionText.textContent = `v20240725.2010`;
+        versionChangelog.textContent = `송장 스캔 UI 복원 및 택배사별 디자인 적용, 스캔 로직 안정화`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1375,6 +1360,16 @@
                 event.preventDefault();
                 event.returnValue = '';
             });
+
+            // ▼▼▼▼▼ 수정된 부분 4: 스캔 버튼 이벤트 리스너 수정 ▼▼▼▼▼
+            sfScanButton.addEventListener('click', () => { scanType = 'sf'; });
+            upsScanButton.addEventListener('click', () => { scanType = 'ups'; });
+            scanImageInput.addEventListener('change', (event) => {
+                currentFileToScan = event.target.files;
+                selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
+            });
+            scanAndGenerateButton.addEventListener('click', startFullScanProcess);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             if ('BarcodeDetector' in window) {
                 scanBarcodeButton.classList.remove('hidden');
