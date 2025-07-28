@@ -999,7 +999,6 @@
     invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.replace(/\D/g, ''); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
 
     // --- Scan, Import, Export Logic ---
-    // ▼▼▼▼▼ 수정된 부분 3: performScan 함수에 prompt 매개변수 추가 ▼▼▼▼▼
     async function performScan(filesToScan, prompt) {
         const CONCURRENT_LIMIT = 4;
         const totalFiles = filesToScan.length;
@@ -1257,8 +1256,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.2010`;
-        versionChangelog.textContent = `송장 스캔 UI 복원 및 택배사별 디자인 적용, 스캔 로직 안정화`;
+        versionText.textContent = `v20240725.2020`;
+        versionChangelog.textContent = `'모든 카드 삭제' 기능 활성화 버그 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1361,7 +1360,17 @@
                 event.returnValue = '';
             });
 
-            // ▼▼▼▼▼ 수정된 부분 4: 스캔 버튼 이벤트 리스너 수정 ▼▼▼▼▼
+            // ▼▼▼▼▼ 수정된 부분 4: 이벤트 리스너 추가 및 수정 ▼▼▼▼▼
+            clearAllCardsButton.addEventListener('click', () => {
+                openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
+                    deliveryItems = [];
+                    saveDeliveryItemsToLocalStorage();
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                    showToastMessage("모든 카드가 삭제되었습니다.");
+                });
+            });
+
             sfScanButton.addEventListener('click', () => { scanType = 'sf'; });
             upsScanButton.addEventListener('click', () => { scanType = 'ups'; });
             scanImageInput.addEventListener('change', (event) => {
@@ -1369,13 +1378,13 @@
                 selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
             });
             scanAndGenerateButton.addEventListener('click', startFullScanProcess);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             if ('BarcodeDetector' in window) {
                 scanBarcodeButton.classList.remove('hidden');
                 scanBarcodeButton.addEventListener('click', startScanner);
             }
             cancelScanBtn.addEventListener('click', stopScanner);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
