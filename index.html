@@ -1256,8 +1256,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.2020`;
-        versionChangelog.textContent = `'모든 카드 삭제' 기능 활성화 버그 수정`;
+        versionText.textContent = `v20240725.1930`;
+        versionChangelog.textContent = `바코드 스캐너 기능 추가 및 활성화 버그 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1360,7 +1360,6 @@
                 event.returnValue = '';
             });
 
-            // ▼▼▼▼▼ 수정된 부분 4: 이벤트 리스너 추가 및 수정 ▼▼▼▼▼
             clearAllCardsButton.addEventListener('click', () => {
                 openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
                     deliveryItems = [];
@@ -1384,7 +1383,6 @@
                 scanBarcodeButton.addEventListener('click', startScanner);
             }
             cancelScanBtn.addEventListener('click', stopScanner);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
