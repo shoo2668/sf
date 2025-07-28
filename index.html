@@ -253,30 +253,33 @@
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 `;
 
-        const GEMINI_PROMPT_UPS = `Analyze the provided image of a UPS delivery report. Your task is to identify each distinct delivery block and extract its key information into a valid JSON array.
+        const GEMINI_PROMPT_UPS = `Analyze the provided image of a UPS delivery report. Your primary goal is to correctly pair each delivery information block with the Tracking Number line located *directly below it*.
 
-**CRITICAL INSTRUCTIONS:**
+**CRITICAL STEP-BY-STEP INSTRUCTIONS:**
 
-1.  **IDENTIFY DELIVERY BLOCKS:** The document consists of multiple delivery blocks separated by horizontal lines. Each block is a separate item.
+1.  **SCAN AND IDENTIFY BLOCKS:** Scan the document from top to bottom. The document is composed of repeating pairs: a 'Delivery Block' and a 'Tracking Number Line'.
 
-2.  **EXTRACT KEY-VALUE PAIRS:** For each block, extract: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverName", and "receiverCompanyName".
+2.  **DEFINE THE PAIR:**
+    *   A **'Delivery Block'** contains the recipient's information (e.g., 'MINWOO KWON', address, phone number).
+    *   A **'Tracking Number Line'** is the line located **IMMEDIATELY BENEATH** a Delivery Block. It contains a barcode and a long tracking number, which often starts with '1Z'.
 
-3.  **CORRECT PAIRING (MOST IMPORTANT):**
-    *   The "no" (number) is handwritten on the far left of each block.
-    *   The "hawbNo" (TrackingNumber) for each block is located **BELOW** the main information text, often next to a barcode. You MUST associate each information block with the "hawbNo" found **DIRECTLY BENEATH IT**, not above it. The HAWB No. often starts with "1Z".
-    *   The "receiverName" or "receiverCompanyName" is the capitalized text at the top of the block (e.g., "MINWOO KWON", "NEW DEPOT CO.,LTD").
-    *   The "receiverAddress" is the multi-line text below the name.
-    *   The "receiverPhone" is the numeric string below the address.
+3.  **EXECUTE THE PAIRING LOGIC:**
+    *   For each 'Delivery Block' you find, you MUST extract the 'hawbNo' from the 'Tracking Number Line' that is **DIRECTLY BELOW IT**.
+    *   **CRITICAL RULE:** NEVER associate a Delivery Block with any text or tracking number that appears *ABOVE* it.
+    *   **EXAMPLE:** The 'MINWOO KWON' block at the top MUST be paired with the tracking number '1Z423R3V6793903541' found below it, NOT with the 'AM...' text in the document header.
 
-4.  **SEPARATE COMPANY AND NAME:**
-    *   If the main name contains "CO.", "LTD", or "INC", treat it as "receiverCompanyName" and repeat it for "receiverName".
-    *   Otherwise, treat it as "receiverName" and omit "receiverCompanyName".
+4.  **ASSIGN SEQUENCE NUMBER ('no') AUTOMATICALLY:**
+    *   Assign a sequential number to the "no" field for each correctly paired block, starting from 1.
+    *   The pair that appears highest on the page should be "no": 1. The next pair down should be "no": 2, and so on.
+    *   **DO NOT look for a handwritten number.** You must generate the sequence number based on the block's vertical position.
 
-5.  **TRANSLATE AND SEPARATE ADDRESS (Same as SF Express):**
-    *   Translate names and the address to Korean.
+5.  **EXTRACT, TRANSLATE, AND SEPARATE:**
+    *   From the 'Delivery Block', extract "receiverName", "receiverCompanyName", "receiverAddress", and "receiverPhone".
+    *   Intelligently separate the company name and personal name. If a name contains "CO.", "LTD", or "INC", it's a company. Otherwise, it's a personal name.
+    *   Translate all extracted information (names, address) to standard Korean.
     *   Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".
 
-6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+6.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects, where each object represents one correctly paired delivery.
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -1256,8 +1259,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1930`;
-        versionChangelog.textContent = `바코드 스캐너 기능 추가 및 활성화 버그 수정`;
+        versionText.textContent = `v20240726.1000`;
+        versionChangelog.textContent = `UPS 스캔 로직 개선 (자동 순번 부여 및 송장번호 매칭 정확도 향상)`;
     };
 
     const setupDelegatedEventListeners = () => {
