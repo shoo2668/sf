@@ -1003,97 +1003,75 @@
 
     // --- Scan, Import, Export Logic ---
     async function performScan(filesToScan, prompt) {
-        const CONCURRENT_LIMIT = 4;
+        let allNewItems = [];
+        let failedFileObjectsForRetry = [];
+        let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
+
         const totalFiles = filesToScan.length;
-        let completedCount = 0;
-
         scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
-        const resizePromises = filesToScan.map((file, index) => 
-            resizeImage(file).then(resizedObject => {
-                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
-                return resizedObject;
-            })
-        );
-        const resizedImageObjects = await Promise.all(resizePromises);
-        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
         
-        const tempMergedResults = new Map();
-        const failedFileObjectsForRetry = [];
-        const requestQueue = [...resizedImageObjects]; 
+        const sortedFiles = [...filesToScan].sort((a, b) => a.name.localeCompare(b.name));
 
-        const updateApiProgress = () => {
-            completedCount++;
-            scanProgressText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
-        };
+        for (let i = 0; i < sortedFiles.length; i++) {
+            const file = sortedFiles[i];
+            scanProgressText.textContent = `파일 처리 중 (${i + 1}/${totalFiles}): ${file.name}`;
+            
+            try {
+                const resizedObject = await resizeImage(file);
+                const base64ImageData = resizedObject.data;
+                
+                let apiResultArray = null;
+                let lastError = null;
 
-        const processApiRequest = async (resizedObject) => {
-            const { file, data: base64ImageData } = resizedObject;
-            let lastError = null;
-
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    const payload = {
-                        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
-                        generationConfig: { temperature: 0, responseMimeType: "application/json" }
-                    };
-                    const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
-
-                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
-                    
-                    const result = await response.json();
-
-                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        if (Array.isArray(parsedData) && parsedData.length > 0) {
-                             return parsedData;
-                        }
-                    }
-                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
-                    if (attempt < 3) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                }
-            }
-            throw lastError;
-        };
-        
-        const worker = async () => {
-            while (requestQueue.length > 0) {
-                const requestObject = requestQueue.shift(); 
-                if (requestObject) {
+                for (let attempt = 1; attempt <= 3; attempt++) {
                     try {
-                        const apiResultArray = await processApiRequest(requestObject);
-                        for (const geminiItem of apiResultArray) {
-                            const no = parseInt(geminiItem.no || '0', 10);
-                            if (no === 0) continue;
-                            
-                            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-                            geminiItem.baseAddressKorean = baseAddress;
-                            geminiItem.detailAddressKorean = detailAddress;
+                        const payload = {
+                            contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
+                            generationConfig: { temperature: 0, responseMimeType: "application/json" }
+                        };
+                        const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                        const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
-                            tempMergedResults.set(no, geminiItem);
+                        const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                        
+                        const result = await response.json();
+
+                        if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                            const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                            if (Array.isArray(parsedData)) {
+                                apiResultArray = parsedData;
+                                break; // Success
+                            }
                         }
+                        throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
                     } catch (error) {
-                        console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
-                        failedFileObjectsForRetry.push(requestObject.file);
-                    } finally {
-                        updateApiProgress();
+                        lastError = error;
+                        console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
+                        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 200));
                     }
                 }
-            }
-        };
 
-        const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
-        await Promise.all(workerPromises);
+                if (apiResultArray === null) throw lastError;
+
+                for (const geminiItem of apiResultArray) {
+                    lastSuccessfulNo++;
+                    
+                    const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+                    geminiItem.baseAddressKorean = baseAddress;
+                    geminiItem.detailAddressKorean = detailAddress;
+                    geminiItem.no = lastSuccessfulNo; // Assign cumulative number
+                    allNewItems.push(geminiItem);
+                }
+
+            } catch (error) {
+                console.error(`파일 스캔 오류 (${file.name}):`, error);
+                failedFileObjectsForRetry.push(file);
+            }
+        }
 
         let newCount = 0;
         let updateCount = 0;
-        const allNewItems = Array.from(tempMergedResults.values()); 
 
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
@@ -1259,8 +1237,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.1000`;
-        versionChangelog.textContent = `UPS 스캔 로직 개선 (자동 순번 부여 및 송장번호 매칭 정확도 향상)`;
+        versionText.textContent = `v20240726.1100`;
+        versionChangelog.textContent = `여러 사진 스캔 시 파일 이름순으로 순번 누적 부여 (순서 엉킴 문제 해결)`;
     };
 
     const setupDelegatedEventListeners = () => {
