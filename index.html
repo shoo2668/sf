@@ -1003,72 +1003,87 @@
 
     // --- Scan, Import, Export Logic ---
     async function performScan(filesToScan, prompt) {
+        const totalFiles = filesToScan.length;
+        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+
+        const sortedFiles = [...filesToScan].sort((a, b) => a.name.localeCompare(b.name));
+
+        const resizePromises = sortedFiles.map((file, index) => 
+            resizeImage(file).then(resizedObject => {
+                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
+                return { file: resizedObject.file, data: resizedObject.data };
+            })
+        );
+        const resizedImageObjects = await Promise.all(resizePromises);
+        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
+
+        const processApiRequest = async (resizedObject) => {
+            const { file, data: base64ImageData } = resizedObject;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const payload = {
+                        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
+                        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+                    };
+                    const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+
+                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`API 요청 실패 (상태: ${response.status})`);
+                    
+                    const result = await response.json();
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                        if (Array.isArray(parsedData)) {
+                            return { file, data: parsedData };
+                        }
+                    }
+                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
+                } catch (error) {
+                    if (attempt < 3) {
+                        console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    } else {
+                        throw error; // Rethrow after final attempt
+                    }
+                }
+            }
+        };
+
+        const apiPromises = resizedImageObjects.map(processApiRequest);
+        const results = await Promise.allSettled(apiPromises);
+
         let allNewItems = [];
         let failedFileObjectsForRetry = [];
         let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
 
-        const totalFiles = filesToScan.length;
-        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+        scanProgressText.textContent = `API 응답 처리 중...`;
         
-        const sortedFiles = [...filesToScan].sort((a, b) => a.name.localeCompare(b.name));
-
-        for (let i = 0; i < sortedFiles.length; i++) {
-            const file = sortedFiles[i];
-            scanProgressText.textContent = `파일 처리 중 (${i + 1}/${totalFiles}): ${file.name}`;
-            
-            try {
-                const resizedObject = await resizeImage(file);
-                const base64ImageData = resizedObject.data;
-                
-                let apiResultArray = null;
-                let lastError = null;
-
-                for (let attempt = 1; attempt <= 3; attempt++) {
-                    try {
-                        const payload = {
-                            contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
-                            generationConfig: { temperature: 0, responseMimeType: "application/json" }
-                        };
-                        const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                        const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
-
-                        const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
-                        
-                        const result = await response.json();
-
-                        if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                            const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                            if (Array.isArray(parsedData)) {
-                                apiResultArray = parsedData;
-                                break; // Success
-                            }
-                        }
-                        throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
-                    } catch (error) {
-                        lastError = error;
-                        console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
-                        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                }
-
-                if (apiResultArray === null) throw lastError;
-
+        for (const result of results) {
+            if (result.status === 'fulfilled') {
+                const { data: apiResultArray } = result.value;
                 for (const geminiItem of apiResultArray) {
                     lastSuccessfulNo++;
-                    
                     const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
                     geminiItem.baseAddressKorean = baseAddress;
                     geminiItem.detailAddressKorean = detailAddress;
-                    geminiItem.no = lastSuccessfulNo; // Assign cumulative number
+                    geminiItem.no = lastSuccessfulNo;
                     allNewItems.push(geminiItem);
                 }
-
-            } catch (error) {
-                console.error(`파일 스캔 오류 (${file.name}):`, error);
-                failedFileObjectsForRetry.push(file);
+            } else {
+                console.error(`파일 스캔 오류:`, result.reason);
+                // Find the original file object to add to the retry list
+                const failedRequest = result.reason.request; // This part is conceptual, need to trace back the file
+                // For simplicity, we can't easily get the file object back here without more complex promise chaining.
+                // We will mark the scan as partially failed. A more robust implementation would track file objects through promises.
             }
         }
+        
+        // This part is a simplification. A full implementation would need to map failed promises back to their original files.
+        // For now, we check which files from the original sorted list did not produce successful results.
+        const successfulFiles = new Set(results.filter(r => r.status === 'fulfilled').map(r => r.value.file.name));
+        failedFileObjectsForRetry = sortedFiles.filter(f => !successfulFiles.has(f.name));
+
 
         let newCount = 0;
         let updateCount = 0;
@@ -1237,8 +1252,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.1100`;
-        versionChangelog.textContent = `여러 사진 스캔 시 파일 이름순으로 순번 누적 부여 (순서 엉킴 문제 해결)`;
+        versionText.textContent = `v20240726.1200`;
+        versionChangelog.textContent = `스캔 로직을 병렬 처리(속도)와 순차 조립(정확성) 하이브리드 방식으로 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
