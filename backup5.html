@@ -76,13 +76,11 @@
 
     <div id="scan-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
         <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
-        <!-- ▼▼▼▼▼ 수정된 부분 1: 스캔 버튼 UI 변경 ▼▼▼▼▼ -->
         <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
-            <input type="file" id="scanImageInput" accept="image/*" multiple class="hidden"/>
-            <label for="scanImageInput" id="sfScanButton" class="flex-1 w-full text-sm text-blue-700 py-3 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">SF Express 스캔</label>
-            <label for="scanImageInput" id="upsScanButton" class="flex-1 w-full text-sm text-yellow-700 py-3 px-4 rounded-md border border-yellow-300 bg-yellow-50 font-semibold cursor-pointer hover:bg-yellow-100 text-center whitespace-nowrap">UPS 스캔</label>
+            <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
+            <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 py-2 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">사진 선택</label>
+            <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
         </div>
-        <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
         <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
         <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
             <div class="spinner mx-auto mb-2"></div>
@@ -121,7 +119,9 @@
                     </svg>
                 </button>
                 <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
+                <!-- ▼▼▼▼▼ 수정된 부분 1: '초기화' 버튼 텍스트를 '지움'으로 변경 ▼▼▼▼▼ -->
                 <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
+                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
             </div>
         </div>
     </div>
@@ -228,8 +228,7 @@
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼ 수정된 부분 2: 프롬프트 분리 ▼▼▼▼▼
-        const GEMINI_PROMPT_SF = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
+        const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
 
@@ -253,34 +252,35 @@
         *   "detailAddressKorean" should contain the rest (e.g., "올림픽파크포레온 319동 307호"). Omit if not present.
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+
+**Example Output:**
+[
+  {
+    "no": "40",
+    "hawbNo": "SF028452891 8577",
+    "receiverCompanyName": "Techfiber.Co.,-Ltd",
+    "receiverCompanyNameKorean": "테크파이버",
+    "receiverName": "Richard Kim",
+    "receiverNameKorean": "김리차드",
+    "receiverPhone": "24080670",
+    "receiverAddress": "No.601, 422-dong, yangjae-daero 1300",
+    "baseAddressKorean": "서울 강동구 양재대로 1300",
+    "detailAddressKorean": "422동 601호"
+  },
+  {
+    "no": "1",
+    "hawbNo": "SF319999130 4534",
+    "receiverCompanyName": "Jiyoung Her",
+    "receiverCompanyNameKorean": "허지영",
+    "receiverName": "Jiyoung Her",
+    "receiverNameKorean": "허지영",
+    "receiverPhone": "01025190714",
+    "receiverAddress": "Songpagu Olympic-ro 102-408",
+    "baseAddressKorean": "서울 송파구 올림픽로",
+    "detailAddressKorean": "102-408"
+  }
+]
 `;
-
-        const GEMINI_PROMPT_UPS = `Analyze the provided image of a UPS delivery report. Your task is to identify each distinct delivery block and extract its key information into a valid JSON array.
-
-**CRITICAL INSTRUCTIONS:**
-
-1.  **IDENTIFY DELIVERY BLOCKS:** The document consists of multiple delivery blocks separated by horizontal lines. Each block is a separate item.
-
-2.  **EXTRACT KEY-VALUE PAIRS:** For each block, extract: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverName", and "receiverCompanyName".
-
-3.  **CORRECT PAIRING (MOST IMPORTANT):**
-    *   The "no" (number) is handwritten on the far left of each block.
-    *   The "hawbNo" (TrackingNumber) for each block is located **BELOW** the main information text, often next to a barcode. You MUST associate each information block with the "hawbNo" found **DIRECTLY BENEATH IT**, not above it. The HAWB No. often starts with "1Z".
-    *   The "receiverName" or "receiverCompanyName" is the capitalized text at the top of the block (e.g., "MINWOO KWON", "NEW DEPOT CO.,LTD").
-    *   The "receiverAddress" is the multi-line text below the name.
-    *   The "receiverPhone" is the numeric string below the address.
-
-4.  **SEPARATE COMPANY AND NAME:**
-    *   If the main name contains "CO.", "LTD", or "INC", treat it as "receiverCompanyName" and repeat it for "receiverName".
-    *   Otherwise, treat it as "receiverName" and omit "receiverCompanyName".
-
-5.  **TRANSLATE AND SEPARATE ADDRESS (Same as SF Express):**
-    *   Translate names and the address to Korean.
-    *   Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".
-
-6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
-`;
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -493,9 +493,8 @@
         const resetButton = document.getElementById('resetButton');
         const filterButtonsContainer = document.getElementById('filter-buttons-container');
         const deliveryCardsContainer = document.getElementById('delivery-cards-container');
-        const scanImageInput = document.getElementById('scanImageInput');
-        const sfScanButton = document.getElementById('sfScanButton');
-        const upsScanButton = document.getElementById('upsScanButton');
+        const deliverySheetImageInput = document.getElementById('deliverySheetImage');
+        const scanAndGenerateButton = document.getElementById('scanAndGenerateButton');
         const scanLoadingIndicator = document.getElementById('scan-loading-indicator');
         const scanErrorMessage = document.getElementById('scan-error-message');
         const scanErrorText = document.getElementById('scan-error-text');
