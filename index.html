@@ -258,8 +258,8 @@
 **CRITICAL INSTRUCTIONS:**
 
 1.  **SCAN AND CLASSIFY:** Scan the document from top to bottom. Identify two types of blocks:
-    *   **'info_block'**: A block containing recipient details like name, address, and phone number.
-    *   **'hawb_block'**: A block containing one or more Tracking Numbers (hawbNo), usually next to barcodes.
+    *   **'info'**: A block containing recipient details like name, address, and phone number.
+    *   **'hawb'**: A block containing one or more Tracking Numbers (hawbNo), usually next to barcodes.
 
 2.  **OUTPUT STRUCTURE:** Create a single JSON array. Each object in the array represents one block you found and MUST have two fields:
     *   **"type"**: Either "info" or "hawb".
@@ -270,7 +270,7 @@
     *   **For "hawb" type:** The "content" object should have a single field, "hawbNos", which is an **ARRAY of strings**. Find all tracking numbers in the block and put them in this array.
 
 4.  **IMPORTANT RULES:**
-    *   **DO NOT PAIR:** Do not try to connect an 'info_block' with a 'hawb_block'. Just list them as you find them.
+    *   **DO NOT PAIR:** Do not try to connect an 'info' block with a 'hawb' block. Just list them as you find them.
     *   **DO NOT ADD 'no':** Do not assign any sequence number.
     *   **HANDLE PAGE BREAKS:** If a block is cut off at the bottom or top of the page, just extract the partial text you see.
 
@@ -419,7 +419,11 @@
         };
 
         const formatHawbNoForDisplay = (hawbNo) => {
-            if (!hawbNo || hawbNo.length < 4) return hawbNo;
+            if (!hawbNo) return '';
+            if (Array.isArray(hawbNo)) {
+                return hawbNo.map(no => formatHawbNoForDisplay(no)).join('<br>');
+            }
+            if (hawbNo.length < 4) return hawbNo;
             const prefix = hawbNo.substring(0, hawbNo.length - 4);
             const suffix = hawbNo.substring(hawbNo.length - 4);
             return `${prefix} ${suffix}`;
@@ -841,10 +845,17 @@
 
         const highlightHawbNo = (hawbNo, term) => {
             if (!hawbNo) return '';
-            const formattedHawbNo = formatHawbNoForDisplay(hawbNo);
-            if (!term || !formattedHawbNo.includes(term)) return formattedHawbNo;
-            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            return formattedHawbNo.split(new RegExp(`(${escapedTerm})`, 'gi')).map(part => part.toLowerCase() === term.toLowerCase() ? `<span class="bg-yellow-200 rounded px-0.5">${part}</span>` : part).join('');
+            
+            const highlight = (numStr) => {
+                if (!term || !numStr.includes(term)) return formatHawbNoForDisplay(numStr);
+                const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return formatHawbNoForDisplay(numStr).split(new RegExp(`(${escapedTerm})`, 'gi')).map(part => part.toLowerCase() === term.toLowerCase() ? `<span class="bg-yellow-200 rounded px-0.5">${part}</span>` : part).join('');
+            };
+
+            if (Array.isArray(hawbNo)) {
+                return hawbNo.map(no => highlight(no)).join('<br>');
+            }
+            return highlight(hawbNo);
         };
         
         // --- Render function ---
@@ -854,7 +865,11 @@
             let dataToRender = [];
             if (searchTerm) {
                 const cleanedSearchTerm = searchTerm.replace(/\D/g, '');
-                dataToRender = deliveryItems.filter(item => item.hawbNo?.replace(/\D/g, '').includes(cleanedSearchTerm));
+                dataToRender = deliveryItems.filter(item => 
+                    Array.isArray(item.hawbNo)
+                        ? item.hawbNo.some(no => no?.replace(/\D/g, '').includes(cleanedSearchTerm))
+                        : item.hawbNo?.replace(/\D/g, '').includes(cleanedSearchTerm)
+                );
             } else if (currentFilter !== '전체') {
                 dataToRender = deliveryItems.filter(item => item.status === currentFilter);
             } else {
@@ -1095,61 +1110,24 @@
                 i++;
                 
                 let hawbNosForThisBlock = [];
-                // Look ahead for the next consecutive hawb blocks
                 while (i < rawBlocks.length && rawBlocks[i].type === 'hawb') {
                     if(rawBlocks[i].content.hawbNos) {
                        hawbNosForThisBlock.push(...rawBlocks[i].content.hawbNos);
                     }
                     i++;
                 }
-
-                if (hawbNosForThisBlock.length > 0) {
-                    for (const hawbNo of hawbNosForThisBlock) {
-                        assembledCards.push({ ...infoBlock, hawbNo });
-                    }
-                } else {
-                    // This is a top-piece of a split item, mark it for stitching
-                    assembledCards.push({ ...infoBlock, hawbNo: null, isTopPiece: true });
-                }
+                assembledCards.push({ ...infoBlock, hawbNo: hawbNosForThisBlock });
             } else {
-                // Stray hawb block (likely a bottom-piece), mark it for stitching
-                if (rawBlocks[i].content.hawbNos && rawBlocks[i].content.hawbNos.length > 0) {
-                    assembledCards.push({ isBottomPiece: true, content: rawBlocks[i].content });
-                }
-                i++;
+                i++; // Skip stray hawb blocks at the beginning
             }
         }
 
-        // --- 3. 후처리 병합 (Stitching) ---
-        const stitchedItems = [];
-        for (let j = 0; j < assembledCards.length; j++) {
-            const currentItem = assembledCards[j];
-            const prevItem = stitchedItems.length > 0 ? stitchedItems[stitchedItems.length - 1] : null;
-
-            if (prevItem && prevItem.isTopPiece && currentItem.isBottomPiece) {
-                const hawbNos = currentItem.content.hawbNos;
-                if (hawbNos && hawbNos.length > 0) {
-                    prevItem.hawbNo = hawbNos[0]; // Assign the first hawbNo
-                    delete prevItem.isTopPiece; // Clean up marker
-                    
-                    // If there are more hawbNos, create new cards for them
-                    for (let k = 1; k < hawbNos.length; k++) {
-                        const newCard = {...prevItem, hawbNo: hawbNos[k]};
-                        delete newCard.isTopPiece;
-                        stitchedItems.push(newCard);
-                    }
-                }
-            } else if (!currentItem.isBottomPiece) {
-                stitchedItems.push(currentItem);
-            }
-        }
-
-        // --- 4. 최종 순번 부여 및 데이터 정제 ---
+        // --- 3. 최종 순번 부여 및 데이터 정제 ---
         let allNewItems = [];
         let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
 
-        for (const geminiItem of stitchedItems) {
-            if (!geminiItem.hawbNo) continue; // Skip items that couldn't be fully stitched
+        for (const geminiItem of assembledCards) {
+            if (!geminiItem.hawbNo || geminiItem.hawbNo.length === 0) continue; // Skip items without hawbNo
 
             lastSuccessfulNo++;
             const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.receiverAddressKorean, "");
@@ -1169,7 +1147,7 @@
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
-                hawbNo: item.hawbNo || '',
+                hawbNo: Array.isArray(item.hawbNo) ? item.hawbNo : [],
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
                 receiverAddressOriginal: item.receiverAddress || '',
@@ -1330,8 +1308,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240728.1100`;
-        versionChangelog.textContent = `AI-코드 분업 최종 아키텍처 도입: AI는 단순 추출, 코드가 모든 논리적 재조합 및 병합 수행`;
+        versionText.textContent = `v20240728.1800`;
+        versionChangelog.textContent = `Multi-HAWB를 단일 카드로 그룹화하는 로직 적용`;
     };
 
     const setupDelegatedEventListeners = () => {
