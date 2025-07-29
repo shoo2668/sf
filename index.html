@@ -851,8 +851,6 @@
                 if (!term || !cleanedNum.includes(term)) return formatHawbNoForDisplay(numStr);
                 
                 const formatted = formatHawbNoForDisplay(numStr);
-                // This regex is tricky with formatted strings. A simpler highlight on the raw number might be better.
-                // For now, let's highlight the term within the formatted string.
                 const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 return formatted.replace(new RegExp(escapedTerm, 'gi'), `<span class="bg-yellow-200 rounded px-0.5">${term}</span>`);
             };
@@ -1106,28 +1104,52 @@
             }
         }
 
-        // --- 2. 코드 기반 재조합 (AI-Code Collaboration) ---
-        const assembledCards = [];
-        let i = 0;
-        while (i < rawBlocks.length) {
-            if (rawBlocks[i].type === 'info') {
-                const infoBlock = rawBlocks[i].content;
-                i++;
-                
-                let hawbNosForThisBlock = [];
-                while (i < rawBlocks.length && rawBlocks[i].type === 'hawb') {
-                    if(rawBlocks[i].content.hawbNos) {
-                       hawbNosForThisBlock.push(...rawBlocks[i].content.hawbNos);
+        // --- 2. 지능형 병합 (Intelligent Stitching) ---
+        const stitchedBlocks = [];
+        for (let i = 0; i < rawBlocks.length; i++) {
+            const currentBlock = rawBlocks[i];
+            const nextBlock = (i + 1 < rawBlocks.length) ? rawBlocks[i+1] : null;
+
+            if (currentBlock.type === 'info' && nextBlock && nextBlock.type === 'info') {
+                // 페이지 나뉨 감지: info 블록 다음에 바로 info 블록이 오는 경우
+                const mergedContent = { ...currentBlock.content };
+                // 모든 필드를 합침. 중복 필드는 다음 블록의 것으로 덮어쓰거나 이어붙임.
+                for (const key in nextBlock.content) {
+                    if (key.includes('Address')) { // 주소는 이어붙임
+                        mergedContent[key] = (mergedContent[key] || '') + ' ' + nextBlock.content[key];
+                    } else { // 나머지는 덮어씀
+                        mergedContent[key] = nextBlock.content[key];
                     }
-                    i++;
                 }
-                assembledCards.push({ ...infoBlock, hawbNo: hawbNosForThisBlock });
+                stitchedBlocks.push({ type: 'info', content: mergedContent });
+                i++; // 다음 블록은 이미 처리했으므로 건너뜀
             } else {
-                i++; // Skip stray hawb blocks at the beginning
+                stitchedBlocks.push(currentBlock);
             }
         }
 
-        // --- 3. 최종 순번 부여 및 데이터 정제 ---
+        // --- 3. 코드 기반 재조합 (Final Assembly) ---
+        const assembledCards = [];
+        let j = 0;
+        while (j < stitchedBlocks.length) {
+            if (stitchedBlocks[j].type === 'info') {
+                const infoBlock = stitchedBlocks[j].content;
+                j++;
+                
+                let hawbNosForThisBlock = [];
+                while (j < stitchedBlocks.length && stitchedBlocks[j].type === 'hawb') {
+                    if(stitchedBlocks[j].content.hawbNos) {
+                       hawbNosForThisBlock.push(...stitchedBlocks[j].content.hawbNos);
+                    }
+                    j++;
+                }
+                assembledCards.push({ ...infoBlock, hawbNo: hawbNosForThisBlock });
+            } else {
+                j++; // Skip stray hawb blocks at the beginning
+            }
+        }
+
+        // --- 4. 최종 순번 부여 및 데이터 정제 ---
         let allNewItems = [];
         let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
 
@@ -1313,8 +1335,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240728.2100`;
-        versionChangelog.textContent = `AI-코드 분업 최종 아키텍처 완성: Multi-HAWB 그룹화 및 코드 기반 재조합 로직 적용`;
+        versionText.textContent = `v20240729.0900`;
+        versionChangelog.textContent = `최종 아키텍처: AI의 분류 오류를 해결하는 지능형 병합 로직 추가`;
     };
 
     const setupDelegatedEventListeners = () => {
