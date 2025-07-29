@@ -253,29 +253,29 @@
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 `;
 
-        const GEMINI_PROMPT_UPS = `Analyze the provided image of a UPS delivery report. Your primary goal is to correctly pair each delivery information block with the Tracking Number line located *directly below it*.
+        const GEMINI_PROMPT_UPS = `Analyze the provided image of a UPS delivery report. Your primary goal is to extract information for each delivery item, handling complex cases like multiple tracking numbers and page breaks.
 
 **CRITICAL STEP-BY-STEP INSTRUCTIONS:**
 
 1.  **DOCUMENT STRUCTURE:** The document is a table where each delivery is a **ROW**. Each row is visually separated by a **THICK HORIZONTAL LINE**. Treat each row as a distinct, separate item.
 
-2.  **PAIRING LOGIC (MOST IMPORTANT):**
+2.  **MULTI-HAWB & PAIRING LOGIC (MOST IMPORTANT):**
     *   Within each row, find the main 'Delivery Block' (containing recipient name, address, etc.).
-    *   The 'hawbNo' (Tracking Number) for that block is located in the line **IMMEDIATELY BENEATH** it, often next to a barcode.
+    *   Look for one or more 'hawbNo' (Tracking Number) lines **IMMEDIATELY BENEATH** that block.
+    *   **If multiple 'hawbNo's are found for one 'Delivery Block', you MUST create a separate, complete JSON object for EACH 'hawbNo'.** All other information (name, address, etc.) should be duplicated in each of these objects.
     *   **CRITICAL RULE:** NEVER associate a Delivery Block with any text or tracking number that appears *ABOVE* it or in a different row.
-    *   **EXAMPLE:** The 'MINWOO KWON' block at the top MUST be paired with the tracking number '1Z423R3V6793903541' found below it.
 
 3.  **HANDLING INCOMPLETE BLOCKS (For page breaks):**
-    *   If a block at the **bottom of the page** is missing its 'hawbNo' below it, extract all available information and output it with "hawbNo": null.
-    *   If a block at the **top of the page** is missing most information but has a 'hawbNo', extract the 'hawbNo' and any other text.
+    *   If a block at the **bottom of the page** is missing its 'hawbNo' below it, extract all available information and output it with **"hawbNo": null**. This is a signal that it's a top-piece of a split item.
+    *   If a block at the **top of the page** is missing most information but has a 'hawbNo', extract the 'hawbNo' and any other text. This is a signal that it's a bottom-piece.
 
 4.  **DATA EXTRACTION & FORMATTING:**
-    *   **'no' (Sequence Number):** DO NOT look for a handwritten number. You MUST assign a sequential number starting from 1 based on the row's vertical position on the page.
+    *   **DO NOT include a "no" field.** The final sequence number will be assigned later.
     *   **Original English Data:** You MUST include the original English text for "receiverName" and "receiverCompanyName" in the final JSON.
     *   **Translation:** Translate names and address to standard Korean.
     *   **Address Separation:** Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".
 
-5.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects. Each object must contain "no", "hawbNo", "receiverName", "receiverCompanyName", "receiverAddress", "receiverPhone", and their Korean translations.
+5.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects. Each object must contain "hawbNo", "receiverName", "receiverCompanyName", "receiverAddress", "receiverPhone", and their Korean translations.
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -1073,45 +1073,49 @@
         const workerPromises = Array.from({ length: CONCURRENT_WORKERS }, worker);
         await Promise.all(workerPromises);
 
-        // --- 후처리 병합 (Post-processing Merge) 로직 시작 ---
-        let allItemsFromAI = [];
+        // --- 1. 순번 없는 '날것' 데이터 수집 ---
+        let rawItemsFromAI = [];
         for (const file of sortedFiles) {
             if (resultsMap.has(file.name)) {
-                allItemsFromAI.push(...resultsMap.get(file.name));
+                rawItemsFromAI.push(...resultsMap.get(file.name));
             }
         }
 
+        // --- 2. 후처리 병합 (Post-processing Merge) 로직 ---
         const stitchedItems = [];
-        for (let i = 0; i < allItemsFromAI.length; i++) {
-            const currentItem = allItemsFromAI[i];
+        for (let i = 0; i < rawItemsFromAI.length; i++) {
+            const currentItem = rawItemsFromAI[i];
             const prevItem = stitchedItems.length > 0 ? stitchedItems[stitchedItems.length - 1] : null;
 
-            const isBottomPiece = (!currentItem.receiverName || !currentItem.receiverAddress) && currentItem.hawbNo;
             const isTopPiece = prevItem && (prevItem.receiverName || prevItem.receiverAddress) && !prevItem.hawbNo;
+            const isBottomPiece = currentItem.hawbNo && (!currentItem.receiverName && !currentItem.receiverAddress);
 
             if (isTopPiece && isBottomPiece) {
                 // Merge current (bottom) piece into previous (top) piece
                 prevItem.hawbNo = currentItem.hawbNo;
-                if (currentItem.receiverAddress) prevItem.receiverAddress += ` ${currentItem.receiverAddress}`;
-                if (currentItem.receiverPhone) prevItem.receiverPhone = currentItem.receiverPhone;
-                if (currentItem.receiverName) prevItem.receiverName = currentItem.receiverName;
-                // ... 다른 필드들도 필요에 따라 병합
+                // 필요한 경우 다른 필드들도 병합 (예: 주소 조각)
+                if (currentItem.receiverAddress) prevItem.receiverAddress = (prevItem.receiverAddress || '') + ' ' + currentItem.receiverAddress;
+                if (currentItem.receiverPhone && !prevItem.receiverPhone) prevItem.receiverPhone = currentItem.receiverPhone;
             } else {
                 stitchedItems.push(currentItem);
             }
         }
-        // --- 후처리 병합 로직 종료 ---
 
+        // --- 3. 최종 순번 부여 및 데이터 정제 ---
         let allNewItems = [];
         let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
 
         for (const geminiItem of stitchedItems) {
             lastSuccessfulNo++;
             const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-            geminiItem.baseAddressKorean = baseAddress;
-            geminiItem.detailAddressKorean = detailAddress;
-            geminiItem.no = lastSuccessfulNo;
-            allNewItems.push(geminiItem);
+            
+            const finalItem = {
+                ...geminiItem,
+                no: lastSuccessfulNo,
+                baseAddressKorean: baseAddress,
+                detailAddressKorean: detailAddress
+            };
+            allNewItems.push(finalItem);
         }
 
         let newCount = 0;
@@ -1281,8 +1285,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.1600`;
-        versionChangelog.textContent = `UPS 스캔 로직 전면 개선 (속도, 정확도, 페이지 나뉨, 데이터 보존 문제 해결)`;
+        versionText.textContent = `v20240727.1000`;
+        versionChangelog.textContent = `최종 스캔 아키텍처 적용: 속도 제어, Multi-HAWB, 후처리 병합, 최종 순번 부여`;
     };
 
     const setupDelegatedEventListeners = () => {
