@@ -776,14 +776,12 @@
         };
 
         const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
-            const checkbox = document.querySelector(`input[data-action="toggle-hawb-confirm"][data-no="${itemNo}"]`);
-            if (!checkbox) return;
-
             const itemIndex = deliveryItems.findIndex(item => item.no === itemNo);
             if (itemIndex === -1) return;
 
-            if (newCheckboxState) { // 체크박스를 켤 때 (체크인)
-                checkbox.disabled = true;
+            if (newCheckboxState) { // 체크인
+                deliveryItems[itemIndex].isHawbConfirmed = true;
+                deliveryItems[itemIndex].status = '배송중';
                 
                 if (deliveryItems[itemIndex].addressLocation) {
                     showToastMessage('이미 좌표가 저장되어 있습니다.');
@@ -798,33 +796,25 @@
                         console.error("체크인 실패 (주소 좌표 획득 오류):", error.message);
                         closeConfirmationModal();
                         showMessage(`주소 좌표를 가져올 수 없습니다: ${error.message}\n주소를 확인하고 다시 시도해주세요.`, '오류');
-                        checkbox.checked = false;
-                        checkbox.disabled = false;
+                        // Revert state on failure
+                        deliveryItems[itemIndex].isHawbConfirmed = false;
+                        deliveryItems[itemIndex].status = '배송전';
+                        saveDeliveryItemsToLocalStorage();
+                        renderDeliveryCards(activeFilter);
                         return;
                     }
                 }
-
-                deliveryItems[itemIndex].isHawbConfirmed = true;
-                deliveryItems[itemIndex].status = '배송중';
-                
-                saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
-                checkbox.disabled = false;
-
-            } else { // 체크박스를 끌 때 (체크인 취소)
+            } else { // 체크인 취소
                 deliveryItems[itemIndex].isHawbConfirmed = false;
                 deliveryItems[itemIndex].status = '배송전';
-                
-                saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
                 showToastMessage('체크인이 취소되었습니다.');
             }
+            
+            saveDeliveryItemsToLocalStorage();
+            searchTerm = '';
+            invoiceNumberInput.value = '';
+            renderDeliveryCards(activeFilter);
+            updateFilterCounts();
         };
         
         const openNaverMap = (item) => {
@@ -905,6 +895,24 @@
                 const showInProgressButtons = !isAllFilter && data.status === '배송중';
                 const showToggleDetailsButton = !isAllFilter && data.status === '완료';
 
+                const hawbNoArray = Array.isArray(data.hawbNo) ? data.hawbNo : [data.hawbNo];
+                const checkedHawbNos = new Set(data.checkedHawbNos || []);
+                const isMultiBox = hawbNoArray.length > 1;
+
+                const hawbHtml = isMultiBox 
+                    ? hawbNoArray.map(no => `
+                        <div class="flex items-center justify-between">
+                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(no, searchTerm)}</span>
+                            <input type="checkbox" data-action="toggle-box-confirm" data-no="${data.no}" data-hawb="${no}" ${checkedHawbNos.has(no) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-4"/>
+                        </div>
+                      `).join('')
+                    : `<span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>`;
+
+                const mainCheckboxHtml = !isMultiBox ? `
+                    <div class="pt-1.5">
+                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                    </div>` : '';
+
                 return `
                     <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -915,13 +923,9 @@
                                             <h3 class="text-3xl font-semibold text-red-500">${data.no}</h3>
                                             ${distanceInfo}
                                         </div>
-                                        <div class="pt-1.5">
-                                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
-                                        </div>
+                                        <div class="pt-1.5">${hawbHtml}</div>
                                     </div>
-                                    <div class="pt-1.5">
-                                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
-                                    </div>
+                                    ${mainCheckboxHtml}
                                 </div>
                             ` : `
                                 <div class="text-xl font-semibold text-gray-700 text-left w-full">
@@ -1111,18 +1115,16 @@
             const nextBlock = (i + 1 < rawBlocks.length) ? rawBlocks[i+1] : null;
 
             if (currentBlock.type === 'info' && nextBlock && nextBlock.type === 'info') {
-                // 페이지 나뉨 감지: info 블록 다음에 바로 info 블록이 오는 경우
                 const mergedContent = { ...currentBlock.content };
-                // 모든 필드를 합침. 중복 필드는 다음 블록의 것으로 덮어쓰거나 이어붙임.
                 for (const key in nextBlock.content) {
-                    if (key.includes('Address')) { // 주소는 이어붙임
+                    if (key.includes('Address')) {
                         mergedContent[key] = (mergedContent[key] || '') + ' ' + nextBlock.content[key];
-                    } else { // 나머지는 덮어씀
+                    } else if (!mergedContent[key]) { // Fill in missing fields
                         mergedContent[key] = nextBlock.content[key];
                     }
                 }
                 stitchedBlocks.push({ type: 'info', content: mergedContent });
-                i++; // 다음 블록은 이미 처리했으므로 건너뜀
+                i++; 
             } else {
                 stitchedBlocks.push(currentBlock);
             }
@@ -1154,7 +1156,7 @@
         let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
 
         for (const geminiItem of assembledCards) {
-            if (!geminiItem.hawbNo || geminiItem.hawbNo.length === 0) continue; // Skip items without hawbNo
+            if (!geminiItem.hawbNo || geminiItem.hawbNo.length === 0) continue;
 
             lastSuccessfulNo++;
             const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.receiverAddressKorean, "");
@@ -1163,7 +1165,8 @@
                 ...geminiItem,
                 no: lastSuccessfulNo,
                 baseAddressKorean: baseAddress,
-                detailAddressKorean: detailAddress
+                detailAddressKorean: detailAddress,
+                checkedHawbNos: [] // Initialize checked array
             };
             allNewItems.push(finalItem);
         }
@@ -1175,6 +1178,7 @@
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
                 hawbNo: Array.isArray(item.hawbNo) ? item.hawbNo : [],
+                checkedHawbNos: [],
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
                 receiverAddressOriginal: item.receiverAddress || '',
@@ -1335,8 +1339,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240729.0900`;
-        versionChangelog.textContent = `최종 아키텍처: AI의 분류 오류를 해결하는 지능형 병합 로직 추가`;
+        versionText.textContent = `v20240729.1100`;
+        versionChangelog.textContent = `최종 아키텍처 완성: Multi-HAWB 개별 체크박스 기능 및 지능형 병합 로직 적용`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1378,10 +1382,39 @@
             }
         });
         deliveryCardsContainer.addEventListener('change', (event) => {
-            const checkbox = event.target.closest('[data-action="toggle-hawb-confirm"]');
-            if (checkbox) {
+            const checkbox = event.target.closest('[data-action]');
+            if (!checkbox) return;
+
+            const itemNo = parseInt(checkbox.dataset.no);
+            const itemIndex = deliveryItems.findIndex(item => item.no === itemNo);
+            if (itemIndex === -1) return;
+            
+            const item = deliveryItems[itemIndex];
+            const action = checkbox.dataset.action;
+
+            if (action === 'toggle-hawb-confirm') {
                 event.preventDefault();
-                handleCheckboxToggleAndResetSearch(parseInt(checkbox.dataset.no), checkbox.checked);
+                handleCheckboxToggleAndResetSearch(itemNo, checkbox.checked);
+            } else if (action === 'toggle-box-confirm') {
+                const hawb = checkbox.dataset.hawb;
+                const checkedHawbNos = new Set(item.checkedHawbNos || []);
+                
+                if (checkbox.checked) {
+                    checkedHawbNos.add(hawb);
+                } else {
+                    checkedHawbNos.delete(hawb);
+                }
+                item.checkedHawbNos = Array.from(checkedHawbNos);
+
+                const allChecked = item.hawbNo.length === item.checkedHawbNos.length;
+                
+                if (allChecked && !item.isHawbConfirmed) {
+                    handleCheckboxToggleAndResetSearch(itemNo, true);
+                } else if (!allChecked && item.isHawbConfirmed) {
+                    handleCheckboxToggleAndResetSearch(itemNo, false);
+                } else {
+                    saveDeliveryItemsToLocalStorage();
+                }
             }
         });
     };
@@ -1598,6 +1631,9 @@
                 deliveryItems = parsedItems.map(item => {
                     if (typeof item.addressLocation === 'undefined') {
                         item.addressLocation = null;
+                    }
+                    if (typeof item.checkedHawbNos === 'undefined') {
+                        item.checkedHawbNos = [];
                     }
                     return item;
                 }).sort((a, b) => a.no - b.no);
