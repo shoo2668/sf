@@ -847,9 +847,10 @@
             if (!hawbNo) return '';
             
             const highlight = (numStr) => {
-                if (!term || !numStr.includes(term)) return formatHawbNoForDisplay(numStr);
+                if (!term || !numStr.replace(/\D/g, '').includes(term)) return formatHawbNoForDisplay(numStr);
+                const formatted = formatHawbNoForDisplay(numStr);
                 const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                return formatHawbNoForDisplay(numStr).split(new RegExp(`(${escapedTerm})`, 'gi')).map(part => part.toLowerCase() === term.toLowerCase() ? `<span class="bg-yellow-200 rounded px-0.5">${part}</span>` : part).join('');
+                return formatted.replace(new RegExp(`(${escapedTerm})`, 'gi'), `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
             };
 
             if (Array.isArray(hawbNo)) {
@@ -1308,8 +1309,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240728.1800`;
-        versionChangelog.textContent = `Multi-HAWB를 단일 카드로 그룹화하는 로직 적용`;
+        versionText.textContent = `v20240728.2000`;
+        versionChangelog.textContent = `Multi-HAWB를 단일 카드로 그룹화하는 최종 로직 적용`;
     };
 
     const setupDelegatedEventListeners = () => {
