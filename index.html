@@ -266,14 +266,13 @@
     *   **"content"**: An object containing the data you extracted from that block.
 
 3.  **CONTENT DETAILS:**
-    *   **For "info" type:** The "content" object should contain "receiverName", "receiverCompanyName", "receiverAddress", and "receiverPhone". Extract whatever you can find. If a field is missing, omit it.
+    *   **For "info" type:** The "content" object should contain "receiverName", "receiverCompanyName", "receiverAddress", and "receiverPhone". Extract whatever you can find. If a field is missing, omit it. Also, translate extracted names and addresses to Korean and include them as "receiverNameKorean", "receiverCompanyNameKorean", etc.
     *   **For "hawb" type:** The "content" object should have a single field, "hawbNos", which is an **ARRAY of strings**. Find all tracking numbers in the block and put them in this array.
 
 4.  **IMPORTANT RULES:**
     *   **DO NOT PAIR:** Do not try to connect an 'info_block' with a 'hawb_block'. Just list them as you find them.
     *   **DO NOT ADD 'no':** Do not assign any sequence number.
     *   **HANDLE PAGE BREAKS:** If a block is cut off at the bottom or top of the page, just extract the partial text you see.
-    *   **TRANSLATE:** Translate extracted names and addresses to Korean and include them as "receiverNameKorean", "receiverCompanyNameKorean", etc., within the "content" object.
 
 **EXAMPLE OUTPUT:**
 [
@@ -1080,38 +1079,43 @@
         await Promise.all(workerPromises);
 
         // --- 1. 순번 없는 '날것' 데이터 수집 ---
-        let rawItemsFromAI = [];
+        let rawBlocks = [];
         for (const file of sortedFiles) {
             if (resultsMap.has(file.name)) {
-                rawItemsFromAI.push(...resultsMap.get(file.name));
+                rawBlocks.push(...resultsMap.get(file.name));
             }
         }
 
         // --- 2. 코드 기반 재조합 (AI-Code Collaboration) ---
         const assembledCards = [];
         let i = 0;
-        while (i < rawItemsFromAI.length) {
-            if (rawItemsFromAI[i].type === 'info') {
-                const infoBlock = rawItemsFromAI[i].content;
+        while (i < rawBlocks.length) {
+            if (rawBlocks[i].type === 'info') {
+                const infoBlock = rawBlocks[i].content;
                 i++;
                 
-                const hawbBlocks = [];
-                while (i < rawItemsFromAI.length && rawItemsFromAI[i].type === 'hawb') {
-                    hawbBlocks.push(...rawItemsFromAI[i].content.hawbNos);
+                let hawbNosForThisBlock = [];
+                // Look ahead for the next consecutive hawb blocks
+                while (i < rawBlocks.length && rawBlocks[i].type === 'hawb') {
+                    if(rawBlocks[i].content.hawbNos) {
+                       hawbNosForThisBlock.push(...rawBlocks[i].content.hawbNos);
+                    }
                     i++;
                 }
 
-                if (hawbBlocks.length > 0) {
-                    for (const hawbNo of hawbBlocks) {
+                if (hawbNosForThisBlock.length > 0) {
+                    for (const hawbNo of hawbNosForThisBlock) {
                         assembledCards.push({ ...infoBlock, hawbNo });
                     }
                 } else {
-                    // This is a top-piece of a split item
-                    assembledCards.push({ ...infoBlock, hawbNo: null });
+                    // This is a top-piece of a split item, mark it for stitching
+                    assembledCards.push({ ...infoBlock, hawbNo: null, isTopPiece: true });
                 }
             } else {
-                // Stray hawb block (likely a bottom-piece), will be handled by stitching
-                assembledCards.push({ type: 'orphan_hawb', content: rawItemsFromAI[i].content });
+                // Stray hawb block (likely a bottom-piece), mark it for stitching
+                if (rawBlocks[i].content.hawbNos && rawBlocks[i].content.hawbNos.length > 0) {
+                    assembledCards.push({ isBottomPiece: true, content: rawBlocks[i].content });
+                }
                 i++;
             }
         }
@@ -1122,17 +1126,20 @@
             const currentItem = assembledCards[j];
             const prevItem = stitchedItems.length > 0 ? stitchedItems[stitchedItems.length - 1] : null;
 
-            if (prevItem && prevItem.hawbNo === null && currentItem.type === 'orphan_hawb') {
-                // Found a pair to stitch!
+            if (prevItem && prevItem.isTopPiece && currentItem.isBottomPiece) {
                 const hawbNos = currentItem.content.hawbNos;
                 if (hawbNos && hawbNos.length > 0) {
                     prevItem.hawbNo = hawbNos[0]; // Assign the first hawbNo
+                    delete prevItem.isTopPiece; // Clean up marker
+                    
                     // If there are more hawbNos, create new cards for them
                     for (let k = 1; k < hawbNos.length; k++) {
-                        stitchedItems.push({ ...prevItem, hawbNo: hawbNos[k] });
+                        const newCard = {...prevItem, hawbNo: hawbNos[k]};
+                        delete newCard.isTopPiece;
+                        stitchedItems.push(newCard);
                     }
                 }
-            } else if (currentItem.type !== 'orphan_hawb') {
+            } else if (!currentItem.isBottomPiece) {
                 stitchedItems.push(currentItem);
             }
         }
@@ -1323,8 +1330,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240728.0100`;
-        versionChangelog.textContent = `AI-코드 분업 아키텍처 도입: AI는 객체만 추출, 코드가 위치 기반으로 카드 재조합하여 정확성 확보`;
+        versionText.textContent = `v20240728.1100`;
+        versionChangelog.textContent = `AI-코드 분업 최종 아키텍처 도입: AI는 단순 추출, 코드가 모든 논리적 재조합 및 병합 수행`;
     };
 
     const setupDelegatedEventListeners = () => {
