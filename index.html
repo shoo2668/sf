@@ -847,10 +847,14 @@
             if (!hawbNo) return '';
             
             const highlight = (numStr) => {
-                if (!term || !numStr.replace(/\D/g, '').includes(term)) return formatHawbNoForDisplay(numStr);
+                const cleanedNum = numStr.replace(/\D/g, '');
+                if (!term || !cleanedNum.includes(term)) return formatHawbNoForDisplay(numStr);
+                
                 const formatted = formatHawbNoForDisplay(numStr);
+                // This regex is tricky with formatted strings. A simpler highlight on the raw number might be better.
+                // For now, let's highlight the term within the formatted string.
                 const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                return formatted.replace(new RegExp(`(${escapedTerm})`, 'gi'), `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
+                return formatted.replace(new RegExp(escapedTerm, 'gi'), `<span class="bg-yellow-200 rounded px-0.5">${term}</span>`);
             };
 
             if (Array.isArray(hawbNo)) {
@@ -1309,8 +1313,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240728.2000`;
-        versionChangelog.textContent = `Multi-HAWB를 단일 카드로 그룹화하는 최종 로직 적용`;
+        versionText.textContent = `v20240728.2100`;
+        versionChangelog.textContent = `AI-코드 분업 최종 아키텍처 완성: Multi-HAWB 그룹화 및 코드 기반 재조합 로직 적용`;
     };
 
     const setupDelegatedEventListeners = () => {
