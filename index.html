@@ -253,29 +253,35 @@
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 `;
 
-        const GEMINI_PROMPT_UPS = `Analyze the provided image of a UPS delivery report. Your primary goal is to extract information for each delivery item, handling complex cases like multiple tracking numbers and page breaks.
+        const GEMINI_PROMPT_UPS = `Your task is to analyze the provided image of a UPS delivery report and extract all recognizable data blocks into a structured JSON array. Do not try to pair or assemble items. Your only job is to identify and classify blocks of information as you see them, in the order they appear on the page.
 
-**CRITICAL STEP-BY-STEP INSTRUCTIONS:**
+**CRITICAL INSTRUCTIONS:**
 
-1.  **DOCUMENT STRUCTURE:** The document is a table where each delivery is a **ROW**. Each row is visually separated by a **THICK HORIZONTAL LINE**. Treat each row as a distinct, separate item.
+1.  **SCAN AND CLASSIFY:** Scan the document from top to bottom. Identify two types of blocks:
+    *   **'info_block'**: A block containing recipient details like name, address, and phone number.
+    *   **'hawb_block'**: A block containing one or more Tracking Numbers (hawbNo), usually next to barcodes.
 
-2.  **MULTI-HAWB & PAIRING LOGIC (MOST IMPORTANT):**
-    *   Within each row, find the main 'Delivery Block' (containing recipient name, address, etc.).
-    *   Look for one or more 'hawbNo' (Tracking Number) lines **IMMEDIATELY BENEATH** that block.
-    *   **If multiple 'hawbNo's are found for one 'Delivery Block', you MUST create a separate, complete JSON object for EACH 'hawbNo'.** All other information (name, address, etc.) should be duplicated in each of these objects.
-    *   **CRITICAL RULE:** NEVER associate a Delivery Block with any text or tracking number that appears *ABOVE* it or in a different row.
+2.  **OUTPUT STRUCTURE:** Create a single JSON array. Each object in the array represents one block you found and MUST have two fields:
+    *   **"type"**: Either "info" or "hawb".
+    *   **"content"**: An object containing the data you extracted from that block.
 
-3.  **HANDLING INCOMPLETE BLOCKS (For page breaks):**
-    *   If a block at the **bottom of the page** is missing its 'hawbNo' below it, extract all available information and output it with **"hawbNo": null**. This is a signal that it's a top-piece of a split item.
-    *   If a block at the **top of the page** is missing most information but has a 'hawbNo', extract the 'hawbNo' and any other text. This is a signal that it's a bottom-piece.
+3.  **CONTENT DETAILS:**
+    *   **For "info" type:** The "content" object should contain "receiverName", "receiverCompanyName", "receiverAddress", and "receiverPhone". Extract whatever you can find. If a field is missing, omit it.
+    *   **For "hawb" type:** The "content" object should have a single field, "hawbNos", which is an **ARRAY of strings**. Find all tracking numbers in the block and put them in this array.
 
-4.  **DATA EXTRACTION & FORMATTING:**
-    *   **DO NOT include a "no" field.** The final sequence number will be assigned later.
-    *   **Original English Data:** You MUST include the original English text for "receiverName" and "receiverCompanyName" in the final JSON.
-    *   **Translation:** Translate names and address to standard Korean.
-    *   **Address Separation:** Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".
+4.  **IMPORTANT RULES:**
+    *   **DO NOT PAIR:** Do not try to connect an 'info_block' with a 'hawb_block'. Just list them as you find them.
+    *   **DO NOT ADD 'no':** Do not assign any sequence number.
+    *   **HANDLE PAGE BREAKS:** If a block is cut off at the bottom or top of the page, just extract the partial text you see.
+    *   **TRANSLATE:** Translate extracted names and addresses to Korean and include them as "receiverNameKorean", "receiverCompanyNameKorean", etc., within the "content" object.
 
-5.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects. Each object must contain "hawbNo", "receiverName", "receiverCompanyName", "receiverAddress", "receiverPhone", and their Korean translations.
+**EXAMPLE OUTPUT:**
+[
+  { "type": "info", "content": { "receiverName": "MINWOO KWON", "receiverNameKorean": "권민우", "receiverAddress": "1-404, 107, DORIM-RO...", "receiverAddressKorean": "서울 구로구 도림로 107..." } },
+  { "type": "hawb", "content": { "hawbNos": ["1Z423R3V6793903541"] } },
+  { "type": "info", "content": { "receiverName": "SUNGYEON KI", "receiverNameKorean": "기성연", ... } },
+  { "type": "hawb", "content": { "hawbNos": ["1Z423R3V6793903541", "1ZANOTHERTRACKING123"] } }
+]
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -999,7 +1005,7 @@
 
     // --- Scan, Import, Export Logic ---
     async function performScan(filesToScan, prompt) {
-        const CONCURRENT_WORKERS = 2; // 동시에 실행할 최대 작업 수 (API 속도 제한 방지)
+        const CONCURRENT_WORKERS = 2; // API 속도 제한 방지를 위한 동시 실행 제어
         const totalFiles = filesToScan.length;
         let processedCount = 0;
 
@@ -1025,10 +1031,10 @@
 
                     const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) {
-                        if (response.status === 429) { // Rate limit detected
+                        if (response.status === 429) {
                            console.warn(`API 속도 제한 감지 (${file.name}). ${attempt * 2}초 후 재시도...`);
-                           await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // 재시도 전 대기시간 증가
-                           continue; // 다음 재시도 실행
+                           await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+                           continue;
                         }
                         throw new Error(`API 요청 실패 (상태: ${response.status})`);
                     }
@@ -1081,33 +1087,65 @@
             }
         }
 
-        // --- 2. 후처리 병합 (Post-processing Merge) 로직 ---
+        // --- 2. 코드 기반 재조합 (AI-Code Collaboration) ---
+        const assembledCards = [];
+        let i = 0;
+        while (i < rawItemsFromAI.length) {
+            if (rawItemsFromAI[i].type === 'info') {
+                const infoBlock = rawItemsFromAI[i].content;
+                i++;
+                
+                const hawbBlocks = [];
+                while (i < rawItemsFromAI.length && rawItemsFromAI[i].type === 'hawb') {
+                    hawbBlocks.push(...rawItemsFromAI[i].content.hawbNos);
+                    i++;
+                }
+
+                if (hawbBlocks.length > 0) {
+                    for (const hawbNo of hawbBlocks) {
+                        assembledCards.push({ ...infoBlock, hawbNo });
+                    }
+                } else {
+                    // This is a top-piece of a split item
+                    assembledCards.push({ ...infoBlock, hawbNo: null });
+                }
+            } else {
+                // Stray hawb block (likely a bottom-piece), will be handled by stitching
+                assembledCards.push({ type: 'orphan_hawb', content: rawItemsFromAI[i].content });
+                i++;
+            }
+        }
+
+        // --- 3. 후처리 병합 (Stitching) ---
         const stitchedItems = [];
-        for (let i = 0; i < rawItemsFromAI.length; i++) {
-            const currentItem = rawItemsFromAI[i];
+        for (let j = 0; j < assembledCards.length; j++) {
+            const currentItem = assembledCards[j];
             const prevItem = stitchedItems.length > 0 ? stitchedItems[stitchedItems.length - 1] : null;
 
-            const isTopPiece = prevItem && (prevItem.receiverName || prevItem.receiverAddress) && !prevItem.hawbNo;
-            const isBottomPiece = currentItem.hawbNo && (!currentItem.receiverName && !currentItem.receiverAddress);
-
-            if (isTopPiece && isBottomPiece) {
-                // Merge current (bottom) piece into previous (top) piece
-                prevItem.hawbNo = currentItem.hawbNo;
-                // 필요한 경우 다른 필드들도 병합 (예: 주소 조각)
-                if (currentItem.receiverAddress) prevItem.receiverAddress = (prevItem.receiverAddress || '') + ' ' + currentItem.receiverAddress;
-                if (currentItem.receiverPhone && !prevItem.receiverPhone) prevItem.receiverPhone = currentItem.receiverPhone;
-            } else {
+            if (prevItem && prevItem.hawbNo === null && currentItem.type === 'orphan_hawb') {
+                // Found a pair to stitch!
+                const hawbNos = currentItem.content.hawbNos;
+                if (hawbNos && hawbNos.length > 0) {
+                    prevItem.hawbNo = hawbNos[0]; // Assign the first hawbNo
+                    // If there are more hawbNos, create new cards for them
+                    for (let k = 1; k < hawbNos.length; k++) {
+                        stitchedItems.push({ ...prevItem, hawbNo: hawbNos[k] });
+                    }
+                }
+            } else if (currentItem.type !== 'orphan_hawb') {
                 stitchedItems.push(currentItem);
             }
         }
 
-        // --- 3. 최종 순번 부여 및 데이터 정제 ---
+        // --- 4. 최종 순번 부여 및 데이터 정제 ---
         let allNewItems = [];
         let lastSuccessfulNo = Math.max(0, ...deliveryItems.map(item => item.no));
 
         for (const geminiItem of stitchedItems) {
+            if (!geminiItem.hawbNo) continue; // Skip items that couldn't be fully stitched
+
             lastSuccessfulNo++;
-            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.receiverAddressKorean, "");
             
             const finalItem = {
                 ...geminiItem,
@@ -1285,8 +1323,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240727.1000`;
-        versionChangelog.textContent = `최종 스캔 아키텍처 적용: 속도 제어, Multi-HAWB, 후처리 병합, 최종 순번 부여`;
+        versionText.textContent = `v20240728.0100`;
+        versionChangelog.textContent = `AI-코드 분업 아키텍처 도입: AI는 객체만 추출, 코드가 위치 기반으로 카드 재조합하여 정확성 확보`;
     };
 
     const setupDelegatedEventListeners = () => {
