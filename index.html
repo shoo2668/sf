@@ -261,9 +261,8 @@
     *   **'info'**: A block containing recipient details like name, address, and phone number.
     *   **'hawb'**: A block containing one or more Tracking Numbers (hawbNo), usually next to barcodes.
 
-2.  **OUTPUT STRUCTURE:** Create a single JSON array. Each object in the array represents one block you found and MUST have three fields:
+2.  **OUTPUT STRUCTURE:** Create a single JSON array. Each object in the array represents one block you found and MUST have two fields:
     *   **"type"**: Either "info" or "hawb".
-    *   **"y_coordinate"**: The approximate vertical starting position (Y-pixel) of the block. A rough estimate is fine (e.g., 150, 320, 500).
     *   **"content"**: An object containing the data you extracted from that block.
 
 3.  **CONTENT DETAILS:**
@@ -271,15 +270,16 @@
     *   **For "hawb" type:** The "content" object should have a single field, "hawbNos", which is an **ARRAY of strings**. Find all tracking numbers in the block and put them in this array.
 
 4.  **IMPORTANT RULES:**
-    *   **DO NOT PAIR:** Do not try to connect an 'info' block with a 'hawb' block.
+    *   **DO NOT PAIR:** Do not try to connect an 'info' block with a 'hawb' block. Just list them as you find them.
     *   **DO NOT ADD 'no':** Do not assign any sequence number.
-    *   **HANDLE PAGE BREAKS:** If a block is cut off, just extract the partial text you see.
+    *   **HANDLE PAGE BREAKS:** If a block is cut off at the bottom or top of the page, just extract the partial text you see.
 
 **EXAMPLE OUTPUT:**
 [
-  { "type": "info", "y_coordinate": 100, "content": { "receiverName": "MINWOO KWON", ... } },
-  { "type": "hawb", "y_coordinate": 250, "content": { "hawbNos": ["1Z..."] } },
-  { "type": "info", "y_coordinate": 80, "content": { "receiverName": "SUNGYEON KI", ... } }
+  { "type": "info", "content": { "receiverName": "MINWOO KWON", "receiverNameKorean": "권민우", "receiverAddress": "1-404, 107, DORIM-RO...", "receiverAddressKorean": "서울 구로구 도림로 107..." } },
+  { "type": "hawb", "content": { "hawbNos": ["1Z423R3V6793903541"] } },
+  { "type": "info", "content": { "receiverName": "SUNGYEON KI", "receiverNameKorean": "기성연", ... } },
+  { "type": "hawb", "content": { "hawbNos": ["1Z423R3V6793903541", "1ZANOTHERTRACKING123"] } }
 ]
 `;
         
@@ -1108,10 +1108,12 @@
         let rawBlocks = [];
         for (const file of sortedFiles) {
             if (resultsMap.has(file.name)) {
-                rawBlocks.push(...resultsMap.get(file.name));
+                const pageBlocks = resultsMap.get(file.name);
+                // 좌표 기준 정렬
+                pageBlocks.sort((a, b) => (a.y_coordinate || 0) - (b.y_coordinate || 0));
+                rawBlocks.push(...pageBlocks);
             }
         }
-        rawBlocks.sort((a, b) => a.y_coordinate - b.y_coordinate);
 
         // --- 2. 지능형 병합 (Intelligent Stitching) ---
         const stitchedBlocks = [];
@@ -1344,8 +1346,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240729.1500`;
-        versionChangelog.textContent = `최종 아키텍처: AI의 순서/분류 오류를 해결하는 좌표 기반 재정렬 및 지능형 병합 로직 도입`;
+        versionText.textContent = `v20240729.1800`;
+        versionChangelog.textContent = `최종 아키텍처 완성: 좌표 기반 재정렬 및 지능형 병합, 개별 박스 체크 기능, 공통 로직 개선`;
     };
 
     const setupDelegatedEventListeners = () => {
