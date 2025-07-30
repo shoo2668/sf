@@ -253,7 +253,7 @@
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 `;
 
-        const GEMINI_PROMPT_UPS = `Your task is to analyze the provided image of a UPS delivery report and extract all recognizable data blocks into a structured JSON array. Do not try to pair or assemble items. Your only job is to identify and classify blocks of information as you see them, in the order they appear on the page.
+        const GEMINI_PROMPT_UPS = `Your task is to analyze the provided image of a UPS delivery report and extract all recognizable data blocks into a structured JSON array. Do not try to pair or assemble items. Your only job is to identify and classify blocks of information as you see them.
 
 **CRITICAL INSTRUCTIONS:**
 
@@ -261,8 +261,9 @@
     *   **'info'**: A block containing recipient details like name, address, and phone number.
     *   **'hawb'**: A block containing one or more Tracking Numbers (hawbNo), usually next to barcodes.
 
-2.  **OUTPUT STRUCTURE:** Create a single JSON array. Each object in the array represents one block you found and MUST have two fields:
+2.  **OUTPUT STRUCTURE:** Create a single JSON array. Each object in the array represents one block you found and MUST have three fields:
     *   **"type"**: Either "info" or "hawb".
+    *   **"y_coordinate"**: The approximate vertical starting position (Y-pixel) of the block. A rough estimate is fine (e.g., 150, 320, 500).
     *   **"content"**: An object containing the data you extracted from that block.
 
 3.  **CONTENT DETAILS:**
@@ -270,16 +271,15 @@
     *   **For "hawb" type:** The "content" object should have a single field, "hawbNos", which is an **ARRAY of strings**. Find all tracking numbers in the block and put them in this array.
 
 4.  **IMPORTANT RULES:**
-    *   **DO NOT PAIR:** Do not try to connect an 'info' block with a 'hawb' block. Just list them as you find them.
+    *   **DO NOT PAIR:** Do not try to connect an 'info' block with a 'hawb' block.
     *   **DO NOT ADD 'no':** Do not assign any sequence number.
-    *   **HANDLE PAGE BREAKS:** If a block is cut off at the bottom or top of the page, just extract the partial text you see.
+    *   **HANDLE PAGE BREAKS:** If a block is cut off, just extract the partial text you see.
 
 **EXAMPLE OUTPUT:**
 [
-  { "type": "info", "content": { "receiverName": "MINWOO KWON", "receiverNameKorean": "권민우", "receiverAddress": "1-404, 107, DORIM-RO...", "receiverAddressKorean": "서울 구로구 도림로 107..." } },
-  { "type": "hawb", "content": { "hawbNos": ["1Z423R3V6793903541"] } },
-  { "type": "info", "content": { "receiverName": "SUNGYEON KI", "receiverNameKorean": "기성연", ... } },
-  { "type": "hawb", "content": { "hawbNos": ["1Z423R3V6793903541", "1ZANOTHERTRACKING123"] } }
+  { "type": "info", "y_coordinate": 100, "content": { "receiverName": "MINWOO KWON", ... } },
+  { "type": "hawb", "y_coordinate": 250, "content": { "hawbNos": ["1Z..."] } },
+  { "type": "info", "y_coordinate": 80, "content": { "receiverName": "SUNGYEON KI", ... } }
 ]
 `;
         
@@ -365,6 +365,8 @@
             else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('8202')) { cleaned = '02' + cleaned.substring(4); }
+            else if (cleaned.startsWith('822')) { cleaned = '02' + cleaned.substring(3); }
             else if (cleaned.startsWith('8201') && cleaned.length > 4 && cleaned[4] !== '0') { cleaned = '010' + cleaned.substring(4); }
             else if (cleaned.startsWith('82') && cleaned.length > 2) { cleaned = '0' + cleaned.substring(2); }
             else if (cleaned.length >= 7 && cleaned.length <= 11 && !cleaned.startsWith('0')) { cleaned = '0' + cleaned; }
@@ -411,6 +413,8 @@
             else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
+            else if (cleaned.startsWith('8202')) { cleaned = '02' + cleaned.substring(4); }
+            else if (cleaned.startsWith('822')) { cleaned = '02' + cleaned.substring(3); }
             else if (cleaned.startsWith('8201') && cleaned.length > 4 && cleaned[4] !== '0') { cleaned = '010' + cleaned.substring(4); }
             else if (cleaned.startsWith('82') && cleaned.length > 2) { cleaned = '0' + cleaned.substring(2); }
             else if (cleaned.length >= 7 && cleaned.length <= 11 && !cleaned.startsWith('0')) { cleaned = '0' + cleaned; }
@@ -1100,13 +1104,14 @@
         const workerPromises = Array.from({ length: CONCURRENT_WORKERS }, worker);
         await Promise.all(workerPromises);
 
-        // --- 1. 순번 없는 '날것' 데이터 수집 ---
+        // --- 1. 순번 없는 '날것' 데이터 수집 및 좌표 기준 재정렬 ---
         let rawBlocks = [];
         for (const file of sortedFiles) {
             if (resultsMap.has(file.name)) {
                 rawBlocks.push(...resultsMap.get(file.name));
             }
         }
+        rawBlocks.sort((a, b) => a.y_coordinate - b.y_coordinate);
 
         // --- 2. 지능형 병합 (Intelligent Stitching) ---
         const stitchedBlocks = [];
@@ -1119,7 +1124,7 @@
                 for (const key in nextBlock.content) {
                     if (key.includes('Address')) {
                         mergedContent[key] = (mergedContent[key] || '') + ' ' + nextBlock.content[key];
-                    } else if (!mergedContent[key]) { // Fill in missing fields
+                    } else if (!mergedContent[key]) {
                         mergedContent[key] = nextBlock.content[key];
                     }
                 }
@@ -1166,7 +1171,7 @@
                 no: lastSuccessfulNo,
                 baseAddressKorean: baseAddress,
                 detailAddressKorean: detailAddress,
-                checkedHawbNos: [] // Initialize checked array
+                checkedHawbNos: []
             };
             allNewItems.push(finalItem);
         }
@@ -1177,7 +1182,7 @@
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
-                hawbNo: Array.isArray(item.hawbNo) ? item.hawbNo : [],
+                hawbNo: Array.isArray(item.hawbNo) ? item.hawbNo : [item.hawbNo], // Ensure hawbNo is always an array
                 checkedHawbNos: [],
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
@@ -1339,8 +1344,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240729.1100`;
-        versionChangelog.textContent = `최종 아키텍처 완성: Multi-HAWB 개별 체크박스 기능 및 지능형 병합 로직 적용`;
+        versionText.textContent = `v20240729.1500`;
+        versionChangelog.textContent = `최종 아키텍처: AI의 순서/분류 오류를 해결하는 좌표 기반 재정렬 및 지능형 병합 로직 도입`;
     };
 
     const setupDelegatedEventListeners = () => {
