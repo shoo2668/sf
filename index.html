@@ -1104,14 +1104,11 @@
         const workerPromises = Array.from({ length: CONCURRENT_WORKERS }, worker);
         await Promise.all(workerPromises);
 
-        // --- 1. 순번 없는 '날것' 데이터 수집 및 좌표 기준 재정렬 ---
+        // --- 1. 순번 없는 '날것' 데이터 수집 ---
         let rawBlocks = [];
         for (const file of sortedFiles) {
             if (resultsMap.has(file.name)) {
-                const pageBlocks = resultsMap.get(file.name);
-                // 좌표 기준 정렬
-                pageBlocks.sort((a, b) => (a.y_coordinate || 0) - (b.y_coordinate || 0));
-                rawBlocks.push(...pageBlocks);
+                rawBlocks.push(...resultsMap.get(file.name));
             }
         }
 
@@ -1347,7 +1344,7 @@
     
     const setVersionInfo = () => {
         versionText.textContent = `v20240729.1800`;
-        versionChangelog.textContent = `최종 아키텍처 완성: 좌표 기반 재정렬 및 지능형 병합, 개별 박스 체크 기능, 공통 로직 개선`;
+        versionChangelog.textContent = `최종 아키텍처 완성: Multi-HAWB 그룹화 및 코드 기반 재조합 로직 적용`;
     };
 
     const setupDelegatedEventListeners = () => {
