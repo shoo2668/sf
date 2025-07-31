@@ -705,21 +705,17 @@
 
             // Number Keypad
             ['1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(key => {
-                // ▼▼▼▼▼ 수정된 부분: 숫자 버튼에 초록색 배경 적용 ▼▼▼▼▼
                 numberKeypad.appendChild(createKeyButton(key, 'bg-green-100 text-green-800 hover:bg-green-200', key, 'add'));
             });
             numberKeypad.appendChild(createKeyButton(',', 'bg-gray-200 hover:bg-gray-300', ',', 'add-comma'));
             numberKeypad.appendChild(createKeyButton('0', 'bg-green-100 text-green-800 hover:bg-green-200', '0', 'add'));
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             numberKeypad.appendChild(createKeyButton('-', 'bg-gray-200 hover:bg-gray-300', '-', 'add-hyphen'));
 
             // Unit Keypad
-            // ▼▼▼▼▼ 수정된 부분: 단위 버튼 action 변경 ▼▼▼▼▼
             unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-unit'));
             unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-unit'));
             unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-unit'));
             unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-unit'));
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             unitKeypad.appendChild(createKeyButton('␣', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
             unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
             const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
@@ -752,11 +748,9 @@
                 case 'add-space':
                     input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + value;
                     break;
-                // ▼▼▼▼▼ 수정된 부분: 단위 버튼 로직 추가 ▼▼▼▼▼
                 case 'add-unit':
                     input.value = currentValue.trimEnd() + value + ' ';
                     break;
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 case 'add-comma':
                     input.value = currentValue.trimEnd() + ', ';
                     break;
@@ -933,25 +927,19 @@
 
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
                 const isAllFilter = currentFilter === '전체';
-
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
-                const isMapButtonActive = isValidAddressForMap(data.baseAddress);
-                const showMapButton = ['전체', '배송전'].includes(currentFilter);
-
+                
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined)
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
                 
-                const mapButtonHtml = showMapButton ? `
-                    <button data-action="open-naver-map" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button>
-                ` : '';
-
                 const cardBg = isAllFilter ? 'bg-white' : (data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white'));
                 const showCompletedHeader = !isAllFilter && data.status === '완료';
                 const detailsHidden = !isAllFilter && data.status === '완료';
                 const showInProgressButtons = !isAllFilter && data.status === '배송중';
                 const showToggleDetailsButton = !isAllFilter && data.status === '완료';
 
+                // ▼▼▼▼▼ 수정된 부분: 카드 디자인 변경 ▼▼▼▼▼
                 return `
                     <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -979,19 +967,37 @@
                             `}
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${detailsHidden ? 'style="display:none;"' : ''}>
-                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between">
-                                <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
-                                ${mapButtonHtml}
-                            </div>${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
-                            <div><p class="text-sm font-medium text-gray-700">회사명:</p><p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.companyNameOriginal})</p>` : ''}</div>
-                            <div><p class="text-sm font-medium text-gray-700">이름:</p><p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverNameOriginal})</p>` : ''}</div>
-                            <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
+                            <div class="flex items-start">
+                                <span class="pr-2 cursor-pointer" data-action="open-naver-map" data-no="${data.no}" title="지도 보기">📍</span>
+                                <div>
+                                    <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
+                                    ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="pr-2">🏢</span>
+                                <div>
+                                    <p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>
+                                    ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500">(${data.companyNameOriginal})</p>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="pr-2">👤</span>
+                                <div>
+                                    <p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
+                                    ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500">(${data.receiverNameOriginal})</p>` : ''}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div>
+                            </div>
                             ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                         </div>
                         ${showInProgressButtons ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2 w-10/12"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
                         ${showToggleDetailsButton ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
                 </div>
             `;
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         }).join('');
         
         if (animationClass) {
@@ -1340,8 +1346,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0330`;
-        versionChangelog.textContent = `주소 편집기 버튼 색상(숫자) 및 동작(단위) 변경`;
+        versionText.textContent = `v20240726.0400`;
+        versionChangelog.textContent = `카드 디자인 아이콘 기반으로 변경, 지도보기 기능 아이콘에 통합`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1358,13 +1364,11 @@
 
             switch (action) {
                 case 'open-smart-edit': openSmartEditModal(itemNo); break;
-                case 'open-naver-map': 
-                    if (!button.disabled) {
-                        openNaverMap(item);
-                    } else {
-                        showMessage('유효하지 않은 주소입니다.');
-                    }
+                // ▼▼▼▼▼ 수정된 부분: 지도보기 버튼 제거에 따른 이벤트 핸들러 수정 ▼▼▼▼▼
+                case 'open-naver-map':
+                    openNaverMap(item);
                     break;
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 case 'identity-verification': 
                     openConfirmationModal(`HAWB ${item.hawbNo} 본인확인 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '본인확인', item.receiverNameKorean)); 
                     break;
