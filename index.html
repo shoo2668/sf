@@ -656,11 +656,22 @@
             }
         };
 
+        // ▼▼▼▼▼ 수정된 부분: 뒤로가기 기능 추가 ▼▼▼▼▼
+        const handlePopState = (event) => {
+            if (event.state && event.state.modal === 'smart-edit') {
+                closeSmartEditModal(false); // history.back()을 호출하지 않도록 인자 전달
+            }
+        };
+
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
+            // History API 상태 추가
+            history.pushState({modal: 'smart-edit'}, 'Edit Address');
+            window.addEventListener('popstate', handlePopState, { once: true });
+
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
@@ -725,10 +736,21 @@
             smartEditModal.style.display = 'flex';
         };
 
-        const closeSmartEditModal = () => {
+        const closeSmartEditModal = (goBack = true) => {
+            if (smartEditModal.style.display === 'none') return;
+
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
+            
+            // popstate 이벤트 리스너를 제거하여 중복 실행 방지
+            window.removeEventListener('popstate', handlePopState);
+            
+            // 사용자가 '나가기' 버튼을 직접 누른 경우에만 history.back() 호출
+            if (goBack && history.state && history.state.modal === 'smart-edit') {
+                history.back();
+            }
         };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         smartEditModal.addEventListener('click', (event) => {
             const button = event.target.closest('.key-button');
@@ -939,7 +961,6 @@
                 const showInProgressButtons = !isAllFilter && data.status === '배송중';
                 const showToggleDetailsButton = !isAllFilter && data.status === '완료';
 
-                // ▼▼▼▼▼ 수정된 부분: 카드 디자인 변경 ▼▼▼▼▼
                 return `
                     <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -968,21 +989,21 @@
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${detailsHidden ? 'style="display:none;"' : ''}>
                             <div class="flex items-start">
-                                <span class="pr-2 cursor-pointer" data-action="open-naver-map" data-no="${data.no}" title="지도 보기">📍</span>
+                                <span class="pr-2 cursor-pointer pt-0.5" data-action="open-naver-map" data-no="${data.no}" title="지도 보기">📍</span>
                                 <div>
                                     <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
                                     ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
                                 </div>
                             </div>
                             <div class="flex items-start">
-                                <span class="pr-2">🏢</span>
+                                <span class="pr-2 pt-0.5">🏢</span>
                                 <div>
                                     <p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>
                                     ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500">(${data.companyNameOriginal})</p>` : ''}
                                 </div>
                             </div>
                             <div class="flex items-start">
-                                <span class="pr-2">👤</span>
+                                <span class="pr-2 pt-0.5">👤</span>
                                 <div>
                                     <p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
                                     ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500">(${data.receiverNameOriginal})</p>` : ''}
@@ -997,7 +1018,6 @@
                         ${showToggleDetailsButton ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
                 </div>
             `;
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         }).join('');
         
         if (animationClass) {
@@ -1346,8 +1366,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0400`;
-        versionChangelog.textContent = `카드 디자인 아이콘 기반으로 변경, 지도보기 기능 아이콘에 통합`;
+        versionText.textContent = `v20240726.0445`;
+        versionChangelog.textContent = `주소 편집 모달에서 기기 뒤로가기 버튼으로 닫기 기능 추가`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1364,11 +1384,9 @@
 
             switch (action) {
                 case 'open-smart-edit': openSmartEditModal(itemNo); break;
-                // ▼▼▼▼▼ 수정된 부분: 지도보기 버튼 제거에 따른 이벤트 핸들러 수정 ▼▼▼▼▼
                 case 'open-naver-map':
                     openNaverMap(item);
                     break;
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 case 'identity-verification': 
                     openConfirmationModal(`HAWB ${item.hawbNo} 본인확인 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '본인확인', item.receiverNameKorean)); 
                     break;
