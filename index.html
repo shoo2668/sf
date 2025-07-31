@@ -512,6 +512,9 @@
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
         let cameraStream = null; // For barcode scanner
+        // ▼▼▼▼▼ 수정된 부분: 뒤로가기 제어를 위한 전역 변수 추가 ▼▼▼▼▼
+        let activeModal = null;
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -656,21 +659,15 @@
             }
         };
 
-        // ▼▼▼▼▼ 수정된 부분: 뒤로가기 기능 추가 ▼▼▼▼▼
-        const handlePopState = (event) => {
-            if (event.state && event.state.modal === 'smart-edit') {
-                closeSmartEditModal(false); // history.back()을 호출하지 않도록 인자 전달
-            }
-        };
-
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
-            // History API 상태 추가
-            history.pushState({modal: 'smart-edit'}, 'Edit Address');
-            window.addEventListener('popstate', handlePopState, { once: true });
+            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 상태 관리 ▼▼▼▼▼
+            history.pushState({ modal: 'smart-edit' }, 'Edit Address');
+            activeModal = 'smart-edit';
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
@@ -736,21 +733,12 @@
             smartEditModal.style.display = 'flex';
         };
 
-        const closeSmartEditModal = (goBack = true) => {
+        const closeSmartEditModal = () => {
             if (smartEditModal.style.display === 'none') return;
-
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
-            
-            // popstate 이벤트 리스너를 제거하여 중복 실행 방지
-            window.removeEventListener('popstate', handlePopState);
-            
-            // 사용자가 '나가기' 버튼을 직접 누른 경우에만 history.back() 호출
-            if (goBack && history.state && history.state.modal === 'smart-edit') {
-                history.back();
-            }
+            activeModal = null;
         };
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         smartEditModal.addEventListener('click', (event) => {
             const button = event.target.closest('.key-button');
@@ -810,7 +798,7 @@
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(activeFilter); 
                 showToastMessage('주소가 성공적으로 변경되었습니다.');
-                closeSmartEditModal();
+                history.back(); // 닫기 전 history.back() 호출
             }
         };
         
@@ -830,7 +818,13 @@
             }
         });
         
-        smartEditExitBtn.addEventListener('click', closeSmartEditModal);
+        smartEditExitBtn.addEventListener('click', () => {
+            if (history.state && history.state.modal === 'smart-edit') {
+                history.back();
+            } else {
+                closeSmartEditModal();
+            }
+        });
 
         piecesAddressInput.addEventListener('input', autoResizeTextarea);
         directAddressInput.addEventListener('input', autoResizeTextarea);
@@ -1367,7 +1361,7 @@
     
     const setVersionInfo = () => {
         versionText.textContent = `v20240726.0445`;
-        versionChangelog.textContent = `주소 편집 모달에서 기기 뒤로가기 버튼으로 닫기 기능 추가`;
+        versionChangelog.textContent = `모달/스캐너에서 기기 뒤로가기 버튼으로 닫기 기능 추가 및 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1418,7 +1412,12 @@
             cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             scannerVideo.srcObject = cameraStream;
             await scannerVideo.play();
+            
+            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 상태 관리 ▼▼▼▼▼
+            history.pushState({ modal: 'barcode-scanner' }, 'Scan Barcode');
+            activeModal = 'barcode-scanner';
             barcodeScannerModal.style.display = 'flex';
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
             
@@ -1430,7 +1429,7 @@
                         const scannedValue = barcodes[0].rawValue;
                         invoiceNumberInput.value = scannedValue.replace(/\D/g, '');
                         searchButton.click();
-                        stopScanner();
+                        history.back(); // 닫기 위해 history.back() 호출
                         if (navigator.vibrate) navigator.vibrate(200);
                     } else {
                         requestAnimationFrame(detectBarcode);
@@ -1449,11 +1448,13 @@
     };
 
     const stopScanner = () => {
+        if (barcodeScannerModal.style.display === 'none') return;
         if (cameraStream) {
             cameraStream.getTracks().forEach(track => track.stop());
             cameraStream = null;
         }
         barcodeScannerModal.style.display = 'none';
+        activeModal = null;
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1461,11 +1462,29 @@
             setVersionInfo();
             setupDelegatedEventListeners();
             
+            // ▼▼▼▼▼ 수정된 부분: 중앙 뒤로가기 이벤트 핸들러 추가 및 버튼 동작 수정 ▼▼▼▼▼
+            window.addEventListener('popstate', () => {
+                if (activeModal === 'smart-edit') {
+                    closeSmartEditModal();
+                } else if (activeModal === 'barcode-scanner') {
+                    stopScanner();
+                }
+            });
+
             if ('BarcodeDetector' in window) {
                 scanBarcodeButton.classList.remove('hidden');
                 scanBarcodeButton.addEventListener('click', startScanner);
             }
-            cancelScanBtn.addEventListener('click', stopScanner);
+
+            cancelScanBtn.addEventListener('click', () => {
+                if (history.state && history.state.modal === 'barcode-scanner') {
+                    history.back();
+                } else {
+                    stopScanner();
+                }
+            });
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
