@@ -512,9 +512,7 @@
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
         let cameraStream = null; // For barcode scanner
-        // ▼▼▼▼▼ 수정된 부분: 뒤로가기 제어를 위한 전역 변수 추가 ▼▼▼▼▼
         let activeModal = null;
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -664,10 +662,8 @@
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
-            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 상태 관리 ▼▼▼▼▼
             history.pushState({ modal: 'smart-edit' }, 'Edit Address');
             activeModal = 'smart-edit';
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
@@ -737,7 +733,7 @@
             if (smartEditModal.style.display === 'none') return;
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
-            activeModal = null;
+            if (activeModal === 'smart-edit') activeModal = null;
         };
         
         smartEditModal.addEventListener('click', (event) => {
@@ -798,7 +794,7 @@
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(activeFilter); 
                 showToastMessage('주소가 성공적으로 변경되었습니다.');
-                history.back(); // 닫기 전 history.back() 호출
+                history.back();
             }
         };
         
@@ -819,7 +815,7 @@
         });
         
         smartEditExitBtn.addEventListener('click', () => {
-            if (history.state && history.state.modal === 'smart-edit') {
+            if (history.state && history.state.modal) {
                 history.back();
             } else {
                 closeSmartEditModal();
@@ -953,8 +949,7 @@
                 const showCompletedHeader = !isAllFilter && data.status === '완료';
                 const detailsHidden = !isAllFilter && data.status === '완료';
                 const showInProgressButtons = !isAllFilter && data.status === '배송중';
-                const showToggleDetailsButton = !isAllFilter && data.status === '완료';
-
+                
                 return `
                     <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -974,11 +969,16 @@
                                     </div>
                                 </div>
                             ` : `
-                                <div class="text-xl font-semibold text-gray-700 text-left w-full">
-                                    <span class="text-red-500 text-2xl mr-8">${data.no}</span>
-                                    ${data.completionType === '서명' && data.completionDetail ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>` : data.completionType === '본인확인' ? `${data.completionType} (${data.completionDetail})` : `${data.completionType || ''}`}
-                                    <span class="ml-4">${formatCompletionTime(data.deliveryCompletionTime)}</span>
+                                <!-- ▼▼▼▼▼ 수정된 부분: 완료 카드 헤더 변경 ▼▼▼▼▼ -->
+                                <div data-action="toggle-details" data-no="${data.no}" class="w-full flex justify-between items-center cursor-pointer">
+                                    <div class="text-xl font-semibold text-gray-700 text-left">
+                                        <span class="text-red-500 text-2xl mr-8">${data.no}</span>
+                                        ${data.completionType === '서명' && data.completionDetail ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>` : data.completionType === '본인확인' ? `${data.completionType} (${data.completionDetail})` : `${data.completionType || ''}`}
+                                        <span class="ml-4">${formatCompletionTime(data.deliveryCompletionTime)}</span>
+                                    </div>
+                                    <span class="toggle-icon text-2xl pl-4">🔽</span>
                                 </div>
+                                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
                             `}
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${detailsHidden ? 'style="display:none;"' : ''}>
@@ -1009,7 +1009,6 @@
                             ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                         </div>
                         ${showInProgressButtons ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2 w-10/12"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
-                        ${showToggleDetailsButton ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
                 </div>
             `;
         }).join('');
@@ -1360,8 +1359,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0445`;
-        versionChangelog.textContent = `모달/스캐너에서 기기 뒤로가기 버튼으로 닫기 기능 추가 및 수정`;
+        versionText.textContent = `v20240726.0545`;
+        versionChangelog.textContent = `'완료' 카드 디자인 개선 (헤더 클릭으로 상세 정보 토글)`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1389,13 +1388,17 @@
                     break;
                 case 'sign-delivery': openSignatureModal(itemNo); break;
                 case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
+                // ▼▼▼▼▼ 수정된 부분: 완료 카드 토글 로직 변경 ▼▼▼▼▼
                 case 'toggle-details': 
-                    const details = document.querySelector(`[data-details-container="${itemNo}"]`); 
-                    if (details) { 
-                        details.style.display = details.style.display === 'none' ? '' : 'none'; 
-                        button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; 
-                    } 
+                    const details = document.querySelector(`[data-details-container="${itemNo}"]`);
+                    const icon = button.querySelector('.toggle-icon');
+                    if (details && icon) {
+                        const isHidden = details.style.display === 'none';
+                        details.style.display = isHidden ? '' : 'none';
+                        icon.textContent = isHidden ? '🔼' : '🔽';
+                    }
                     break;
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             }
         });
         deliveryCardsContainer.addEventListener('change', (event) => {
@@ -1413,11 +1416,9 @@
             scannerVideo.srcObject = cameraStream;
             await scannerVideo.play();
             
-            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 상태 관리 ▼▼▼▼▼
             history.pushState({ modal: 'barcode-scanner' }, 'Scan Barcode');
             activeModal = 'barcode-scanner';
             barcodeScannerModal.style.display = 'flex';
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
             
@@ -1429,7 +1430,7 @@
                         const scannedValue = barcodes[0].rawValue;
                         invoiceNumberInput.value = scannedValue.replace(/\D/g, '');
                         searchButton.click();
-                        history.back(); // 닫기 위해 history.back() 호출
+                        history.back();
                         if (navigator.vibrate) navigator.vibrate(200);
                     } else {
                         requestAnimationFrame(detectBarcode);
@@ -1454,7 +1455,7 @@
             cameraStream = null;
         }
         barcodeScannerModal.style.display = 'none';
-        activeModal = null;
+        if (activeModal === 'barcode-scanner') activeModal = null;
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1462,8 +1463,7 @@
             setVersionInfo();
             setupDelegatedEventListeners();
             
-            // ▼▼▼▼▼ 수정된 부분: 중앙 뒤로가기 이벤트 핸들러 추가 및 버튼 동작 수정 ▼▼▼▼▼
-            window.addEventListener('popstate', () => {
+            window.addEventListener('popstate', (event) => {
                 if (activeModal === 'smart-edit') {
                     closeSmartEditModal();
                 } else if (activeModal === 'barcode-scanner') {
@@ -1477,14 +1477,12 @@
             }
 
             cancelScanBtn.addEventListener('click', () => {
-                if (history.state && history.state.modal === 'barcode-scanner') {
+                if (history.state && history.state.modal) {
                     history.back();
                 } else {
                     stopScanner();
                 }
             });
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
-
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
