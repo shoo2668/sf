@@ -119,8 +119,8 @@
                     </svg>
                 </button>
                 <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
-                <!-- ▼▼▼▼▼ 수정된 부분 1: '초기화' 버튼 텍스트를 '지움'으로 변경 ▼▼▼▼▼ -->
-                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-grㄹay-400 focus:ring-opacity-50">지움</button>
+                <!-- ▼▼▼▼▼ 수정된 부분 1: '초기화' 버튼 텍스트를 '지움'으로 변경 + 오타 수정 ▼▼▼▼▼ -->
+                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
                 <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
             </div>
         </div>
@@ -1271,8 +1271,10 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240725.1930`;
-        versionChangelog.textContent = `바코드 스캐너 기능 추가 및 활성화 버그 수정`;
+        // ▼▼▼▼▼ 수정된 부분 2: 버전 정보 업데이트 ▼▼▼▼▼
+        versionText.textContent = `v20240726.0115`;
+        versionChangelog.textContent = `'지움' 버튼 포커스 버그 수정, 페이지 이탈 경고 제거`;
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1370,10 +1372,12 @@
             setVersionInfo();
             setupDelegatedEventListeners();
             
-            window.addEventListener('beforeunload', (event) => {
-                event.preventDefault();
-                event.returnValue = '';
-            });
+            // ▼▼▼▼▼ 수정된 부분 3: beforeunload 이벤트 리스너 제거 ▼▼▼▼▼
+            // window.addEventListener('beforeunload', (event) => {
+            //     event.preventDefault();
+            //     event.returnValue = '';
+            // });
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             if ('BarcodeDetector' in window) {
                 scanBarcodeButton.classList.remove('hidden');
