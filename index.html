@@ -13,7 +13,7 @@
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
         
-        /* ▼▼▼▼▼ 수정된 부분: 버튼 및 키팝 효과 스타일 ▼▼▼▼▼ */
+        /* ▼▼▼▼▼ 수정된 부분: 버튼 및 키팝 효과 스타일 변경 ▼▼▼▼▼ */
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
         .key-pop {
             position: absolute;
@@ -23,9 +23,9 @@
             transform-origin: bottom center;
             background-color: #374151; /* gray-700 */
             color: white;
-            padding: 0.5rem 0.75rem;
+            padding: 0.6rem 1.2rem; /* 패딩 증가 */
             border-radius: 0.5rem;
-            font-size: 1.25rem;
+            font-size: 1.5rem; /* 폰트 크기 증가 */
             font-weight: 600;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             opacity: 0;
@@ -38,7 +38,7 @@
         }
         .key-button:active .key-pop {
             opacity: 1;
-            transform: translateX(-50%) scale(1) translateY(-8px);
+            transform: translateX(-50%) scale(1.2) translateY(-10px); /* 스케일 및 위치 조정 */
         }
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color: 0.2s; }
         /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
@@ -215,12 +215,10 @@
                     <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
                 </div>
                 
-                <!-- ▼▼▼▼▼ 수정된 부분: 버튼 레이아웃 변경 ▼▼▼▼▼ -->
                 <div id="fixed-buttons-container" class="mt-2 grid grid-cols-2 gap-4">
                     <div id="number-keypad" class="grid grid-cols-3 gap-2"></div>
                     <div id="unit-keypad" class="grid grid-cols-2 gap-2"></div>
                 </div>
-                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
 
                 <hr class="my-4 border-gray-300"/>
 
@@ -683,7 +681,8 @@
             
             const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
-                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md h-12 flex items-center justify-center ${colorClass}`;
+                // 버튼 높이 조정 (py-2 추가, h-12 제거)
+                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-2 flex items-center justify-center ${colorClass}`;
                 button.dataset.value = value !== undefined ? value : text;
                 button.dataset.action = action;
                 
@@ -721,10 +720,11 @@
             unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-space'));
             unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-space'));
             unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('공백', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
+            // '공백' 버튼 텍스트를 기호 '␣'로 변경
+            unitKeypad.appendChild(createKeyButton('␣', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
             unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
             const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
-            backspaceWordBtn.classList.add('col-span-2'); // << 버튼이 2칸 차지하도록
+            backspaceWordBtn.classList.add('col-span-2');
             unitKeypad.appendChild(backspaceWordBtn);
 
             smartEditModal.style.display = 'flex';
@@ -1337,8 +1337,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0230`;
-        versionChangelog.textContent = `주소 편집기 UX/UI 개선 (버튼 재배치, 햅틱/키팝 효과 추가)`;
+        versionText.textContent = `v20240726.0305`;
+        versionChangelog.textContent = `주소 편집기 UI/UX 추가 개선 (버튼 높이, 공백 버튼, 키팝 효과)`;
     };
 
     const setupDelegatedEventListeners = () => {
