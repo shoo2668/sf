@@ -13,7 +13,6 @@
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
         
-        /* ▼▼▼▼▼ 수정된 부분: 버튼 및 키팝 효과 스타일 변경 ▼▼▼▼▼ */
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
         .key-pop {
             position: absolute;
@@ -23,9 +22,9 @@
             transform-origin: bottom center;
             background-color: #374151; /* gray-700 */
             color: white;
-            padding: 0.6rem 1.2rem; /* 패딩 증가 */
+            padding: 0.6rem 1.2rem;
             border-radius: 0.5rem;
-            font-size: 1.5rem; /* 폰트 크기 증가 */
+            font-size: 1.5rem;
             font-weight: 600;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             opacity: 0;
@@ -38,10 +37,9 @@
         }
         .key-button:active .key-pop {
             opacity: 1;
-            transform: translateX(-50%) scale(1.2) translateY(-10px); /* 스케일 및 위치 조정 */
+            transform: translateX(-50%) scale(1.2) translateY(-10px);
         }
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color: 0.2s; }
-        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
 
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -652,7 +650,6 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
         
-        // ▼▼▼▼▼ 수정된 부분: 스마트 편집 모달 로직 변경 ▼▼▼▼▼
         const triggerHapticFeedback = () => {
             if (navigator.vibrate) {
                 navigator.vibrate(10); // 10ms 진동
@@ -679,9 +676,8 @@
             const unitKeypad = document.getElementById('unit-keypad');
             [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
             
-            const createKeyButton = (text, colorClass, value, action = 'add') => {
+            const createKeyButton = (text, colorClass, value, action = 'add', isUnit=false) => {
                 const button = document.createElement('button');
-                // 버튼 높이 조정 (py-2 추가, h-12 제거)
                 button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-2 flex items-center justify-center ${colorClass}`;
                 button.dataset.value = value !== undefined ? value : text;
                 button.dataset.action = action;
@@ -708,19 +704,22 @@
             }
 
             // Number Keypad
-            ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
-                let action = 'add';
-                if (key === ',') action = 'add-comma';
-                if (key === '-') action = 'add-hyphen';
-                numberKeypad.appendChild(createKeyButton(key, 'bg-gray-200 hover:bg-gray-300', key, action));
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(key => {
+                // ▼▼▼▼▼ 수정된 부분: 숫자 버튼에 초록색 배경 적용 ▼▼▼▼▼
+                numberKeypad.appendChild(createKeyButton(key, 'bg-green-100 text-green-800 hover:bg-green-200', key, 'add'));
             });
+            numberKeypad.appendChild(createKeyButton(',', 'bg-gray-200 hover:bg-gray-300', ',', 'add-comma'));
+            numberKeypad.appendChild(createKeyButton('0', 'bg-green-100 text-green-800 hover:bg-green-200', '0', 'add'));
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+            numberKeypad.appendChild(createKeyButton('-', 'bg-gray-200 hover:bg-gray-300', '-', 'add-hyphen'));
 
             // Unit Keypad
-            unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-space'));
-            // '공백' 버튼 텍스트를 기호 '␣'로 변경
+            // ▼▼▼▼▼ 수정된 부분: 단위 버튼 action 변경 ▼▼▼▼▼
+            unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-unit'));
+            unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-unit'));
+            unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-unit'));
+            unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-unit'));
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             unitKeypad.appendChild(createKeyButton('␣', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
             unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
             const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
@@ -729,7 +728,6 @@
 
             smartEditModal.style.display = 'flex';
         };
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const closeSmartEditModal = () => {
             smartEditModal.style.display = 'none';
@@ -754,8 +752,13 @@
                 case 'add-space':
                     input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + value;
                     break;
+                // ▼▼▼▼▼ 수정된 부분: 단위 버튼 로직 추가 ▼▼▼▼▼
+                case 'add-unit':
+                    input.value = currentValue.trimEnd() + value + ' ';
+                    break;
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 case 'add-comma':
-                    input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
+                    input.value = currentValue.trimEnd() + ', ';
                     break;
                 case 'add-hyphen':
                     input.value += '-';
@@ -1337,8 +1340,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0305`;
-        versionChangelog.textContent = `주소 편집기 UI/UX 추가 개선 (버튼 높이, 공백 버튼, 키팝 효과)`;
+        versionText.textContent = `v20240726.0330`;
+        versionChangelog.textContent = `주소 편집기 버튼 색상(숫자) 및 동작(단위) 변경`;
     };
 
     const setupDelegatedEventListeners = () => {
