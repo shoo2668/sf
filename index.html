@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ▼▼▼▼▼ 수정된 부분 1: ZXing 라이브러리 추가 ▼▼▼▼▼ -->
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/zxing.min.js"></script>
-    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; }
@@ -514,9 +512,7 @@
         let currentEditItemNo = null; 
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
-        // ▼▼▼▼▼ 수정된 부분 2: 스캐너 관련 변수 변경 ▼▼▼▼▼
         let codeReader = null;
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -1336,8 +1332,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0330`;
-        versionChangelog.textContent = `바코드 스캐너를 ZXing 라이브러리로 교체 (인식률 및 안정성 향상)`;
+        versionText.textContent = `v20240726.0400`;
+        versionChangelog.textContent = `스캐너 실행 오류 수정 (페이지 로드 이벤트 변경)`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1387,7 +1383,6 @@
         });
     };
 
-    // ▼▼▼▼▼ 수정된 부분 3: ZXing 기반 스캐너 함수로 전면 교체 ▼▼▼▼▼
     const startScanner = async () => {
         codeReader = new ZXing.BrowserMultiFormatReader();
         barcodeScannerModal.style.display = 'flex';
@@ -1396,7 +1391,6 @@
             const videoInputDevices = await codeReader.listVideoInputDevices();
             let selectedDeviceId = videoInputDevices[0].deviceId;
             
-            // 후면 카메라 우선 선택 로직
             const rearCamera = videoInputDevices.find(device => device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('후면'));
             if (rearCamera) {
                 selectedDeviceId = rearCamera.deviceId;
@@ -1429,19 +1423,16 @@
         }
         barcodeScannerModal.style.display = 'none';
     };
+
+    // ▼▼▼▼▼ 수정된 부분: DOMContentLoaded를 window.load로 변경 ▼▼▼▼▼
+    window.addEventListener('load', () => {
     // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
-
-
-    document.addEventListener('DOMContentLoaded', () => {
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
             
-            // ▼▼▼▼▼ 수정된 부분 4: 스캐너 버튼 활성화 로직 변경 ▼▼▼▼▼
-            // ZXing 라이브러리가 로드되었으므로 항상 버튼을 활성화합니다.
             scanBarcodeButton.classList.remove('hidden');
             scanBarcodeButton.addEventListener('click', startScanner);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             cancelScanBtn.addEventListener('click', stopScanner);
 
