@@ -22,11 +22,9 @@
             transform-origin: bottom center;
             background-color: #374151; /* gray-700 */
             color: white;
-            /* ▼▼▼▼▼ 수정된 부분: 키팝 효과 강화 ▼▼▼▼▼ */
             padding: 0.6rem 1rem;
             border-radius: 0.5rem;
             font-size: 1.5rem; 
-            /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
             font-weight: 600;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             opacity: 0;
@@ -238,6 +236,7 @@
     </div>
 
     <script type="text/javascript">
+        // ▼▼▼▼▼ 수정된 부분: 실수로 삭제되었던 함수들 복원 ▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
@@ -639,9 +638,7 @@
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
-            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 제스처 처리 ▼▼▼▼▼
             history.pushState({ modal: 'smart-edit' }, ''); 
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
@@ -660,9 +657,7 @@
             
             const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
-                // ▼▼▼▼▼ 수정된 부분: 버튼 높이 조절 h-10 ▼▼▼▼▼
                 button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md h-10 flex items-center justify-center ${colorClass}`;
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 button.dataset.value = value !== undefined ? value : text;
                 button.dataset.action = action;
                 
@@ -690,12 +685,10 @@
             // Number Keypad
             ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
                 let action = 'add';
-                // ▼▼▼▼▼ 수정된 부분: 숫자 버튼 색상 변경 ▼▼▼▼▼
                 let color = 'bg-gray-200 hover:bg-gray-300';
-                if (!isNaN(parseInt(key))) { // 숫자인 경우
+                if (!isNaN(parseInt(key))) { 
                     color = 'bg-green-100 text-green-800 hover:bg-green-200';
                 }
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 if (key === ',') action = 'add-comma';
                 if (key === '-') action = 'add-hyphen';
                 numberKeypad.appendChild(createKeyButton(key, color, key, action));
@@ -706,9 +699,7 @@
             unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-space'));
             unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-space'));
             unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-space'));
-            // ▼▼▼▼▼ 수정된 부분: 공백 버튼 디자인 변경 ▼▼▼▼▼
             unitKeypad.appendChild(createKeyButton('␣', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
             const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
             backspaceWordBtn.classList.add('col-span-2');
@@ -719,11 +710,6 @@
 
         const closeSmartEditModal = () => {
             if (smartEditModal.style.display === 'none') return;
-            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 제스처 처리 ▼▼▼▼▼
-            if (history.state && history.state.modal === 'smart-edit') {
-                history.back(); // popstate 이벤트를 트리거하지 않고 히스토리에서 제거
-            }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
         };
@@ -803,7 +789,13 @@
             }
         });
         
-        smartEditExitBtn.addEventListener('click', closeSmartEditModal);
+        smartEditExitBtn.addEventListener('click', () => {
+             if (history.state && history.state.modal === 'smart-edit') {
+                history.back();
+            } else {
+                closeSmartEditModal();
+            }
+        });
 
         piecesAddressInput.addEventListener('input', autoResizeTextarea);
         directAddressInput.addEventListener('input', autoResizeTextarea);
@@ -1313,11 +1305,10 @@
             }
         );
     });
-
-    // ▼▼▼▼▼ 수정된 부분: 실수로 삭제되었던 함수들 복원 ▼▼▼▼▼
+    
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0600`;
-        versionChangelog.textContent = `주소 편집기 UX 개선 (뒤로가기, 버튼 스타일 등)`;
+        versionText.textContent = `v20240726.0615`;
+        versionChangelog.textContent = `주소 편집기 뒤로가기 제스처 오류 수정, 버튼 높이 통일`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1366,7 +1357,6 @@
             }
         });
     };
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
     // --- Main Initialization ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -1401,13 +1391,16 @@
                 invoiceNumberInput.value = hawbFromUrl;
                 searchButton.click();
             }
-
-            // '뒤로가기' 제스처로 모달 닫기
+            
+            // ▼▼▼▼▼ 수정된 부분: 뒤로가기 제스처 처리 로직 변경 ▼▼▼▼▼
             window.addEventListener('popstate', (event) => {
-                if (event.state && event.state.modal === 'smart-edit') {
+                if (smartEditModal.style.display !== 'none') {
+                    event.stopPropagation(); // 브라우저의 기본 뒤로가기 동작을 막기 위해
                     closeSmartEditModal();
                 }
             });
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
