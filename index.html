@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ▼▼▼▼▼ 수정된 부분: ZXing-JS 라이브러리 추가 ▼▼▼▼▼ -->
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/zxing.min.js"></script>
+    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; }
@@ -511,8 +514,10 @@
         let currentEditItemNo = null; 
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
-        let cameraStream = null; // For barcode scanner
         let activeModal = null;
+        // ▼▼▼▼▼ 수정된 부분: ZXing 스캐너 인스턴스를 저장할 변수 추가 ▼▼▼▼▼
+        let zxingCodeReader = null;
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -969,7 +974,6 @@
                                     </div>
                                 </div>
                             ` : `
-                                <!-- ▼▼▼▼▼ 수정된 부분: 완료 카드 헤더 변경 ▼▼▼▼▼ -->
                                 <div class="w-full flex justify-between items-center">
                                     <div class="text-xl font-semibold text-gray-700 text-left">
                                         <span class="text-red-500 text-2xl mr-8">${data.no}</span>
@@ -978,7 +982,6 @@
                                     </div>
                                     <span data-action="toggle-details" data-no="${data.no}" class="toggle-icon text-2xl pl-4 cursor-pointer">🔽</span>
                                 </div>
-                                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
                             `}
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${detailsHidden ? 'style="display:none;"' : ''}>
@@ -1359,19 +1362,17 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0545`;
-        versionChangelog.textContent = `'완료' 카드 디자인 개선 (헤더 아이콘 클릭으로 상세 정보 토글)`;
+        versionText.textContent = `v20240726.0645`;
+        versionChangelog.textContent = `바코드 스캐너 엔진을 ZXing-JS로 교체하여 인식률 향상`;
     };
 
     const setupDelegatedEventListeners = () => {
         deliveryCardsContainer.addEventListener('click', (event) => {
-            // ▼▼▼▼▼ 수정된 부분: 이벤트 위임 로직 강화 ▼▼▼▼▼
             const button = event.target.closest('[data-action]');
             if (!button) return;
 
             const action = button.dataset.action;
             const itemNo = parseInt(button.dataset.no);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item && action !== 'toggle-details') return; 
@@ -1390,8 +1391,10 @@
                 case 'sign-delivery': openSignatureModal(itemNo); break;
                 case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
                 case 'toggle-details': 
-                    const details = document.querySelector(`[data-details-container="${itemNo}"]`);
-                    const icon = button; // 이제 button 자체가 아이콘 span
+                    const card = button.closest('[data-no]');
+                    if (!card) return;
+                    const details = card.querySelector(`[data-details-container="${itemNo}"]`);
+                    const icon = button; 
                     if (details && icon) {
                         const isHidden = details.style.display === 'none';
                         details.style.display = isHidden ? '' : 'none';
@@ -1409,53 +1412,44 @@
         });
     };
 
+    // ▼▼▼▼▼ 수정된 부분: ZXing-JS 기반 스캐너 로직 ▼▼▼▼▼
     const startScanner = async () => {
         try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            scannerVideo.srcObject = cameraStream;
-            await scannerVideo.play();
-            
+            if (!zxingCodeReader) {
+                zxingCodeReader = new ZXing.BrowserMultiFormatReader();
+            }
             history.pushState({ modal: 'barcode-scanner' }, 'Scan Barcode');
             activeModal = 'barcode-scanner';
             barcodeScannerModal.style.display = 'flex';
 
-            const barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
-            
-            const detectBarcode = async () => {
-                if (!cameraStream) return;
-                try {
-                    const barcodes = await barcodeDetector.detect(scannerVideo);
-                    if (barcodes.length > 0) {
-                        const scannedValue = barcodes[0].rawValue;
-                        invoiceNumberInput.value = scannedValue.replace(/\D/g, '');
-                        searchButton.click();
-                        history.back();
-                        if (navigator.vibrate) navigator.vibrate(200);
-                    } else {
-                        requestAnimationFrame(detectBarcode);
-                    }
-                } catch (e) {
-                    console.error('Barcode detection failed:', e);
-                    requestAnimationFrame(detectBarcode);
+            zxingCodeReader.decodeFromVideoDevice(undefined, 'scanner-video', (result, err) => {
+                if (result) {
+                    if (navigator.vibrate) navigator.vibrate(200);
+                    invoiceNumberInput.value = result.getText().replace(/\D/g, '');
+                    searchButton.click();
+                    history.back(); // 스캔 성공 시 자동으로 닫기
                 }
-            };
-            requestAnimationFrame(detectBarcode);
-
+                if (err && !(err instanceof ZXing.NotFoundException)) {
+                    console.error(err);
+                }
+            });
         } catch (err) {
             console.error('Error accessing camera:', err);
             showMessage('카메라를 사용할 수 없습니다. 권한을 확인해주세요.', '오류');
+            history.back(); // 카메라 권한 에러 시 모달 닫기
         }
     };
 
     const stopScanner = () => {
         if (barcodeScannerModal.style.display === 'none') return;
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
+        if (zxingCodeReader) {
+            zxingCodeReader.reset();
         }
         barcodeScannerModal.style.display = 'none';
         if (activeModal === 'barcode-scanner') activeModal = null;
     };
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
 
     document.addEventListener('DOMContentLoaded', () => {
         try {
@@ -1470,10 +1464,9 @@
                 }
             });
 
-            if ('BarcodeDetector' in window) {
-                scanBarcodeButton.classList.remove('hidden');
-                scanBarcodeButton.addEventListener('click', startScanner);
-            }
+            // 바코드 버튼 가시성은 라이브러리 로드와 상관없이 일단 표시
+            scanBarcodeButton.classList.remove('hidden');
+            scanBarcodeButton.addEventListener('click', startScanner);
 
             cancelScanBtn.addEventListener('click', () => {
                 if (history.state && history.state.modal) {
