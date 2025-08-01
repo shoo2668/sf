@@ -142,7 +142,7 @@
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-2/5 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="scanBarcodeButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100 hidden">
+                <button id="scanBarcodeButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m-4-12v8m8-8v8m-6-4h4" />
                     </svg>
@@ -1332,8 +1332,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0400`;
-        versionChangelog.textContent = `스캐너 실행 오류 수정 (페이지 로드 이벤트 변경)`;
+        versionText.textContent = `v20240726.0415`;
+        versionChangelog.textContent = `스캐너 초기화 안정성 강화 (라이브러리 로딩 지연 오류 수정)`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1424,17 +1424,37 @@
         barcodeScannerModal.style.display = 'none';
     };
 
-    // ▼▼▼▼▼ 수정된 부분: DOMContentLoaded를 window.load로 변경 ▼▼▼▼▼
+    // ▼▼▼▼▼ 수정된 부분: ZXing 라이브러리 준비 확인 로직 추가 ▼▼▼▼▼
+    const initializeScanner = () => {
+        // 스캐너 기능 활성화
+        scanBarcodeButton.addEventListener('click', startScanner);
+        cancelScanBtn.addEventListener('click', stopScanner);
+    };
+
+    const waitForZxing = (maxAttempts = 50, attempts = 0) => {
+        if (window.ZXing) {
+            console.log("ZXing library loaded successfully.");
+            initializeScanner();
+        } else if (attempts < maxAttempts) {
+            setTimeout(() => waitForZxing(maxAttempts, attempts + 1), 100);
+        } else {
+            console.error("ZXing library failed to load after 5 seconds.");
+            scanBarcodeButton.disabled = true;
+            const svg = scanBarcodeButton.querySelector('svg');
+            if(svg) svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />`; // X 아이콘으로 변경
+            
+            scanBarcodeButton.addEventListener('click', () => {
+                showMessage("바코드 스캐너 라이브러리를 불러오지 못했습니다. 네트워크 연결을 확인하고 페이지를 새로고침 해주세요.", "오류");
+            });
+        }
+    };
+
     window.addEventListener('load', () => {
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
             
-            scanBarcodeButton.classList.remove('hidden');
-            scanBarcodeButton.addEventListener('click', startScanner);
-
-            cancelScanBtn.addEventListener('click', stopScanner);
+            waitForZxing(); // ZXing 라이브러리 로딩 시작
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
