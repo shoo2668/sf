@@ -135,9 +135,7 @@
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
-                <!-- ▼▼▼▼▼ 수정된 부분: 검색창 너비 조절 ▼▼▼▼▼ -->
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-1/2 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
                 <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
                 <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
             </div>
@@ -876,12 +874,10 @@
         const highlightHawbNo = (hawbNo, term) => {
             if (!hawbNo) return '';
             const formattedHawbNo = formatHawbNoForDisplay(hawbNo);
-            // ▼▼▼▼▼ 수정된 부분: 대소문자 구분 없이 하이라이팅 ▼▼▼▼▼
             if (!term || !formattedHawbNo.toLowerCase().includes(term.toLowerCase())) return formattedHawbNo;
             const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
             return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         };
         
         // --- Render function ---
@@ -890,10 +886,8 @@
 
             let dataToRender = [];
             if (searchTerm) {
-                // ▼▼▼▼▼ 수정된 부분: 영문 검색을 위해 숫자만 남기는 로직 제거 ▼▼▼▼▼
                 const cleanedSearchTerm = searchTerm.trim().toLowerCase();
                 dataToRender = deliveryItems.filter(item => item.hawbNo?.toLowerCase().includes(cleanedSearchTerm));
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             } else if (currentFilter !== '전체') {
                 dataToRender = deliveryItems.filter(item => item.status === currentFilter);
             } else {
@@ -1298,6 +1292,74 @@
         );
     });
 
+    let touchStartX = 0, touchStartY = 0;
+    document.body.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, { passive: true });
+    document.body.addEventListener('touchmove', e => { if (Math.abs(e.touches[0].clientX - touchStartX) > 10 && Math.abs(e.touches[0].clientX - touchStartX) > Math.abs(e.touches[0].clientY - touchStartY)) e.preventDefault(); }, { passive: false });
+    document.body.addEventListener('touchend', e => {
+        const swipeDistanceX = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(swipeDistanceX) > 50 && Math.abs(swipeDistanceX) > Math.abs(e.changedTouches[0].clientY - touchStartY)) {
+            const currentIndex = filterCategories.indexOf(activeFilter);
+            const direction = swipeDistanceX > 0 ? -1 : 1;
+            const newIndex = Math.max(0, Math.min(filterCategories.length - 1, currentIndex + direction));
+            if (newIndex !== currentIndex) filterButtonsContainer.querySelector(`[data-filter="${filterCategories[newIndex]}"]`)?.click();
+        }
+    });
+    
+    // ▼▼▼▼▼ 수정된 부분: 실수로 삭제되었던 함수들 복원 ▼▼▼▼▼
+    const setVersionInfo = () => {
+        versionText.textContent = `v20240726.0530`;
+        versionChangelog.textContent = `검색 기능 강화, 외부 앱 연동 개선, UI 수정`;
+    };
+
+    const setupDelegatedEventListeners = () => {
+        deliveryCardsContainer.addEventListener('click', (event) => {
+            const targetElement = event.target;
+            const action = targetElement.dataset.action;
+            const itemNo = parseInt(targetElement.dataset.no);
+            
+            const button = event.target.closest('[data-action]');
+            if (!button) return; 
+
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) return; 
+
+            switch (action) {
+                case 'open-smart-edit': openSmartEditModal(itemNo); break;
+                case 'open-naver-map': 
+                    if (!button.disabled) {
+                        openNaverMap(item);
+                    } else {
+                        showMessage('유효하지 않은 주소입니다.');
+                    }
+                    break;
+                case 'identity-verification': 
+                    openConfirmationModal(`HAWB ${item.hawbNo} 본인확인 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '본인확인', item.receiverNameKorean)); 
+                    break;
+                case 'front-door-delivery': 
+                    openConfirmationModal(`HAWB ${item.hawbNo} 문앞배송 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '문앞배송')); 
+                    break;
+                case 'sign-delivery': openSignatureModal(itemNo); break;
+                case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
+                case 'toggle-details': 
+                    const details = document.querySelector(`[data-details-container="${itemNo}"]`); 
+                    if (details) { 
+                        details.style.display = details.style.display === 'none' ? '' : 'none'; 
+                        button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; 
+                    } 
+                    break;
+            }
+        });
+        deliveryCardsContainer.addEventListener('change', (event) => {
+            const checkbox = event.target.closest('[data-action="toggle-hawb-confirm"]');
+            if (checkbox) {
+                event.preventDefault();
+                handleCheckboxToggleAndResetSearch(parseInt(checkbox.dataset.no), checkbox.checked);
+            }
+        });
+    };
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+
+    // --- Main Initialization ---
     document.addEventListener('DOMContentLoaded', () => {
         try {
             setVersionInfo();
@@ -1317,24 +1379,19 @@
             const hawbFromUrl = urlParams.get('hawb');
             const filterFromUrl = urlParams.get('filter');
 
+            // URL에 필터 값이 있으면 해당 필터 버튼을 먼저 클릭
             if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                // URL에 필터 값이 있으면 해당 필터 버튼을 클릭
                 const targetFilterButton = filterButtonsContainer.querySelector(`[data-filter="${filterFromUrl}"]`);
                 if (targetFilterButton) {
                     targetFilterButton.click();
                 }
-            } else {
-                // 기본값으로 '배송준비' 필터 클릭
-                const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
-                if (initialBtn) initialBtn.click();
             }
 
+            // URL에 송장번호가 있으면, 값 입력 후 검색 실행
             if (hawbFromUrl) {
-                // URL에 송장번호가 있으면, 값 입력 후 검색 실행
                 invoiceNumberInput.value = hawbFromUrl;
                 searchButton.click();
             }
-            // ------------------------------------
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
@@ -1480,7 +1537,7 @@
             updateFilterCounts();
             
             // URL 파라미터가 없을 때만 기본 필터 클릭
-            if (!hawbFromUrl && !filterFromUrl) {
+            if (!filterFromUrl) {
                 const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
                 if (initialBtn) initialBtn.click();
             }
