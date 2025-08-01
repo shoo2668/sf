@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/zxing.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; }
@@ -254,6 +253,8 @@
         </div>
     </div>
 
+    <!-- ▼▼▼▼▼ 수정된 부분: 스크립트 태그 위치 이동 ▼▼▼▼▼ -->
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/zxing.min.js"></script>
     <script type="text/javascript">
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
@@ -1457,13 +1458,11 @@
     };
 
 
-    // ▼▼▼▼▼ 수정된 부분: DOMContentLoaded -> window.onload 로 변경 ▼▼▼▼▼
-    window.addEventListener('load', () => {
+    document.addEventListener('DOMContentLoaded', () => {
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
             
-            // ZXing 리더기 인스턴스 생성
             zxingCodeReader = new ZXing.BrowserMultiFormatReader();
             console.log('ZXing code reader initialized.');
             
@@ -1639,7 +1638,6 @@
             document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
         }
     });
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 </script>
 </body>
 </html>
