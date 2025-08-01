@@ -1358,8 +1358,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0715`;
-        versionChangelog.textContent = `바코드 스캐너 안정성 강화 및 카메라 권한 오류 수정`;
+        versionText.textContent = `v20240726.0800`;
+        versionChangelog.textContent = `바코드 스캐너 로딩 안정성 강화 및 오류 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1410,10 +1410,6 @@
 
     const startScanner = async () => {
         try {
-            if (!zxingCodeReader) {
-                zxingCodeReader = new ZXing.BrowserMultiFormatReader();
-            }
-            
             history.pushState({ modal: 'barcode-scanner' }, 'Scan Barcode');
             activeModal = 'barcode-scanner';
             barcodeScannerModal.style.display = 'flex';
@@ -1443,13 +1439,11 @@
 
         } catch (err) {
             console.error('Error starting scanner:', err);
-            // ▼▼▼▼▼ 수정된 부분: 오류 발생 시 history.back() 제거 ▼▼▼▼▼
             showMessage('카메라를 사용할 수 없습니다. 권한을 확인해주세요.', '오류');
-            if (activeModal === 'barcode-scanner') { // 모달이 열린 상태에서 에러가 났다면 닫아줌
+            if (activeModal === 'barcode-scanner') {
                  if (history.state && history.state.modal) history.back();
                  else stopScanner();
             }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         }
     };
 
@@ -1463,10 +1457,15 @@
     };
 
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // ▼▼▼▼▼ 수정된 부분: DOMContentLoaded -> window.onload 로 변경 ▼▼▼▼▼
+    window.addEventListener('load', () => {
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
+            
+            // ZXing 리더기 인스턴스 생성
+            zxingCodeReader = new ZXing.BrowserMultiFormatReader();
+            console.log('ZXing code reader initialized.');
             
             window.addEventListener('popstate', (event) => {
                 if (activeModal === 'smart-edit') {
@@ -1640,6 +1639,7 @@
             document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
         }
     });
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 </script>
 </body>
 </html>
