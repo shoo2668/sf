@@ -9,10 +9,38 @@
     <style>
         html { scroll-behavior: smooth !important; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
-        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal, .barcode-scanner-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
+        
+        .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
+        .key-pop {
+            position: absolute;
+            bottom: 80%;
+            left: 50%;
+            transform: translateX(-50%) scale(0.8);
+            transform-origin: bottom center;
+            background-color: #374151; /* gray-700 */
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 10;
+            min-width: 100%;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .key-button:active .key-pop {
+            opacity: 1;
+            transform: translateX(-50%) scale(1) translateY(-8px);
+        }
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color: 0.2s; }
+
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
@@ -39,11 +67,6 @@
         .number-jump-item.placeholder { background-color: transparent; }
         #search-bar-container { position: fixed; bottom: 0; left: 0; width: 100vw; z-index: 46; transition: transform 0.3s ease-out; background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; }
         #search-bar-container.hidden { transform: translateY(100%); }
-        .barcode-scanner-modal { background-color: rgba(0,0,0,0.85); }
-        #scanner-video { width: 100%; height: 100%; object-fit: cover; }
-        #scanner-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #scanner-guide { width: 80%; max-width: 400px; height: 120px; border: 2px solid rgba(255, 255, 255, 0.7); border-radius: 1rem; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); }
-        #cancel-scan-btn { position: absolute; bottom: 4rem; padding: 0.75rem 1.5rem; background-color: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 9999px; font-weight: 600; }
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -112,25 +135,12 @@
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-2/5 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="scanBarcodeButton" class="p-2 border border-gray-300 rounded-md hover:bg-gray-100 hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m-4-12v8m8-8v8m-6-4h4" />
-                    </svg>
-                </button>
-                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
-                <!-- ▼▼▼▼▼ 수정된 부분 1: '초기화' 버튼 텍스트를 '지움'으로 변경 ▼▼▼▼▼ -->
-                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-grㄹay-400 focus:ring-opacity-50">지움</button>
+                <!-- ▼▼▼▼▼ 수정된 부분: 검색창 너비 조절 ▼▼▼▼▼ -->
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-1/2 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
                 <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
+                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
+                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
             </div>
-        </div>
-    </div>
-
-    <div id="barcode-scanner-modal" class="barcode-scanner-modal" style="display: none;">
-        <video id="scanner-video" playsinline></video>
-        <div id="scanner-overlay">
-            <div id="scanner-guide"></div>
-            <button id="cancel-scan-btn">닫기</button>
         </div>
     </div>
 
@@ -187,11 +197,11 @@
                     <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
                 </div>
                 
-                <div id="fixed-buttons-container" class="mt-2 space-y-2">
-                    <div id="number-buttons" class="flex flex-wrap justify-center"></div>
-                    <div id="unit-buttons" class="flex flex-wrap justify-center items-center"></div>
+                <div id="fixed-buttons-container" class="mt-2 grid grid-cols-2 gap-4">
+                    <div id="number-keypad" class="grid grid-cols-3 gap-2"></div>
+                    <div id="unit-keypad" class="grid grid-cols-2 gap-2"></div>
                 </div>
-                
+
                 <hr class="my-4 border-gray-300"/>
 
                 <div class="mt-4">
@@ -485,7 +495,6 @@
         let currentEditItemNo = null; 
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
-        let cameraStream = null; // For barcode scanner
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -546,11 +555,6 @@
         const numberJumpModal = document.getElementById('number-jump-modal');
         const numberJumpList = document.getElementById('number-jump-list');
         const numberJumpClose = document.getElementById('number-jump-close');
-
-        const scanBarcodeButton = document.getElementById('scanBarcodeButton');
-        const barcodeScannerModal = document.getElementById('barcode-scanner-modal');
-        const scannerVideo = document.getElementById('scanner-video');
-        const cancelScanBtn = document.getElementById('cancel-scan-btn');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -624,6 +628,12 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         };
         
+        const triggerHapticFeedback = () => {
+            if (navigator.vibrate) {
+                navigator.vibrate(10); // 10ms 진동
+            }
+        };
+
         const openSmartEditModal = (itemNo) => {
             currentEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
@@ -640,66 +650,55 @@
             }, 0);
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
-            const numberButtonsContainer = document.getElementById('number-buttons');
-            const unitButtonsContainer = document.getElementById('unit-buttons');
-            [addressPiecesContainer, numberButtonsContainer, unitButtonsContainer].forEach(c => c.innerHTML = '');
+            const numberKeypad = document.getElementById('number-keypad');
+            const unitKeypad = document.getElementById('unit-keypad');
+            [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
             
-            const createPieceButton = (text, colorClass, value, isHtml = false, autoSpace = false) => {
+            const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
-                if (isHtml) button.innerHTML = text;
-                else button.textContent = text;
+                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md h-12 flex items-center justify-center ${colorClass}`;
+                button.dataset.value = value !== undefined ? value : text;
+                button.dataset.action = action;
                 
-                const finalValue = value !== undefined ? value : text;
-                button.className = `flex-shrink-0 font-medium m-1 text-sm ${colorClass}`;
-                button.onclick = () => {
-                    const input = piecesAddressInput;
-                    let currentValue = input.value;
-                    
-                    if (autoSpace) { // 주소 조각 버튼 (자동 띄어쓰기)
-                         input.value += (currentValue.length > 0 ? ' ' : '') + finalValue;
-                    } else { // 고정 버튼 (규칙에 따른 띄어쓰기)
-                        const needsSpace = finalValue === ',' && currentValue.length > 0 && !/\s$/.test(currentValue);
-                        input.value += (needsSpace ? ' ' : '') + finalValue;
-                    }
-                    autoResizeTextarea({ target: input });
-                };
+                const buttonText = document.createElement('span');
+                buttonText.textContent = text;
+                button.appendChild(buttonText);
+
+                const keyPop = document.createElement('span');
+                keyPop.className = 'key-pop';
+                keyPop.textContent = text;
+                button.appendChild(keyPop);
+
                 return button;
             };
 
             const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
-            basePieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full', undefined, false, true)));
+            basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full', undefined, 'add-space')));
 
             if (item.detailAddress) {
-                addressPiecesContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full', undefined, false, true));
+                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full', undefined, 'add-comma'));
                 const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
-                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createPieceButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full', undefined, false, true)));
-            }
-            
-            for (let i = 0; i <= 9; i++) {
-                numberButtonsContainer.appendChild(createPieceButton(i.toString(), 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-md'));
+                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full', undefined, 'add-space')));
             }
 
-            ['길', '번길', '동', '리'].forEach(unit => unitButtonsContainer.appendChild(createPieceButton(unit, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-md')));
-            unitButtonsContainer.appendChild(createPieceButton(' ', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md', ' ', true));
-            unitButtonsContainer.appendChild(createPieceButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md', ','));
-            unitButtonsContainer.appendChild(createPieceButton('-', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-md'));
-            
-            const backspaceBtn = document.createElement('button');
-            backspaceBtn.innerHTML = '←';
-            backspaceBtn.className = 'flex-shrink-0 w-12 px-3 py-1.5 rounded-md bg-red-200 text-red-800 hover:bg-red-300 font-bold m-1 text-sm';
-            backspaceBtn.onclick = () => {
-                let currentValue = piecesAddressInput.value;
-                if (currentValue.length > 0) {
-                    const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
-                    if (lastSpaceIndex > -1) {
-                        piecesAddressInput.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
-                    } else {
-                        piecesAddressInput.value = '';
-                    }
-                }
-                autoResizeTextarea({ target: piecesAddressInput });
-            };
-            unitButtonsContainer.appendChild(backspaceBtn);
+            // Number Keypad
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
+                let action = 'add';
+                if (key === ',') action = 'add-comma';
+                if (key === '-') action = 'add-hyphen';
+                numberKeypad.appendChild(createKeyButton(key, 'bg-gray-200 hover:bg-gray-300', key, action));
+            });
+
+            // Unit Keypad
+            unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-space'));
+            unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-space'));
+            unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-space'));
+            unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-space'));
+            unitKeypad.appendChild(createKeyButton('공백', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
+            unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
+            const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
+            backspaceWordBtn.classList.add('col-span-2');
+            unitKeypad.appendChild(backspaceWordBtn);
 
             smartEditModal.style.display = 'flex';
         };
@@ -708,6 +707,45 @@
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
         };
+        
+        smartEditModal.addEventListener('click', (event) => {
+            const button = event.target.closest('.key-button');
+            if (!button) return;
+
+            triggerHapticFeedback();
+
+            const action = button.dataset.action;
+            const value = button.dataset.value;
+            const input = piecesAddressInput;
+            let currentValue = input.value;
+            
+            switch (action) {
+                case 'add':
+                    input.value += value;
+                    break;
+                case 'add-space':
+                    input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + value;
+                    break;
+                case 'add-comma':
+                    input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
+                    break;
+                case 'add-hyphen':
+                    input.value += '-';
+                    break;
+                case 'backspace-char':
+                    input.value = currentValue.slice(0, -1);
+                    break;
+                case 'backspace-word':
+                    const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
+                    if (lastSpaceIndex > -1) {
+                        input.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
+                    } else {
+                        input.value = '';
+                    }
+                    break;
+            }
+            autoResizeTextarea({ target: input });
+        });
 
         const applyAddressEdit = (fullAddress) => {
              if (currentEditItemNo === null) return;
@@ -838,9 +876,12 @@
         const highlightHawbNo = (hawbNo, term) => {
             if (!hawbNo) return '';
             const formattedHawbNo = formatHawbNoForDisplay(hawbNo);
-            if (!term || !formattedHawbNo.includes(term)) return formattedHawbNo;
+            // ▼▼▼▼▼ 수정된 부분: 대소문자 구분 없이 하이라이팅 ▼▼▼▼▼
+            if (!term || !formattedHawbNo.toLowerCase().includes(term.toLowerCase())) return formattedHawbNo;
             const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            return formattedHawbNo.split(new RegExp(`(${escapedTerm})`, 'gi')).map(part => part.toLowerCase() === term.toLowerCase() ? `<span class="bg-yellow-200 rounded px-0.5">${part}</span>` : part).join('');
+            const regex = new RegExp(`(${escapedTerm})`, 'gi');
+            return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         };
         
         // --- Render function ---
@@ -849,8 +890,10 @@
 
             let dataToRender = [];
             if (searchTerm) {
-                const cleanedSearchTerm = searchTerm.replace(/\D/g, '');
-                dataToRender = deliveryItems.filter(item => item.hawbNo?.replace(/\D/g, '').includes(cleanedSearchTerm));
+                // ▼▼▼▼▼ 수정된 부분: 영문 검색을 위해 숫자만 남기는 로직 제거 ▼▼▼▼▼
+                const cleanedSearchTerm = searchTerm.trim().toLowerCase();
+                dataToRender = deliveryItems.filter(item => item.hawbNo?.toLowerCase().includes(cleanedSearchTerm));
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             } else if (currentFilter !== '전체') {
                 dataToRender = deliveryItems.filter(item => item.status === currentFilter);
             } else {
@@ -994,9 +1037,9 @@
         setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
     });
 
-    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.replace(/\D/g, ''); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
     resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
-    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.replace(/\D/g, ''); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
 
     deliverySheetImageInput.addEventListener('change', (event) => {
         currentFileToScan = event.target.files;
@@ -1013,7 +1056,6 @@
         });
     });
 
-    // --- Scan, Import, Export Logic ---
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 4;
         const totalFiles = filesToScan.length;
@@ -1256,130 +1298,43 @@
         );
     });
 
-    // --- Swipe & Initial Load ---
-    let touchStartX = 0, touchStartY = 0;
-    document.body.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, { passive: true });
-    document.body.addEventListener('touchmove', e => { if (Math.abs(e.touches[0].clientX - touchStartX) > 10 && Math.abs(e.touches[0].clientX - touchStartX) > Math.abs(e.touches[0].clientY - touchStartY)) e.preventDefault(); }, { passive: false });
-    document.body.addEventListener('touchend', e => {
-        const swipeDistanceX = e.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(swipeDistanceX) > 50 && Math.abs(swipeDistanceX) > Math.abs(e.changedTouches[0].clientY - touchStartY)) {
-            const currentIndex = filterCategories.indexOf(activeFilter);
-            const direction = swipeDistanceX > 0 ? -1 : 1;
-            const newIndex = Math.max(0, Math.min(filterCategories.length - 1, currentIndex + direction));
-            if (newIndex !== currentIndex) filterButtonsContainer.querySelector(`[data-filter="${filterCategories[newIndex]}"]`)?.click();
-        }
-    });
-    
-    const setVersionInfo = () => {
-        versionText.textContent = `v20250802.0048`;
-        versionChangelog.textContent = `바코드 스캐너 기능 추가 및 활성화 버그 수정`;
-    };
-
-    const setupDelegatedEventListeners = () => {
-        deliveryCardsContainer.addEventListener('click', (event) => {
-            const targetElement = event.target;
-            const action = targetElement.dataset.action;
-            const itemNo = parseInt(targetElement.dataset.no);
-            
-            const button = event.target.closest('[data-action]');
-            if (!button) return; 
-
-            const item = deliveryItems.find(i => i.no === itemNo);
-            if (!item) return; 
-
-            switch (action) {
-                case 'open-smart-edit': openSmartEditModal(itemNo); break;
-                case 'open-naver-map': 
-                    if (!button.disabled) {
-                        openNaverMap(item);
-                    } else {
-                        showMessage('유효하지 않은 주소입니다.');
-                    }
-                    break;
-                case 'identity-verification': 
-                    openConfirmationModal(`HAWB ${item.hawbNo} 본인확인 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '본인확인', item.receiverNameKorean)); 
-                    break;
-                case 'front-door-delivery': 
-                    openConfirmationModal(`HAWB ${item.hawbNo} 문앞배송 처리하시겠습니까?`, () => handleStatusChange(itemNo, '완료', new Date().toLocaleString('ko-KR', dateTimeFormatOptions), '문앞배송')); 
-                    break;
-                case 'sign-delivery': openSignatureModal(itemNo); break;
-                case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
-                case 'toggle-details': 
-                    const details = document.querySelector(`[data-details-container="${itemNo}"]`); 
-                    if (details) { 
-                        details.style.display = details.style.display === 'none' ? '' : 'none'; 
-                        button.textContent = details.style.display === 'none' ? '상세보기' : '접기'; 
-                    } 
-                    break;
-            }
-        });
-        deliveryCardsContainer.addEventListener('change', (event) => {
-            const checkbox = event.target.closest('[data-action="toggle-hawb-confirm"]');
-            if (checkbox) {
-                event.preventDefault();
-                handleCheckboxToggleAndResetSearch(parseInt(checkbox.dataset.no), checkbox.checked);
-            }
-        });
-    };
-
-    const startScanner = async () => {
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            scannerVideo.srcObject = cameraStream;
-            await scannerVideo.play();
-            barcodeScannerModal.style.display = 'flex';
-
-            const barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
-            
-            const detectBarcode = async () => {
-                if (!cameraStream) return;
-                try {
-                    const barcodes = await barcodeDetector.detect(scannerVideo);
-                    if (barcodes.length > 0) {
-                        const scannedValue = barcodes[0].rawValue;
-                        invoiceNumberInput.value = scannedValue.replace(/\D/g, '');
-                        searchButton.click();
-                        stopScanner();
-                        if (navigator.vibrate) navigator.vibrate(200);
-                    } else {
-                        requestAnimationFrame(detectBarcode);
-                    }
-                } catch (e) {
-                    console.error('Barcode detection failed:', e);
-                    requestAnimationFrame(detectBarcode);
-                }
-            };
-            requestAnimationFrame(detectBarcode);
-
-        } catch (err) {
-            console.error('Error accessing camera:', err);
-            showMessage('카메라를 사용할 수 없습니다. 권한을 확인해주세요.', '오류');
-        }
-    };
-
-    const stopScanner = () => {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-        }
-        barcodeScannerModal.style.display = 'none';
-    };
-
     document.addEventListener('DOMContentLoaded', () => {
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
-            
-            window.addEventListener('beforeunload', (event) => {
-                event.preventDefault();
-                event.returnValue = '';
+
+            // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
+            invoiceNumberInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    searchButton.click();
+                    invoiceNumberInput.blur();
+                }
             });
 
-            if ('BarcodeDetector' in window) {
-                scanBarcodeButton.classList.remove('hidden');
-                scanBarcodeButton.addEventListener('click', startScanner);
+            // --- 외부 스캐너 앱 연동 로직 ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const hawbFromUrl = urlParams.get('hawb');
+            const filterFromUrl = urlParams.get('filter');
+
+            if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                // URL에 필터 값이 있으면 해당 필터 버튼을 클릭
+                const targetFilterButton = filterButtonsContainer.querySelector(`[data-filter="${filterFromUrl}"]`);
+                if (targetFilterButton) {
+                    targetFilterButton.click();
+                }
+            } else {
+                // 기본값으로 '배송준비' 필터 클릭
+                const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
+                if (initialBtn) initialBtn.click();
             }
-            cancelScanBtn.addEventListener('click', stopScanner);
+
+            if (hawbFromUrl) {
+                // URL에 송장번호가 있으면, 값 입력 후 검색 실행
+                invoiceNumberInput.value = hawbFromUrl;
+                searchButton.click();
+            }
+            // ------------------------------------
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
@@ -1523,10 +1478,11 @@
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
-
-            const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
-            if (initialBtn) {
-                initialBtn.click();
+            
+            // URL 파라미터가 없을 때만 기본 필터 클릭
+            if (!hawbFromUrl && !filterFromUrl) {
+                const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
+                if (initialBtn) initialBtn.click();
             }
 
         } catch (error) {
@@ -1534,6 +1490,6 @@
             document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
         }
     });
-</script>
+    </script>
 </body>
 </html>
