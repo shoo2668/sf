@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ▼▼▼▼▼ 수정된 부분: ZXing-JS 라이브러리 추가 ▼▼▼▼▼ -->
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/zxing.min.js"></script>
-    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; }
@@ -515,9 +513,7 @@
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
         let activeModal = null;
-        // ▼▼▼▼▼ 수정된 부분: ZXing 스캐너 인스턴스를 저장할 변수 추가 ▼▼▼▼▼
         let zxingCodeReader = null;
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -980,7 +976,7 @@
                                         ${data.completionType === '서명' && data.completionDetail ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>` : data.completionType === '본인확인' ? `${data.completionType} (${data.completionDetail})` : `${data.completionType || ''}`}
                                         <span class="ml-4">${formatCompletionTime(data.deliveryCompletionTime)}</span>
                                     </div>
-                                    <span data-action="toggle-details" data-no="${data.no}" class="toggle-icon text-2xl pl-4 cursor-pointer">🔽</span>
+                                    <span data-action="toggle-details" data-no="${data.no}" class="toggle-icon text-2xl p-2 cursor-pointer -mr-2">🔽</span>
                                 </div>
                             `}
                         </div>
@@ -1362,8 +1358,8 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0645`;
-        versionChangelog.textContent = `바코드 스캐너 엔진을 ZXing-JS로 교체하여 인식률 향상`;
+        versionText.textContent = `v20240726.0715`;
+        versionChangelog.textContent = `바코드 스캐너 안정성 강화 및 카메라 권한 오류 수정`;
     };
 
     const setupDelegatedEventListeners = () => {
@@ -1372,10 +1368,12 @@
             if (!button) return;
 
             const action = button.dataset.action;
-            const itemNo = parseInt(button.dataset.no);
+            const card = button.closest('[data-no]');
+            if (!card) return;
+            const itemNo = parseInt(card.dataset.no);
             
             const item = deliveryItems.find(i => i.no === itemNo);
-            if (!item && action !== 'toggle-details') return; 
+            if (!item) return; 
 
             switch (action) {
                 case 'open-smart-edit': openSmartEditModal(itemNo); break;
@@ -1391,8 +1389,6 @@
                 case 'sign-delivery': openSignatureModal(itemNo); break;
                 case 'revert-delivery': openConfirmationModal(`HAWB ${item.hawbNo} 상태를 되돌리시겠습니까?`, () => handleStatusChange(itemNo, '배송중')); break;
                 case 'toggle-details': 
-                    const card = button.closest('[data-no]');
-                    if (!card) return;
                     const details = card.querySelector(`[data-details-container="${itemNo}"]`);
                     const icon = button; 
                     if (details && icon) {
@@ -1412,31 +1408,48 @@
         });
     };
 
-    // ▼▼▼▼▼ 수정된 부분: ZXing-JS 기반 스캐너 로직 ▼▼▼▼▼
     const startScanner = async () => {
         try {
             if (!zxingCodeReader) {
                 zxingCodeReader = new ZXing.BrowserMultiFormatReader();
             }
+            
             history.pushState({ modal: 'barcode-scanner' }, 'Scan Barcode');
             activeModal = 'barcode-scanner';
             barcodeScannerModal.style.display = 'flex';
+            
+            const devices = await zxingCodeReader.listVideoInputDevices();
+            let selectedDeviceId = undefined;
+            if (devices.length > 1) {
+                const backCam = devices.find(device => device.label.toLowerCase().includes('back'));
+                if (backCam) {
+                    selectedDeviceId = backCam.deviceId;
+                }
+            } else if (devices.length === 1) {
+                selectedDeviceId = devices[0].deviceId;
+            }
 
-            zxingCodeReader.decodeFromVideoDevice(undefined, 'scanner-video', (result, err) => {
+            zxingCodeReader.decodeFromVideoDevice(selectedDeviceId, 'scanner-video', (result, err) => {
                 if (result) {
                     if (navigator.vibrate) navigator.vibrate(200);
                     invoiceNumberInput.value = result.getText().replace(/\D/g, '');
                     searchButton.click();
-                    history.back(); // 스캔 성공 시 자동으로 닫기
+                    history.back();
                 }
                 if (err && !(err instanceof ZXing.NotFoundException)) {
-                    console.error(err);
+                    console.error('ZXing scan error:', err);
                 }
             });
+
         } catch (err) {
-            console.error('Error accessing camera:', err);
+            console.error('Error starting scanner:', err);
+            // ▼▼▼▼▼ 수정된 부분: 오류 발생 시 history.back() 제거 ▼▼▼▼▼
             showMessage('카메라를 사용할 수 없습니다. 권한을 확인해주세요.', '오류');
-            history.back(); // 카메라 권한 에러 시 모달 닫기
+            if (activeModal === 'barcode-scanner') { // 모달이 열린 상태에서 에러가 났다면 닫아줌
+                 if (history.state && history.state.modal) history.back();
+                 else stopScanner();
+            }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         }
     };
 
@@ -1448,7 +1461,6 @@
         barcodeScannerModal.style.display = 'none';
         if (activeModal === 'barcode-scanner') activeModal = null;
     };
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1464,7 +1476,6 @@
                 }
             });
 
-            // 바코드 버튼 가시성은 라이브러리 로드와 상관없이 일단 표시
             scanBarcodeButton.classList.remove('hidden');
             scanBarcodeButton.addEventListener('click', startScanner);
 
