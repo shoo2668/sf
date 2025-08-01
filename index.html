@@ -75,6 +75,7 @@
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
+    <!-- ... HTML content remains the same ... -->
     <div id="filter-buttons-container" class="z-20">
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg w-full min-w-[320px] p-4">
             <div class="flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
@@ -1359,7 +1360,7 @@
     });
     
     const setVersionInfo = () => {
-        versionText.textContent = `v20240726.0800`;
+        versionText.textContent = `v20240726.0830`;
         versionChangelog.textContent = `바코드 스캐너 로딩 안정성 강화 및 오류 수정`;
     };
 
@@ -1463,9 +1464,6 @@
             setVersionInfo();
             setupDelegatedEventListeners();
             
-            zxingCodeReader = new ZXing.BrowserMultiFormatReader();
-            console.log('ZXing code reader initialized.');
-            
             window.addEventListener('popstate', (event) => {
                 if (activeModal === 'smart-edit') {
                     closeSmartEditModal();
@@ -1474,9 +1472,8 @@
                 }
             });
 
-            scanBarcodeButton.classList.remove('hidden');
-            scanBarcodeButton.addEventListener('click', startScanner);
-
+            // 나머지 초기화
+            // ... (기존 DOMContentLoaded 코드)
             cancelScanBtn.addEventListener('click', () => {
                 if (history.state && history.state.modal) {
                     history.back();
@@ -1485,7 +1482,6 @@
                 }
             });
 
-            // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
                 currentSortOrder = 'no';
                 deliveryItems.sort((a, b) => a.no - b.no);
@@ -1560,9 +1556,9 @@
                             }
                             numberJumpModal.style.display = 'none';
                         };
-                    } else if (status) { // 배송전 또는 완료
+                    } else if (status) { 
                         btn.className = 'number-jump-item inactive';
-                    } else { // 누락된 번호
+                    } else { 
                         btn.className = 'number-jump-item placeholder';
                         btn.innerHTML = ' ';
                     }
@@ -1574,8 +1570,7 @@
             numberJumpClose.addEventListener('click', () => {
                 numberJumpModal.style.display = 'none';
             });
-
-            // '완료' FAB 이벤트
+            
             fabSortNoCompleted.addEventListener('click', () => {
                 currentSortOrder = 'no';
                 deliveryItems.sort((a, b) => a.no - b.no);
@@ -1599,14 +1594,13 @@
                 showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
             });
 
-            // 스크롤 이벤트
             window.addEventListener('scroll', () => {
                 const currentScrollY = window.scrollY;
-                if (currentScrollY > lastScrollY) { // Scrolling down
+                if (currentScrollY > lastScrollY) {
                     searchBarContainer.classList.add('hidden');
                     fabContainerInProgress.classList.add('hidden');
                     fabContainerCompleted.classList.add('hidden');
-                } else { // Scrolling up
+                } else {
                     searchBarContainer.classList.remove('hidden');
                     fabContainerInProgress.classList.remove('hidden');
                     fabContainerCompleted.classList.remove('hidden');
@@ -1638,6 +1632,21 @@
             document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
         }
     });
+    
+    // ▼▼▼▼▼ 수정된 부분: ZXing 초기화 및 버튼 연결을 window.onload로 분리 ▼▼▼▼▼
+    window.addEventListener('load', () => {
+        try {
+            zxingCodeReader = new ZXing.BrowserMultiFormatReader();
+            scanBarcodeButton.classList.remove('hidden');
+            scanBarcodeButton.addEventListener('click', startScanner);
+            console.log('ZXing code reader initialized and attached.');
+        } catch(error) {
+            console.error("ZXing initialization failed:", error);
+            scanBarcodeButton.style.display = 'none';
+            showMessage('바코드 스캐너를 초기화할 수 없습니다.', '오류');
+        }
+    });
+    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 </script>
 </body>
 </html>
