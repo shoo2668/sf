@@ -114,7 +114,6 @@
     
     <div id="toast-container"></div>
 
-    <!-- ▼▼▼▼▼ 수정된 부분: 하단 바 컨테이너들 ▼▼▼▼▼ -->
     <div id="search-bar-container" class="bottom-bar">
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
@@ -133,7 +132,6 @@
             </div>
         </div>
     </div>
-    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
 
     <div id="number-jump-modal" class="number-jump-modal" style="display: none;">
         <div class="number-jump-modal-content">
@@ -290,8 +288,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.1 - 2024-05-24";
-            const changelog = "하단 액션 바 기능 구현 및 스크롤 연동";
+            const version = "v1.1.2 - 2024-05-24";
+            const changelog = "하단 액션 바 UI/UX 수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1098,7 +1096,6 @@
             dataManagementContainer.classList.toggle('hidden', !isScanVisible);
             versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
 
-            // ▼▼▼▼▼ 수정된 부분: 하단 바 표시/숨김 로직 ▼▼▼▼▼
             const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
             searchBarContainer.style.display = isSearchVisible ? 'block' : 'none';
             
@@ -1111,7 +1108,7 @@
                 if (activeFilter === '배송중') {
                     menuItems.push({ icon: '📍', text: '거리', action: 'sort-distance' });
                     menuItems.push({ icon: '#️⃣', text: '순번', action: 'sort-no' });
-                    menuItems.push({ icon: '🔢', text: '번호선택', action: 'jump-no' });
+                    menuItems.push({ icon: '🔢', text: '선택', action: 'jump-no' });
                 } else if (activeFilter === '완료') {
                     menuItems.push({ icon: '#️⃣', text: '순번', action: 'sort-no-completed' });
                     menuItems.push({ icon: '🕒', text: '완료시간', action: 'sort-time' });
@@ -1119,13 +1116,14 @@
 
                 menuItems.forEach(item => {
                     const button = document.createElement('button');
-                    button.className = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50';
-                    button.innerHTML = `<span>${item.icon}</span><span>${item.text}</span>`;
+                    // ▼▼▼▼▼ 수정된 부분: 버튼 스타일 변경 ▼▼▼▼▼
+                    button.className = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-transparent text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50';
+                    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+                    button.innerHTML = `<span>${item.icon}</span><span class="font-semibold">${item.text}</span>`;
                     button.dataset.action = item.action;
                     actionButtons.appendChild(button);
                 });
             }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         });
     };
     
@@ -1504,7 +1502,6 @@
                 }
             });
 
-            // ▼▼▼▼▼ 수정된 부분: 하단 액션 바 이벤트 리스너 ▼▼▼▼▼
             actionBarContainer.addEventListener('click', async (event) => {
                 const button = event.target.closest('button');
                 if (!button) return;
@@ -1598,7 +1595,6 @@
             numberJumpClose.addEventListener('click', () => {
                 numberJumpModal.style.display = 'none';
             });
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             // 스크롤 이벤트
             window.addEventListener('scroll', () => {
