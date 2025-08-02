@@ -288,8 +288,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.61 - 2024-05-24";
-            const changelog = "바코드 스캐너 연동 시 자동 검색 기능 수정";
+            const version = "v1.1.7 - 2024-05-24";
+            const changelog = "바코드 스캐너 연동 시 자동 검색 기능 수정 (타이밍 이슈 해결)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1145,12 +1145,10 @@
     const changeFilter = (newFilter, animationClass = '', isInitialLoad = false) => {
         if (newFilter === activeFilter && !isInitialLoad) return;
 
-        // ▼▼▼▼▼ 수정된 부분: URL 로드 시가 아닐 때만 검색어 초기화 ▼▼▼▼▼
         if (!isInitialLoad) {
             searchTerm = '';
             invoiceNumberInput.value = '';
         }
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
@@ -1465,20 +1463,24 @@
             });
 
             // --- 외부 스캐너 앱 연동 로직 ---
-            const urlParams = new URLSearchParams(window.location.search);
-            const hawbFromUrl = urlParams.get('hawb');
-            const filterFromUrl = urlParams.get('filter');
+            // ▼▼▼▼▼ 수정된 부분: setTimeout으로 감싸 타이밍 문제 해결 ▼▼▼▼▼
+            setTimeout(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const hawbFromUrl = urlParams.get('hawb');
+                const filterFromUrl = urlParams.get('filter');
 
-            if (hawbFromUrl) {
-                searchTerm = hawbFromUrl;
-                invoiceNumberInput.value = hawbFromUrl;
-            }
+                if (hawbFromUrl) {
+                    searchTerm = hawbFromUrl;
+                    invoiceNumberInput.value = hawbFromUrl;
+                }
 
-            if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                changeFilter(filterFromUrl, '', true); // isInitialLoad = true
-            } else {
-                changeFilter('배송준비', '', true); // isInitialLoad = true
-            }
+                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                    changeFilter(filterFromUrl, '', true); // isInitialLoad = true
+                } else {
+                    changeFilter('배송준비', '', true); // isInitialLoad = true
+                }
+            }, 0);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             // ------------------------------------
 
             document.body.addEventListener('touchstart', (event) => {
