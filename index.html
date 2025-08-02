@@ -135,9 +135,7 @@
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
-                <!-- ▼▼▼▼▼ 수정된 부분: 검색창 너비 조절 ▼▼▼▼▼ -->
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-1/2 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
                 <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
                 <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
             </div>
@@ -298,10 +296,11 @@
 
         // --- Helper functions ---
 
-        // ▼▼▼▼▼ 추가된 함수 정의 ▼▼▼▼▼
         const setVersionInfo = () => {
-            const version = "v1.0.1 - 2024-05-24";
-            const changelog = "Fixed initialization error.";
+            // ▼▼▼▼▼ 수정된 부분: 버전 및 변경점 수정 ▼▼▼▼▼
+            const version = "v1.0.2 - 2024-05-24";
+            const changelog = "스마트 편집창 개선 및 뒤로가기 기능 추가";
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -361,7 +360,6 @@
                 }
             });
         };
-        // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
         const resizeImage = (file) => {
             return new Promise((resolve, reject) => {
@@ -719,9 +717,10 @@
             const unitKeypad = document.getElementById('unit-keypad');
             [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
             
+            // ▼▼▼▼▼ 수정된 부분: 버튼 높이 통일 (py-3) ▼▼▼▼▼
             const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
-                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md h-12 flex items-center justify-center ${colorClass}`;
+                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-3 flex items-center justify-center ${colorClass}`;
                 button.dataset.value = value !== undefined ? value : text;
                 button.dataset.action = action;
                 
@@ -736,39 +735,56 @@
 
                 return button;
             };
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
-            basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full', undefined, 'add-space')));
+            basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
 
             if (item.detailAddress) {
-                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full', undefined, 'add-comma'));
+                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 !py-1.5 rounded-full', undefined, 'add-comma'));
                 const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
-                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full', undefined, 'add-space')));
+                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
             }
 
             // Number Keypad
             ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
                 let action = 'add';
+                let colorClass = 'bg-gray-200 hover:bg-gray-300';
+                // ▼▼▼▼▼ 수정된 부분: 숫자 버튼 초록색으로 변경 ▼▼▼▼▼
+                if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
+                    colorClass = 'bg-green-100 text-green-800 hover:bg-green-200';
+                }
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 if (key === ',') action = 'add-comma';
                 if (key === '-') action = 'add-hyphen';
-                numberKeypad.appendChild(createKeyButton(key, 'bg-gray-200 hover:bg-gray-300', key, action));
+                numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
             });
 
             // Unit Keypad
-            unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('공백', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
+            // ▼▼▼▼▼ 수정된 부분: 단위 버튼 action 변경 및 공백 버튼 텍스트 제거 ▼▼▼▼▼
+            unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-unit'));
+            unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-unit'));
+            unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-unit'));
+            unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-unit'));
+            unitKeypad.appendChild(createKeyButton('\u00A0', 'bg-gray-200 hover:bg-gray-300', ' ', 'add')); // 공백
             unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
             const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
             backspaceWordBtn.classList.add('col-span-2');
             unitKeypad.appendChild(backspaceWordBtn);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             smartEditModal.style.display = 'flex';
+            // ▼▼▼▼▼ 추가된 부분: 뒤로가기 제어를 위한 history state 추가 ▼▼▼▼▼
+            history.pushState({ smartEditModalOpen: true }, "");
+            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
         };
 
         const closeSmartEditModal = () => {
+            // ▼▼▼▼▼ 추가된 부분: 모달 닫을 때 history state 정리 ▼▼▼▼▼
+            if (history.state && history.state.smartEditModalOpen) {
+                history.back();
+            }
+            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
         };
@@ -791,6 +807,11 @@
                 case 'add-space':
                     input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + value;
                     break;
+                // ▼▼▼▼▼ 추가된 부분: 단위 버튼 액션 처리 ▼▼▼▼▼
+                case 'add-unit':
+                    input.value += value + ' ';
+                    break;
+                // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
                 case 'add-comma':
                     input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
                     break;
@@ -941,12 +962,10 @@
         const highlightHawbNo = (hawbNo, term) => {
             if (!hawbNo) return '';
             const formattedHawbNo = formatHawbNoForDisplay(hawbNo);
-            // ▼▼▼▼▼ 수정된 부분: 대소문자 구분 없이 하이라이팅 ▼▼▼▼▼
             if (!term || !formattedHawbNo.toLowerCase().includes(term.toLowerCase())) return formattedHawbNo;
             const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
             return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         };
         
         // --- Render function ---
@@ -955,10 +974,8 @@
 
             let dataToRender = [];
             if (searchTerm) {
-                // ▼▼▼▼▼ 수정된 부분: 영문 검색을 위해 숫자만 남기는 로직 제거 ▼▼▼▼▼
                 const cleanedSearchTerm = searchTerm.trim().toLowerCase();
                 dataToRender = deliveryItems.filter(item => item.hawbNo?.toLowerCase().includes(cleanedSearchTerm));
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             } else if (currentFilter !== '전체') {
                 dataToRender = deliveryItems.filter(item => item.status === currentFilter);
             } else {
@@ -1529,6 +1546,15 @@
                 }
                 lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
             });
+
+            // ▼▼▼▼▼ 추가된 부분: 뒤로가기 버튼으로 모달 닫기 이벤트 리스너 ▼▼▼▼▼
+            window.addEventListener('popstate', (event) => {
+                if (smartEditModal.style.display === 'flex') {
+                    smartEditModal.style.display = 'none';
+                    currentEditItemNo = null;
+                }
+            });
+            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
