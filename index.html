@@ -297,8 +297,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.3 - 2024-05-24";
-            const changelog = "스마트 편집창 버튼 높이 미세 조정";
+            const version = "v1.0.4 - 2024-05-24";
+            const changelog = "카드 UI 아이콘으로 변경 및 지도보기 기능 통합";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -717,9 +717,7 @@
             
             const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
-                // ▼▼▼▼▼ 수정된 부분: 버튼 높이 통일 (py-1.5) ▼▼▼▼▼
                 button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 button.dataset.value = value !== undefined ? value : text;
                 button.dataset.action = action;
                 
@@ -979,16 +977,11 @@
                 const isAllFilter = currentFilter === '전체';
 
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
-                const isMapButtonActive = isValidAddressForMap(data.baseAddress);
-                const showMapButton = ['전체', '배송전'].includes(currentFilter);
+                const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전'].includes(currentFilter);
 
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined)
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
-                
-                const mapButtonHtml = showMapButton ? `
-                    <button data-action="open-naver-map" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button>
-                ` : '';
 
                 const cardBg = isAllFilter ? 'bg-white' : (data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white'));
                 const showCompletedHeader = !isAllFilter && data.status === '완료';
@@ -996,6 +989,7 @@
                 const showInProgressButtons = !isAllFilter && data.status === '배송중';
                 const showToggleDetailsButton = !isAllFilter && data.status === '완료';
 
+                // ▼▼▼▼▼ 수정된 부분: 카드 UI 아이콘으로 변경 ▼▼▼▼▼
                 return `
                     <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -1023,19 +1017,55 @@
                             `}
                         </div>
                         <div class="space-y-3" data-details-container="${data.no}" ${detailsHidden ? 'style="display:none;"' : ''}>
-                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between">
-                                <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
-                                ${mapButtonHtml}
-                            </div>${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
-                            <div><p class="text-sm font-medium text-gray-700">회사명:</p><p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.companyNameOriginal})</p>` : ''}</div>
-                            <div><p class="text-sm font-medium text-gray-700">이름:</p><p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverNameOriginal})</p>` : ''}</div>
-                            <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
+                            
+                            <div class="flex items-start space-x-2.5">
+                                <button data-action="open-naver-map" data-no="${data.no}" class="flex-shrink-0 pt-1 ${isMapButtonActive ? 'text-gray-600 hover:text-black' : 'text-gray-400 cursor-not-allowed'}" ${isMapButtonActive ? '' : 'disabled'}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <div>
+                                    <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
+                                    ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-2.5">
+                                <div class="flex-shrink-0 pt-1 text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 11-2 0V4H6a1 1 0 11-2 0zm4 14a1 1 0 100-2h.01a1 1 0 100 2H8zm-2-4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H6zm2 4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H8zm2 4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H10zm2 4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H12z" clip-rule="evenodd" /></svg>
+                                </div>
+                                <div>
+                                    <p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>
+                                    ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500">(${data.companyNameOriginal})</p>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-2.5">
+                                <div class="flex-shrink-0 pt-1 text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                                </div>
+                                <div>
+                                    <p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
+                                    ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500">(${data.receiverNameOriginal})</p>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-2.5">
+                                <div class="flex-shrink-0 pt-1 text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.224 3.424A1.5 1.5 0 016.5 2h7a1.5 1.5 0 011.276 1.424l-1.122 6.732A1.5 1.5 0 0112.38 11.5H7.62a1.5 1.5 0 01-1.276-1.344L5.224 3.424zM5 14a1 1 0 112 0v1a1 1 0 11-2 0v-1zm1-4a3 3 0 013-3h2a3 3 0 013 3v5a3 3 0 01-3 3H9a3 3 0 01-3-3v-5z" clip-rule="evenodd" /></svg>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span>
+                                    <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a>
+                                    <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a>
+                                </div>
+                            </div>
+
                             ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                         </div>
                         ${showInProgressButtons ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2 w-10/12"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
                         ${showToggleDetailsButton ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
                 </div>
             `;
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         }).join('');
         
         if (animationClass) {
@@ -1569,4 +1599,4 @@
     });
     </script>
 </body>
-</html> 
+</html>
