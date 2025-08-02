@@ -297,8 +297,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.5 - 2024-05-24";
-            const changelog = "완료 카드 UI 개선 (상세보기 버튼 아이콘으로 변경)";
+            const version = "v1.0.6 - 2024-05-24";
+            const changelog = "스와이프 필터 변경 기능 추가";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -342,7 +342,6 @@
                     case 'sign-delivery':
                         openSignatureModal(itemNo);
                         break;
-                    // ▼▼▼▼▼ 수정된 부분: 아이콘 토글 로직 추가 ▼▼▼▼▼
                     case 'toggle-details':
                         {
                             const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
@@ -361,7 +360,6 @@
                             }
                         }
                         break;
-                    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                     case 'open-smart-edit':
                         openSmartEditModal(itemNo);
                         break;
@@ -566,6 +564,11 @@
         let currentEditItemNo = null; 
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
+        // ▼▼▼▼▼ 추가된 부분: 스와이프 상태 변수 ▼▼▼▼▼
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -1035,7 +1038,6 @@
                     ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 `;
 
-                // ▼▼▼▼▼ 수정된 부분: 완료/미완료 카드 렌더링 분기 ▼▼▼▼▼
                 if (showCompletedCard) {
                     return `
                         <div class="bg-gray-200 rounded-lg shadow-lg p-4 mb-4 border border-gray-200" data-no="${data.no}">
@@ -1082,13 +1084,12 @@
                         </div>
                     `;
                 }
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             }).join('');
         
             if (animationClass) {
-                deliveryCardsContainer.style.transform = 'translateX(0px)';
+                deliveryCardsContainer.classList.remove('animate-slide-in-left', 'animate-slide-in-right');
+                void deliveryCardsContainer.offsetWidth; // Reflow to restart animation
                 deliveryCardsContainer.classList.add(animationClass);
-                setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); animation = ''; }, 300);
             }
         };
 
@@ -1126,12 +1127,12 @@
         });
     };
     
-    filterButtonsContainer.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-filter]');
-        if (!button || button.dataset.filter === activeFilter) return;
+    // ▼▼▼▼▼ 추가된 부분: 필터 변경 로직을 별도 함수로 분리 ▼▼▼▼▼
+    const changeFilter = (newFilter, animationClass = '') => {
+        if (newFilter === activeFilter) return;
 
         filterScrollPositions[activeFilter] = window.scrollY;
-        activeFilter = button.dataset.filter;
+        activeFilter = newFilter;
 
         filterButtonsContainer.querySelectorAll('button').forEach(btn => {
             const isActive = btn.dataset.filter === activeFilter;
@@ -1143,15 +1144,29 @@
             }
         });
         
-        if (activeFilter === '배송중' || activeFilter === '완료' || activeFilter === '전체') {
+        if (['배송중', '완료', '전체'].includes(activeFilter)) {
             currentSortOrder = 'no';
             deliveryItems.sort((a, b) => a.no - b.no);
         }
 
-        renderDeliveryCards(activeFilter);
+        renderDeliveryCards(activeFilter, animationClass);
         updateStickyHeaderPositions();
-        button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        const button = filterButtonsContainer.querySelector(`button[data-filter="${activeFilter}"]`);
+        if (button) button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
         setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
+    };
+    // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
+
+    filterButtonsContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-filter]');
+        if (!button) return;
+        const newFilter = button.dataset.filter;
+        
+        const oldIndex = filterCategories.indexOf(activeFilter);
+        const newIndex = filterCategories.indexOf(newFilter);
+        const animation = newIndex > oldIndex ? 'animate-slide-in-right' : 'animate-slide-in-left';
+
+        changeFilter(newFilter, animation);
     });
 
     searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
@@ -1435,23 +1450,54 @@
             const filterFromUrl = urlParams.get('filter');
 
             if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                // URL에 필터 값이 있으면 해당 필터 버튼을 클릭
                 const targetFilterButton = filterButtonsContainer.querySelector(`[data-filter="${filterFromUrl}"]`);
-                if (targetFilterButton) {
-                    targetFilterButton.click();
-                }
+                if (targetFilterButton) changeFilter(filterFromUrl);
             } else {
-                // 기본값으로 '배송준비' 필터 클릭
-                const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
-                if (initialBtn) initialBtn.click();
+                changeFilter('배송준비');
             }
 
             if (hawbFromUrl) {
-                // URL에 송장번호가 있으면, 값 입력 후 검색 실행
                 invoiceNumberInput.value = hawbFromUrl;
                 searchButton.click();
             }
             // ------------------------------------
+
+            // ▼▼▼▼▼ 추가된 부분: 스와이프 이벤트 리스너 ▼▼▼▼▼
+            deliveryCardsContainer.addEventListener('touchstart', (event) => {
+                const touch = event.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchStartTime = Date.now();
+            }, { passive: true });
+
+            deliveryCardsContainer.addEventListener('touchend', (event) => {
+                const touch = event.changedTouches[0];
+                const touchEndX = touch.clientX;
+                const touchEndY = touch.clientY;
+
+                const diffX = touchEndX - touchStartX;
+                const diffY = touchEndY - touchStartY;
+                const duration = Date.now() - touchStartTime;
+
+                if (duration > 500 || Math.abs(diffX) < 75 || Math.abs(diffX) < Math.abs(diffY) * 2) {
+                    return; // 유효한 스와이프가 아님
+                }
+
+                const currentFilterIndex = filterCategories.indexOf(activeFilter);
+                
+                if (diffX > 0) { // 오른쪽으로 스와이프 (이전 필터)
+                    if (currentFilterIndex > 0) {
+                        const prevFilter = filterCategories[currentFilterIndex - 1];
+                        changeFilter(prevFilter, 'animate-slide-in-left');
+                    }
+                } else { // 왼쪽으로 스와이프 (다음 필터)
+                    if (currentFilterIndex < filterCategories.length - 1) {
+                        const nextFilter = filterCategories[currentFilterIndex + 1];
+                        changeFilter(nextFilter, 'animate-slide-in-right');
+                    }
+                }
+            });
+            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
@@ -1603,10 +1649,8 @@
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
             
-            // URL 파라미터가 없을 때만 기본 필터 클릭
             if (!hawbFromUrl && !filterFromUrl) {
-                const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
-                if (initialBtn) initialBtn.click();
+                changeFilter('배송준비');
             }
 
         } catch (error) {
