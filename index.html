@@ -1120,10 +1120,8 @@
                 searchBarContainer.classList.add('hidden');
             }
 
-            // ▼▼▼▼▼ 수정된 부분: 메뉴 버튼 표시/숨김 로직 ▼▼▼▼▼
             const isMenuVisible = ['배송중', '완료'].includes(activeFilter);
             openMenuButton.style.display = isMenuVisible ? 'block' : 'none';
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         });
     };
     
