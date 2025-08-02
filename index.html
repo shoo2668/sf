@@ -297,10 +297,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            // ▼▼▼▼▼ 수정된 부분: 버전 및 변경점 수정 ▼▼▼▼▼
-            const version = "v1.0.2 - 2024-05-24";
-            const changelog = "스마트 편집창 개선 및 뒤로가기 기능 추가";
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+            const version = "v1.0.3 - 2024-05-24";
+            const changelog = "스마트 편집창 버튼 높이 미세 조정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -717,10 +715,11 @@
             const unitKeypad = document.getElementById('unit-keypad');
             [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
             
-            // ▼▼▼▼▼ 수정된 부분: 버튼 높이 통일 (py-3) ▼▼▼▼▼
             const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
-                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-3 flex items-center justify-center ${colorClass}`;
+                // ▼▼▼▼▼ 수정된 부분: 버튼 높이 통일 (py-1.5) ▼▼▼▼▼
+                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 button.dataset.value = value !== undefined ? value : text;
                 button.dataset.action = action;
                 
@@ -735,7 +734,6 @@
 
                 return button;
             };
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
             basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
@@ -750,18 +748,15 @@
             ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
                 let action = 'add';
                 let colorClass = 'bg-gray-200 hover:bg-gray-300';
-                // ▼▼▼▼▼ 수정된 부분: 숫자 버튼 초록색으로 변경 ▼▼▼▼▼
                 if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
                     colorClass = 'bg-green-100 text-green-800 hover:bg-green-200';
                 }
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                 if (key === ',') action = 'add-comma';
                 if (key === '-') action = 'add-hyphen';
                 numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
             });
 
             // Unit Keypad
-            // ▼▼▼▼▼ 수정된 부분: 단위 버튼 action 변경 및 공백 버튼 텍스트 제거 ▼▼▼▼▼
             unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-unit'));
             unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-unit'));
             unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-unit'));
@@ -771,20 +766,15 @@
             const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
             backspaceWordBtn.classList.add('col-span-2');
             unitKeypad.appendChild(backspaceWordBtn);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             smartEditModal.style.display = 'flex';
-            // ▼▼▼▼▼ 추가된 부분: 뒤로가기 제어를 위한 history state 추가 ▼▼▼▼▼
             history.pushState({ smartEditModalOpen: true }, "");
-            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
         };
 
         const closeSmartEditModal = () => {
-            // ▼▼▼▼▼ 추가된 부분: 모달 닫을 때 history state 정리 ▼▼▼▼▼
             if (history.state && history.state.smartEditModalOpen) {
                 history.back();
             }
-            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
         };
@@ -807,11 +797,9 @@
                 case 'add-space':
                     input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + value;
                     break;
-                // ▼▼▼▼▼ 추가된 부분: 단위 버튼 액션 처리 ▼▼▼▼▼
                 case 'add-unit':
                     input.value += value + ' ';
                     break;
-                // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
                 case 'add-comma':
                     input.value += (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
                     break;
@@ -1547,14 +1535,12 @@
                 lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
             });
 
-            // ▼▼▼▼▼ 추가된 부분: 뒤로가기 버튼으로 모달 닫기 이벤트 리스너 ▼▼▼▼▼
             window.addEventListener('popstate', (event) => {
                 if (smartEditModal.style.display === 'flex') {
                     smartEditModal.style.display = 'none';
                     currentEditItemNo = null;
                 }
             });
-            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
@@ -1583,4 +1569,4 @@
     });
     </script>
 </body>
-</html>
+</html> 
