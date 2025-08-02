@@ -288,8 +288,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.4 - 2024-05-24";
-            const changelog = "검색 로직 개선 (공백 무시)";
+            const version = "v1.1.5 - 2024-05-24";
+            const changelog = "검색 로직 수정 및 필터 변경 시 검색 상태 초기화";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -956,19 +956,24 @@
         const renderDeliveryCards = (currentFilter, animationClass = '') => {
             if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
 
+            // ▼▼▼▼▼ 수정된 부분: 검색 전 필터링 로직 ▼▼▼▼▼
+            let baseData = [];
+            if (currentFilter !== '전체') {
+                baseData = deliveryItems.filter(item => item.status === currentFilter);
+            } else {
+                baseData = [...deliveryItems];
+            }
+
             let dataToRender = [];
             if (searchTerm) {
-                // ▼▼▼▼▼ 수정된 부분: 검색 시 공백/하이픈 제거 ▼▼▼▼▼
                 const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
-                dataToRender = deliveryItems.filter(item => 
+                dataToRender = baseData.filter(item => 
                     item.hawbNo?.replace(/[\s-]/g, '').toLowerCase().includes(cleanedSearchTerm)
                 );
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
-            } else if (currentFilter !== '전체') {
-                dataToRender = deliveryItems.filter(item => item.status === currentFilter);
             } else {
-                dataToRender = [...deliveryItems];
+                dataToRender = baseData;
             }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             
             if (dataToRender.length === 0) {
                 deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 px-4">해당하는 항목이 없습니다.</p>';
@@ -1141,6 +1146,11 @@
     
     const changeFilter = (newFilter, animationClass = '') => {
         if (newFilter === activeFilter) return;
+
+        // ▼▼▼▼▼ 수정된 부분: 필터 변경 시 검색 상태 초기화 ▼▼▼▼▼
+        searchTerm = '';
+        invoiceNumberInput.value = '';
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
