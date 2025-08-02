@@ -22,9 +22,9 @@
             transform-origin: bottom center;
             background-color: #374151; /* gray-700 */
             color: white;
-            padding: 0.6rem 1rem;
+            padding: 0.5rem 0.75rem;
             border-radius: 0.5rem;
-            font-size: 1.5rem; 
+            font-size: 1.25rem;
             font-weight: 600;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             opacity: 0;
@@ -37,7 +37,7 @@
         }
         .key-button:active .key-pop {
             opacity: 1;
-            transform: translateX(-50%) scale(1.1) translateY(-10px);
+            transform: translateX(-50%) scale(1) translateY(-8px);
         }
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color: 0.2s; }
 
@@ -135,7 +135,9 @@
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
+                <!-- ▼▼▼▼▼ 수정된 부분: 검색창 너비 조절 ▼▼▼▼▼ -->
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-1/2 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
+                <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
                 <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
                 <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
             </div>
@@ -295,6 +297,71 @@
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
         // --- Helper functions ---
+
+        // ▼▼▼▼▼ 추가된 함수 정의 ▼▼▼▼▼
+        const setVersionInfo = () => {
+            const version = "v1.0.1 - 2024-05-24";
+            const changelog = "Fixed initialization error.";
+            if (versionText) versionText.textContent = version;
+            if (versionChangelog) versionChangelog.textContent = changelog;
+        };
+
+        const setupDelegatedEventListeners = () => {
+            deliveryCardsContainer.addEventListener('click', (event) => {
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"]');
+                if (!target) return;
+
+                const action = target.dataset.action;
+                const itemNo = parseInt(target.dataset.no, 10);
+
+                switch (action) {
+                    case 'toggle-hawb-confirm':
+                        handleCheckboxToggleAndResetSearch(itemNo, target.checked);
+                        break;
+                    case 'open-naver-map':
+                        {
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) openNaverMap(item);
+                        }
+                        break;
+                    case 'revert-delivery':
+                        openConfirmationModal(`${itemNo}번 항목을 '배송전' 상태로 되돌리시겠습니까?`, () => {
+                            handleStatusChange(itemNo, '배송전');
+                            showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
+                        });
+                        break;
+                    case 'identity-verification':
+                        openConfirmationModal(`${itemNo}번 항목을 '본인확인'으로 완료 처리하시겠습니까?`, () => {
+                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                            handleStatusChange(itemNo, '완료', currentTime, '본인확인', '신분증');
+                        });
+                        break;
+                    case 'front-door-delivery':
+                        openConfirmationModal(`${itemNo}번 항목을 '문앞배송'으로 완료 처리하시겠습니까?`, () => {
+                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                            handleStatusChange(itemNo, '완료', currentTime, '문앞배송');
+                        });
+                        break;
+                    case 'sign-delivery':
+                        openSignatureModal(itemNo);
+                        break;
+                    case 'toggle-details':
+                        {
+                            const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
+                            if (detailsContainer) {
+                                const isHidden = detailsContainer.style.display === 'none';
+                                detailsContainer.style.display = isHidden ? 'block' : 'none';
+                                target.textContent = isHidden ? '상세 닫기' : '상세보기';
+                            }
+                        }
+                        break;
+                    case 'open-smart-edit':
+                        openSmartEditModal(itemNo);
+                        break;
+                }
+            });
+        };
+        // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
         const resizeImage = (file) => {
             return new Promise((resolve, reject) => {
@@ -637,8 +704,6 @@
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
-            history.pushState({ modalOpen: true }, ''); 
-            
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
@@ -656,9 +721,7 @@
             
             const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
-                // ▼▼▼▼▼ 수정된 부분: 버튼 높이 통일 h-9 py-1.5 ▼▼▼▼▼
-                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md h-9 py-1.5 flex items-center justify-center ${colorClass}`;
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md h-12 flex items-center justify-center ${colorClass}`;
                 button.dataset.value = value !== undefined ? value : text;
                 button.dataset.action = action;
                 
@@ -675,24 +738,20 @@
             };
 
             const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
-            basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3', undefined, 'add-space')));
+            basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-full', undefined, 'add-space')));
 
             if (item.detailAddress) {
-                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3', undefined, 'add-comma'));
+                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 py-1.5 rounded-full', undefined, 'add-comma'));
                 const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
-                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3', undefined, 'add-space')));
+                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded-full', undefined, 'add-space')));
             }
 
             // Number Keypad
             ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
                 let action = 'add';
-                let color = 'bg-gray-200 hover:bg-gray-300';
-                if (!isNaN(parseInt(key))) { 
-                    color = 'bg-green-100 text-green-800 hover:bg-green-200';
-                }
                 if (key === ',') action = 'add-comma';
                 if (key === '-') action = 'add-hyphen';
-                numberKeypad.appendChild(createKeyButton(key, color, key, action));
+                numberKeypad.appendChild(createKeyButton(key, 'bg-gray-200 hover:bg-gray-300', key, action));
             });
 
             // Unit Keypad
@@ -700,7 +759,7 @@
             unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-space'));
             unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-space'));
             unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-space'));
-            unitKeypad.appendChild(createKeyButton('␣', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
+            unitKeypad.appendChild(createKeyButton('공백', 'bg-gray-200 hover:bg-gray-300', ' ', 'add'));
             unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
             const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
             backspaceWordBtn.classList.add('col-span-2');
@@ -710,7 +769,6 @@
         };
 
         const closeSmartEditModal = () => {
-            if (smartEditModal.style.display === 'none') return;
             smartEditModal.style.display = 'none';
             currentEditItemNo = null;
         };
@@ -790,13 +848,7 @@
             }
         });
         
-        smartEditExitBtn.addEventListener('click', () => {
-             if (history.state && history.state.modalOpen) {
-                history.back();
-            } else {
-                closeSmartEditModal();
-            }
-        });
+        smartEditExitBtn.addEventListener('click', closeSmartEditModal);
 
         piecesAddressInput.addEventListener('input', autoResizeTextarea);
         directAddressInput.addEventListener('input', autoResizeTextarea);
@@ -889,10 +941,12 @@
         const highlightHawbNo = (hawbNo, term) => {
             if (!hawbNo) return '';
             const formattedHawbNo = formatHawbNoForDisplay(hawbNo);
+            // ▼▼▼▼▼ 수정된 부분: 대소문자 구분 없이 하이라이팅 ▼▼▼▼▼
             if (!term || !formattedHawbNo.toLowerCase().includes(term.toLowerCase())) return formattedHawbNo;
             const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
             return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         };
         
         // --- Render function ---
@@ -901,8 +955,10 @@
 
             let dataToRender = [];
             if (searchTerm) {
+                // ▼▼▼▼▼ 수정된 부분: 영문 검색을 위해 숫자만 남기는 로직 제거 ▼▼▼▼▼
                 const cleanedSearchTerm = searchTerm.trim().toLowerCase();
                 dataToRender = deliveryItems.filter(item => item.hawbNo?.toLowerCase().includes(cleanedSearchTerm));
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             } else if (currentFilter !== '전체') {
                 dataToRender = deliveryItems.filter(item => item.status === currentFilter);
             } else {
@@ -919,16 +975,22 @@
 
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
                 const isMapButtonActive = isValidAddressForMap(data.baseAddress);
-                
+                const showMapButton = ['전체', '배송전'].includes(currentFilter);
+
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined)
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
+                
+                const mapButtonHtml = showMapButton ? `
+                    <button data-action="open-naver-map" data-no="${data.no}" class="${isMapButtonActive ? 'ml-2 px-3 py-1.5 rounded-full bg-green-500 text-white text-sm font-medium hover:bg-green-600' : 'ml-2 px-3 py-1.5 rounded-full bg-gray-300 text-gray-500 text-sm font-medium cursor-not-allowed opacity-50'}" ${isMapButtonActive ? '' : 'disabled'}>지도보기</button>
+                ` : '';
 
                 const cardBg = isAllFilter ? 'bg-white' : (data.status === '배송중' ? 'bg-blue-100' : (data.status === '완료' ? 'bg-gray-200' : 'bg-white'));
                 const showCompletedHeader = !isAllFilter && data.status === '완료';
                 const detailsHidden = !isAllFilter && data.status === '완료';
                 const showInProgressButtons = !isAllFilter && data.status === '배송중';
-                
+                const showToggleDetailsButton = !isAllFilter && data.status === '완료';
+
                 return `
                     <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
                         <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
@@ -948,57 +1010,28 @@
                                     </div>
                                 </div>
                             ` : `
-                                <div class="text-xl font-semibold text-gray-700 text-left w-full flex justify-between items-center">
-                                    <div>
-                                        <span class="text-red-500 text-2xl mr-8">${data.no}</span>
-                                        ${data.completionType === '서명' && data.completionDetail ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>` : data.completionType === '본인확인' ? `${data.completionType} (${data.completionDetail})` : `${data.completionType || ''}`}
-                                        <span class="ml-4">${formatCompletionTime(data.deliveryCompletionTime)}</span>
-                                    </div>
-                                    <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-300">
-                                        <svg data-arrow="down" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                                        <svg data-arrow="up" class="h-5 w-5 text-gray-600 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
-                                    </button>
+                                <div class="text-xl font-semibold text-gray-700 text-left w-full">
+                                    <span class="text-red-500 text-2xl mr-8">${data.no}</span>
+                                    ${data.completionType === '서명' && data.completionDetail ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>` : data.completionType === '본인확인' ? `${data.completionType} (${data.completionDetail})` : `${data.completionType || ''}`}
+                                    <span class="ml-4">${formatCompletionTime(data.deliveryCompletionTime)}</span>
                                 </div>
                             `}
                         </div>
-                        <div class="space-y-4" data-details-container="${data.no}" ${detailsHidden ? 'style="display:none;"' : ''}>
-                            <div class="flex items-start space-x-3 group ${isMapButtonActive ? 'cursor-pointer' : ''}" data-action="open-naver-map" data-no="${data.no}">
-                                <div class="pt-0.5"><svg class="w-5 h-5 text-gray-500 ${isMapButtonActive ? 'group-hover:text-green-600' : ''}" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg></div>
-                                <div class="flex-1">
-                                    <p class="text-base text-blue-600 font-semibold" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
-                                    ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 mt-0.5">(${data.receiverAddressOriginal})</p>` : ''}
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <div><svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-5a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd" /></svg></div>
-                                <div class="flex-1">
-                                    <p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>
-                                    ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 mt-0.5">(${data.companyNameOriginal})</p>` : ''}
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <div><svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg></div>
-                                <div class="flex-1">
-                                    <p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
-                                    ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 mt-0.5">(${data.receiverNameOriginal})</p>` : ''}
-                                </div>
-                            </div>
-                            <div class="flex items-start space-x-3">
-                                <div class="pt-0.5"><svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg></div>
-                                <div class="flex-1">
-                                    <div class="flex items-center space-x-2">
-                                        <span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span>
-                                        <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a>
-                                        <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="space-y-3" data-details-container="${data.no}" ${detailsHidden ? 'style="display:none;"' : ''}>
+                            <div><p class="text-sm font-medium text-gray-700">주소:</p><div class="flex items-center justify-between">
+                                <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
+                                ${mapButtonHtml}
+                            </div>${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverAddressOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">회사명:</p><p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.companyNameOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">이름:</p><p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 ml-1">(${data.receiverNameOriginal})</p>` : ''}</div>
+                            <div><p class="text-sm font-medium text-gray-700">전화번호:</p><div class="flex items-center space-x-2"><span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span><a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a><a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a></div></div>
                             ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                         </div>
                         ${showInProgressButtons ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2 w-10/12"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
-                    </div>
-                `;
-            }).join('');
+                        ${showToggleDetailsButton ? `<div class="pt-4 flex flex-col items-center"><button data-action="toggle-details" data-no="${data.no}" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium">상세보기</button></div>` : ''}
+                </div>
+            `;
+        }).join('');
         
         if (animationClass) {
             deliveryCardsContainer.style.transform = 'translateX(0px)';
@@ -1006,7 +1039,522 @@
             setTimeout(() => { deliveryCardsContainer.classList.remove(animationClass); animation = ''; }, 300);
         }
     };
-    // ... (The rest of the script is the same)
+
+    // --- UI Update & Event Listener Setup ---
+    const updateFilterCounts = () => {
+        document.getElementById('count-전체').textContent = deliveryItems.length;
+        document.getElementById('count-배송전').textContent = deliveryItems.filter(item => item.status === '배송전').length;
+        document.getElementById('count-배송중').textContent = deliveryItems.filter(item => item.status === '배송중').length;
+        document.getElementById('count-완료').textContent = deliveryItems.filter(item => item.status === '완료').length;
+    };
+    
+    const updateStickyHeaderPositions = () => {
+        requestAnimationFrame(() => {
+            const topOffset = filterButtonsContainer.offsetHeight;
+            document.body.style.paddingTop = `${topOffset}px`;
+
+            const isScanVisible = activeFilter === '배송준비';
+            scanSectionContainer.classList.toggle('hidden', !isScanVisible);
+            dataManagementContainer.classList.toggle('hidden', !isScanVisible);
+            versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
+
+            const inProgressCount = deliveryItems.filter(item => item.status === '배송중').length;
+            fabContainerInProgress.classList.toggle('visible', activeFilter === '배송중' && inProgressCount > 0);
+            
+            const completedCount = deliveryItems.filter(item => item.status === '완료').length;
+            fabContainerCompleted.classList.toggle('visible', activeFilter === '완료' && completedCount > 0);
+
+            const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
+            searchBarContainer.style.display = isSearchVisible ? 'block' : 'none';
+            if (isSearchVisible) {
+                searchBarContainer.classList.remove('hidden');
+            } else {
+                searchBarContainer.classList.add('hidden');
+            }
+        });
+    };
+    
+    filterButtonsContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-filter]');
+        if (!button || button.dataset.filter === activeFilter) return;
+
+        filterScrollPositions[activeFilter] = window.scrollY;
+        activeFilter = button.dataset.filter;
+
+        filterButtonsContainer.querySelectorAll('button').forEach(btn => {
+            const isActive = btn.dataset.filter === activeFilter;
+            btn.classList.remove('bg-blue-500', 'text-white', 'shadow', 'bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+            if (isActive) {
+                btn.classList.add('bg-blue-500', 'text-white', 'shadow');
+            } else {
+                btn.classList.add('bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+            }
+        });
+        
+        if (activeFilter === '배송중' || activeFilter === '완료' || activeFilter === '전체') {
+            currentSortOrder = 'no';
+            deliveryItems.sort((a, b) => a.no - b.no);
+        }
+
+        renderDeliveryCards(activeFilter);
+        updateStickyHeaderPositions();
+        button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
+    });
+
+    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+    resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
+    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+
+    deliverySheetImageInput.addEventListener('change', (event) => {
+        currentFileToScan = event.target.files;
+        selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
+    });
+    
+    clearAllCardsButton.addEventListener('click', () => {
+        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
+            deliveryItems = [];
+            saveDeliveryItemsToLocalStorage();
+            renderDeliveryCards(activeFilter);
+            updateFilterCounts();
+            showToastMessage("모든 카드가 삭제되었습니다.");
+        });
+    });
+
+    async function performScan(filesToScan) {
+        const CONCURRENT_LIMIT = 4;
+        const totalFiles = filesToScan.length;
+        let completedCount = 0;
+
+        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+        const resizePromises = filesToScan.map((file, index) => 
+            resizeImage(file).then(resizedObject => {
+                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
+                return resizedObject;
+            })
+        );
+        const resizedImageObjects = await Promise.all(resizePromises);
+        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
+        
+        const tempMergedResults = new Map();
+        const failedFileObjectsForRetry = [];
+        const requestQueue = [...resizedImageObjects]; 
+
+        const updateApiProgress = () => {
+            completedCount++;
+            scanProgressText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
+        };
+
+        const processApiRequest = async (resizedObject) => {
+            const { file, data: base64ImageData } = resizedObject;
+            let lastError = null;
+
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const payload = {
+                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
+                        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+                    };
+                    const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
+                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+
+                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                    
+                    const result = await response.json();
+
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                        if (Array.isArray(parsedData) && parsedData.length > 0) {
+                             return parsedData;
+                        }
+                    }
+                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                }
+            }
+            throw lastError;
+        };
+        
+        const worker = async () => {
+            while (requestQueue.length > 0) {
+                const requestObject = requestQueue.shift(); 
+                if (requestObject) {
+                    try {
+                        const apiResultArray = await processApiRequest(requestObject);
+                        for (const geminiItem of apiResultArray) {
+                            const no = parseInt(geminiItem.no || '0', 10);
+                            if (no === 0) continue;
+                            
+                            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+                            geminiItem.baseAddressKorean = baseAddress;
+                            geminiItem.detailAddressKorean = detailAddress;
+
+                            tempMergedResults.set(no, geminiItem);
+                        }
+                    } catch (error) {
+                        console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
+                        failedFileObjectsForRetry.push(requestObject.file);
+                    } finally {
+                        updateApiProgress();
+                    }
+                }
+            }
+        };
+
+        const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
+        await Promise.all(workerPromises);
+
+        let newCount = 0;
+        let updateCount = 0;
+        const allNewItems = Array.from(tempMergedResults.values()); 
+
+        if (allNewItems.length > 0) {
+            const finalItems = allNewItems.map(item => ({
+                no: parseInt(item.no, 10),
+                hawbNo: item.hawbNo || '',
+                baseAddress: item.baseAddressKorean || '',
+                detailAddress: item.detailAddressKorean || '',
+                receiverAddressOriginal: item.receiverAddress || '',
+                companyNameOriginal: item.receiverCompanyName || '',
+                receiverNameOriginal: item.receiverName || '',
+                companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
+                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
+                status: '배송전', isHawbConfirmed: false,
+                deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                addressLocation: null
+            }));
+            
+            finalItems.forEach(newItem => {
+                const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
+                if (existingItemIndex > -1) {
+                    deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
+                    updateCount++;
+                } else {
+                    deliveryItems.push(newItem);
+                    newCount++;
+                }
+            });
+            deliveryItems.sort((a, b) => a.no - b.no);
+            saveDeliveryItemsToLocalStorage();
+        }
+        return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
+    }
+    
+    scanAndGenerateButton.addEventListener('click', async () => {
+        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
+        
+        const startTime = Date.now();
+        scanLoadingIndicator.style.display = 'block';
+        scanErrorMessage.style.display = 'none';
+        failedFileObjects = []; 
+
+        try {
+            const initialFiles = Array.from(currentFileToScan);
+            const result = await performScan(initialFiles);
+            const endTime = Date.now();
+            const elapsedTime = Math.round((endTime - startTime) / 1000);
+            const minutes = Math.floor(elapsedTime / 60);
+            const seconds = elapsedTime % 60;
+            const timeString = `(소요 시간: ${minutes}분 ${seconds}초)`;
+
+            if (result.failedFiles.length === 0) {
+                showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다. ${timeString}`);
+            } else {
+                failedFileObjects = result.failedFiles;
+                const successCount = initialFiles.length - failedFileObjects.length;
+                const failedFileNames = failedFileObjects.map(f => f.name);
+                
+                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공. ${timeString}\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
+
+                const onRetry = async () => {
+                    scanLoadingIndicator.style.display = 'block';
+                    
+                    const retryResult = await performScan(failedFileObjects);
+
+                    scanLoadingIndicator.style.display = 'none';
+
+                    if (retryResult.failedFiles.length === 0) {
+                        showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
+                    } else {
+                        const stillFailingNames = retryResult.failedFiles.map(f => f.name);
+                        showMessage(`재시도 후에도 아래 ${stillFailingNames.length}개 파일이 실패했습니다.\n- ${stillFailingNames.join('\n- ')}`, '재시도 일부 실패');
+                    }
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                };
+                openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
+            }
+        } catch (error) {
+            console.error("전체 스캔 프로세스 오류:", error);
+            scanErrorText.textContent = error.message;
+            scanErrorMessage.style.display = 'block';
+        } finally {
+            scanLoadingIndicator.style.display = 'none';
+            deliverySheetImageInput.value = '';
+            currentFileToScan = null;
+            selectedFilesDisplay.textContent = '선택된 파일 없음';
+            renderDeliveryCards(activeFilter);
+            updateFilterCounts();
+            updateStickyHeaderPositions();
+        }
+    });
+    
+    exportDataButton.addEventListener('click', () => {
+        if (deliveryItems.length === 0) { showMessage("저장할 데이터가 없습니다."); return; }
+        try {
+            const today = new Date();
+            const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const fileName = `SF-${formattedDate}.json`;
+            const dataStr = JSON.stringify(deliveryItems, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToastMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
+        } catch (error) {
+            showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
+        }
+    });
+
+    importDataInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        openConfirmationModal( `'${file.name}' 파일의 데이터로 현재 목록을 모두 덮어씁니다. 계속하시겠습니까?`, () => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
+                        
+                        const firstItem = importedData[0];
+                        if (importedData.length > 0 && typeof firstItem.no === 'undefined' && typeof firstItem.baseAddress === 'undefined') {
+                           throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
+                        }
+                        
+                        deliveryItems = importedData;
+
+                        saveDeliveryItemsToLocalStorage();
+                        updateFilterCounts();
+                        updateStickyHeaderPositions();
+                        renderDeliveryCards(activeFilter);
+                        showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
+                    } catch (error) {
+                        showMessage(`파일을 불러오는 중 오류가 발생했습니다: ${error.message}`, "오류");
+                    } finally {
+                        importDataInput.value = '';
+                    }
+                };
+                reader.onerror = () => { showMessage("파일을 읽는 데 실패했습니다.", "오류"); importDataInput.value = ''; };
+                reader.readAsText(file);
+            }
+        );
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            setVersionInfo();
+            setupDelegatedEventListeners();
+
+            // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
+            invoiceNumberInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    searchButton.click();
+                    invoiceNumberInput.blur();
+                }
+            });
+
+            // --- 외부 스캐너 앱 연동 로직 ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const hawbFromUrl = urlParams.get('hawb');
+            const filterFromUrl = urlParams.get('filter');
+
+            if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                // URL에 필터 값이 있으면 해당 필터 버튼을 클릭
+                const targetFilterButton = filterButtonsContainer.querySelector(`[data-filter="${filterFromUrl}"]`);
+                if (targetFilterButton) {
+                    targetFilterButton.click();
+                }
+            } else {
+                // 기본값으로 '배송준비' 필터 클릭
+                const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
+                if (initialBtn) initialBtn.click();
+            }
+
+            if (hawbFromUrl) {
+                // URL에 송장번호가 있으면, 값 입력 후 검색 실행
+                invoiceNumberInput.value = hawbFromUrl;
+                searchButton.click();
+            }
+            // ------------------------------------
+
+            // '배송중' FAB 이벤트
+            fabSortNo.addEventListener('click', () => {
+                currentSortOrder = 'no';
+                deliveryItems.sort((a, b) => a.no - b.no);
+                renderDeliveryCards(activeFilter);
+                showToastMessage('순번순으로 정렬되었습니다.');
+            });
+
+            fabSortDistance.addEventListener('click', async () => {
+                showLoadingMessage('현재 위치 확인 중...');
+                try {
+                    const myLocation = await getCurrentLocation();
+                    
+                    const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
+                    const otherItems = deliveryItems.filter(item => item.status !== '배송중');
+
+                    const itemsWithCoords = inProgressItems.filter(item => item.addressLocation);
+                    const itemsWithoutCoords = inProgressItems.filter(item => !item.addressLocation);
+
+                    if (itemsWithoutCoords.length > 0) {
+                        showToastMessage(`${itemsWithoutCoords.length}개의 카드에 좌표 정보가 없어 정렬에서 제외됩니다.`);
+                    }
+
+                    itemsWithCoords.forEach(item => {
+                        item.distanceFromMe = calculateDistance(myLocation, item.addressLocation);
+                    });
+
+                    itemsWithCoords.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
+                    
+                    deliveryItems = [...itemsWithCoords, ...itemsWithoutCoords, ...otherItems];
+                    
+                    currentSortOrder = 'distance';
+                    renderDeliveryCards(activeFilter);
+                    closeConfirmationModal();
+                    showToastMessage('가까운 거리순으로 정렬되었습니다.');
+
+                } catch (error) {
+                    closeConfirmationModal();
+                    showMessage(`현재 위치를 가져올 수 없습니다: ${error.message}`, '오류');
+                }
+            });
+
+            fabJumpNo.addEventListener('click', () => {
+                numberJumpList.innerHTML = '';
+                if (deliveryItems.length === 0) {
+                    numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
+                    numberJumpModal.style.display = 'flex';
+                    return;
+                }
+
+                const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
+                const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
+
+                for (let i = 1; i <= maxNo; i++) {
+                    const status = itemsMap.get(i);
+                    const btn = document.createElement('div');
+                    btn.textContent = i;
+                    
+                    if (status === '배송중') {
+                        btn.className = 'number-jump-item active';
+                        btn.dataset.no = i;
+                        btn.onclick = () => {
+                            const targetCard = document.querySelector(`[data-no="${i}"]`);
+                            if (targetCard) {
+                                const headerOffset = filterButtonsContainer.offsetHeight;
+                                const elementPosition = targetCard.getBoundingClientRect().top;
+                                const offsetPosition = elementPosition + window.pageYOffset - headerOffset - 10;
+                                
+                                window.scrollTo({
+                                    top: offsetPosition,
+                                    behavior: 'smooth'
+                                });
+                            }
+                            numberJumpModal.style.display = 'none';
+                        };
+                    } else if (status) { // 배송전 또는 완료
+                        btn.className = 'number-jump-item inactive';
+                    } else { // 누락된 번호
+                        btn.className = 'number-jump-item placeholder';
+                        btn.innerHTML = ' ';
+                    }
+                    numberJumpList.appendChild(btn);
+                }
+                numberJumpModal.style.display = 'flex';
+            });
+
+            numberJumpClose.addEventListener('click', () => {
+                numberJumpModal.style.display = 'none';
+            });
+
+            // '완료' FAB 이벤트
+            fabSortNoCompleted.addEventListener('click', () => {
+                currentSortOrder = 'no';
+                deliveryItems.sort((a, b) => a.no - b.no);
+                renderDeliveryCards(activeFilter);
+                showToastMessage('순번순으로 정렬되었습니다.');
+            });
+
+            fabSortTime.addEventListener('click', () => {
+                currentSortOrder = 'time';
+                const completedItems = deliveryItems.filter(item => item.status === '완료');
+                const otherItems = deliveryItems.filter(item => item.status !== '완료');
+                
+                completedItems.sort((a, b) => {
+                    if (!a.deliveryCompletionTime) return 1;
+                    if (!b.deliveryCompletionTime) return -1;
+                    return a.deliveryCompletionTime.localeCompare(b.deliveryCompletionTime);
+                });
+
+                deliveryItems = [...completedItems, ...otherItems];
+                renderDeliveryCards(activeFilter);
+                showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
+            });
+
+            // 스크롤 이벤트
+            window.addEventListener('scroll', () => {
+                const currentScrollY = window.scrollY;
+                if (currentScrollY > lastScrollY) { // Scrolling down
+                    searchBarContainer.classList.add('hidden');
+                    fabContainerInProgress.classList.add('hidden');
+                    fabContainerCompleted.classList.add('hidden');
+                } else { // Scrolling up
+                    searchBarContainer.classList.remove('hidden');
+                    fabContainerInProgress.classList.remove('hidden');
+                    fabContainerCompleted.classList.remove('hidden');
+                }
+                lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
+            });
+
+            const storedItems = localStorage.getItem('deliveryItems');
+            if (storedItems) {
+                let parsedItems = JSON.parse(storedItems);
+                deliveryItems = parsedItems.map(item => {
+                    if (typeof item.addressLocation === 'undefined') {
+                        item.addressLocation = null;
+                    }
+                    return item;
+                }).sort((a, b) => a.no - b.no);
+            }
+            const storedScroll = localStorage.getItem('filterScrollPositions');
+            if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
+            updateFilterCounts();
+            
+            // URL 파라미터가 없을 때만 기본 필터 클릭
+            if (!hawbFromUrl && !filterFromUrl) {
+                const initialBtn = filterButtonsContainer.querySelector(`[data-filter="배송준비"]`);
+                if (initialBtn) initialBtn.click();
+            }
+
+        } catch (error) {
+            console.error("초기화 오류:", error);
+            document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
+        }
+    });
     </script>
 </body>
 </html>
