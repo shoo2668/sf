@@ -1142,11 +1142,15 @@
         });
     };
     
-    const changeFilter = (newFilter, animationClass = '') => {
-        if (newFilter === activeFilter) return;
+    const changeFilter = (newFilter, animationClass = '', isInitialLoad = false) => {
+        if (newFilter === activeFilter && !isInitialLoad) return;
 
-        searchTerm = '';
-        invoiceNumberInput.value = '';
+        // ▼▼▼▼▼ 수정된 부분: URL 로드 시가 아닐 때만 검색어 초기화 ▼▼▼▼▼
+        if (!isInitialLoad) {
+            searchTerm = '';
+            invoiceNumberInput.value = '';
+        }
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
@@ -1465,18 +1469,16 @@
             const hawbFromUrl = urlParams.get('hawb');
             const filterFromUrl = urlParams.get('filter');
 
-            // ▼▼▼▼▼ 수정된 부분: 검색어 먼저 설정 후 필터 변경 ▼▼▼▼▼
             if (hawbFromUrl) {
                 searchTerm = hawbFromUrl;
                 invoiceNumberInput.value = hawbFromUrl;
             }
 
             if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                changeFilter(filterFromUrl);
+                changeFilter(filterFromUrl, '', true); // isInitialLoad = true
             } else {
-                changeFilter('배송준비');
+                changeFilter('배송준비', '', true); // isInitialLoad = true
             }
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             // ------------------------------------
 
             document.body.addEventListener('touchstart', (event) => {
@@ -1650,7 +1652,7 @@
             updateFilterCounts();
             
             if (!hawbFromUrl && !filterFromUrl) {
-                changeFilter('배송준비');
+                changeFilter('배송준비', '', true);
             }
 
         } catch (error) {
