@@ -68,7 +68,6 @@
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
     <div id="filter-buttons-container" class="z-20">
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg w-full min-w-[320px] p-4">
-            <!-- ▼▼▼▼▼ 수정된 부분: 메뉴 버튼 추가 ▼▼▼▼▼ -->
             <div class="flex justify-between items-center space-x-2">
                 <div class="flex-1 flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
                     <button data-filter="배송준비" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 whitespace-nowrap"><span>배송준비</span></button>
@@ -77,13 +76,12 @@
                     <button data-filter="배송중" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송중</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송중">0</span></button>
                     <button data-filter="완료" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>완료</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-완료">0</span></button>
                 </div>
-                <button id="open-menu-button" class="flex-shrink-0 p-2 rounded-full hover:bg-gray-100">
+                <button id="open-menu-button" class="flex-shrink-0 p-2 rounded-full hover:bg-gray-100" style="display: none;">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
             </div>
-            <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
         </div>
     </div>
 
@@ -230,7 +228,6 @@
         </div>
     </div>
 
-    <!-- ▼▼▼▼▼ 추가된 부분: 하단 시트 모달 ▼▼▼▼▼ -->
     <div id="bottom-sheet-modal" class="bottom-sheet-modal" style="display: none;">
         <div class="bottom-sheet-content">
             <h2 class="text-xl font-semibold mb-4 text-gray-800">메뉴</h2>
@@ -242,7 +239,6 @@
             </div>
         </div>
     </div>
-    <!-- ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲ -->
 
     <script type="text/javascript">
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
@@ -306,8 +302,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.9 - 2024-05-24";
-            const changelog = "FAB 메뉴를 하단 시트(Bottom Sheet) 방식으로 변경";
+            const version = "v1.1.0 - 2024-05-24";
+            const changelog = "하단 시트 메뉴 기능 구현 및 필터별 메뉴 적용";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -630,12 +626,10 @@
         const numberJumpList = document.getElementById('number-jump-list');
         const numberJumpClose = document.getElementById('number-jump-close');
 
-        // ▼▼▼▼▼ 추가된 부분: 하단 시트 DOM 요소 ▼▼▼▼▼
         const bottomSheetModal = document.getElementById('bottom-sheet-modal');
         const bottomSheetMenuContainer = document.getElementById('bottom-sheet-menu-container');
         const openMenuButton = document.getElementById('open-menu-button');
         const bottomSheetCloseButton = document.getElementById('bottom-sheet-close');
-        // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -1125,6 +1119,11 @@
             } else {
                 searchBarContainer.classList.add('hidden');
             }
+
+            // ▼▼▼▼▼ 수정된 부분: 메뉴 버튼 표시/숨김 로직 ▼▼▼▼▼
+            const isMenuVisible = ['배송중', '완료'].includes(activeFilter);
+            openMenuButton.style.display = isMenuVisible ? 'block' : 'none';
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         });
     };
     
@@ -1504,15 +1503,37 @@
                 }
             });
 
-            // ▼▼▼▼▼ 추가된 부분: 하단 시트 메뉴 로직 ▼▼▼▼▼
+            // ▼▼▼▼▼ 수정된 부분: 하단 시트 메뉴 로직 ▼▼▼▼▼
             const openBottomSheet = () => {
                 bottomSheetMenuContainer.innerHTML = ''; // Clear previous items
                 const menuItems = [];
 
-                if (['배송중', '완료'].includes(activeFilter)) {
+                if (activeFilter === '배송중') {
                     menuItems.push({
-                        icon: '📍', text: '거리순 정렬', action: () => {
-                            // 거리순 정렬 로직
+                        icon: '📍', text: '거리순 정렬', action: async () => {
+                            showLoadingMessage('현재 위치 확인 중...');
+                            try {
+                                const myLocation = await getCurrentLocation();
+                                const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
+                                const otherItems = deliveryItems.filter(item => item.status !== '배송중');
+                                const itemsWithCoords = inProgressItems.filter(item => item.addressLocation);
+                                const itemsWithoutCoords = inProgressItems.filter(item => !item.addressLocation);
+                                if (itemsWithoutCoords.length > 0) {
+                                    showToastMessage(`${itemsWithoutCoords.length}개의 카드에 좌표 정보가 없어 정렬에서 제외됩니다.`);
+                                }
+                                itemsWithCoords.forEach(item => {
+                                    item.distanceFromMe = calculateDistance(myLocation, item.addressLocation);
+                                });
+                                itemsWithCoords.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
+                                deliveryItems = [...itemsWithCoords, ...itemsWithoutCoords, ...otherItems];
+                                currentSortOrder = 'distance';
+                                renderDeliveryCards(activeFilter);
+                                closeConfirmationModal();
+                                showToastMessage('가까운 거리순으로 정렬되었습니다.');
+                            } catch (error) {
+                                closeConfirmationModal();
+                                showMessage(`현재 위치를 가져올 수 없습니다: ${error.message}`, '오류');
+                            }
                         }
                     });
                     menuItems.push({
@@ -1523,11 +1544,66 @@
                             showToastMessage('순번순으로 정렬되었습니다.');
                         }
                     });
-                }
-                if (activeFilter === '배송중') {
                     menuItems.push({
                         icon: '🔢', text: '번호로 이동', action: () => {
-                            // 번호로 이동 로직
+                            numberJumpList.innerHTML = '';
+                            if (deliveryItems.length === 0) {
+                                numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
+                                numberJumpModal.style.display = 'flex';
+                                return;
+                            }
+                            const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
+                            const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
+                            for (let i = 1; i <= maxNo; i++) {
+                                const status = itemsMap.get(i);
+                                const btn = document.createElement('div');
+                                btn.textContent = i;
+                                if (status === '배송중') {
+                                    btn.className = 'number-jump-item active';
+                                    btn.dataset.no = i;
+                                    btn.onclick = () => {
+                                        const targetCard = document.querySelector(`[data-no="${i}"]`);
+                                        if (targetCard) {
+                                            const headerOffset = filterButtonsContainer.offsetHeight;
+                                            const elementPosition = targetCard.getBoundingClientRect().top;
+                                            const offsetPosition = elementPosition + window.pageYOffset - headerOffset - 10;
+                                            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+                                        }
+                                        numberJumpModal.style.display = 'none';
+                                    };
+                                } else if (status) {
+                                    btn.className = 'number-jump-item inactive';
+                                } else {
+                                    btn.className = 'number-jump-item placeholder';
+                                    btn.innerHTML = ' ';
+                                }
+                                numberJumpList.appendChild(btn);
+                            }
+                            numberJumpModal.style.display = 'flex';
+                        }
+                    });
+                } else if (activeFilter === '완료') {
+                    menuItems.push({
+                        icon: '#️⃣', text: '순번순 정렬', action: () => {
+                            currentSortOrder = 'no';
+                            deliveryItems.sort((a, b) => a.no - b.no);
+                            renderDeliveryCards(activeFilter);
+                            showToastMessage('순번순으로 정렬되었습니다.');
+                        }
+                    });
+                    menuItems.push({
+                        icon: '🕒', text: '완료시간순 정렬', action: () => {
+                            currentSortOrder = 'time';
+                            const completedItems = deliveryItems.filter(item => item.status === '완료');
+                            const otherItems = deliveryItems.filter(item => item.status !== '완료');
+                            completedItems.sort((a, b) => {
+                                if (!a.deliveryCompletionTime) return 1;
+                                if (!b.deliveryCompletionTime) return -1;
+                                return a.deliveryCompletionTime.localeCompare(b.deliveryCompletionTime);
+                            });
+                            deliveryItems = [...completedItems, ...otherItems];
+                            renderDeliveryCards(activeFilter);
+                            showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
                         }
                     });
                 }
@@ -1561,7 +1637,10 @@
                     closeBottomSheet();
                 }
             });
-            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
+            numberJumpClose.addEventListener('click', () => {
+                numberJumpModal.style.display = 'none';
+            });
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             // 스크롤 이벤트
             window.addEventListener('scroll', () => {
