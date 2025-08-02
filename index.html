@@ -8,7 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; }
-        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior-y: contain; }
+        /* ▼▼▼▼▼ 수정된 부분: overscroll-behavior-y를 축약형으로 변경 ▼▼▼▼▼ */
+        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; }
+        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
@@ -67,6 +69,9 @@
         .number-jump-item.placeholder { background-color: transparent; }
         #search-bar-container { position: fixed; bottom: 0; left: 0; width: 100vw; z-index: 46; transition: transform 0.3s ease-out; background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; }
         #search-bar-container.hidden { transform: translateY(100%); }
+        /* ▼▼▼▼▼ 추가된 부분: 스와이프 영역 스타일 ▼▼▼▼▼ */
+        #main-content-area { min-height: 200px; }
+        /* ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲ */
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -117,7 +122,11 @@
         <p id="version-changelog" class="text-xs text-gray-500"></p>
     </div>
 
-    <div id="delivery-cards-container" class="max-w-md mx-auto"></div>
+    <!-- ▼▼▼▼▼ 수정된 부분: 스와이프 영역 main 태그 추가 ▼▼▼▼▼ -->
+    <main id="main-content-area" class="max-w-md mx-auto">
+        <div id="delivery-cards-container"></div>
+    </main>
+    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
     
     <div id="toast-container"></div>
 
@@ -297,8 +306,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.6 - 2024-05-24";
-            const changelog = "스와이프 필터 변경 기능 추가";
+            const version = "v1.0.7 - 2024-05-24";
+            const changelog = "스와이프 기능 개선 (전체 필터 적용 및 오버스크롤 방지)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -564,11 +573,9 @@
         let currentEditItemNo = null; 
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
         let lastScrollY = 0; // For scroll direction detection
-        // ▼▼▼▼▼ 추가된 부분: 스와이프 상태 변수 ▼▼▼▼▼
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
-        // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -576,6 +583,9 @@
         const resetButton = document.getElementById('resetButton');
         const filterButtonsContainer = document.getElementById('filter-buttons-container');
         const deliveryCardsContainer = document.getElementById('delivery-cards-container');
+        // ▼▼▼▼▼ 추가된 부분: 스와이프 영역 DOM 요소 ▼▼▼▼▼
+        const mainContentArea = document.getElementById('main-content-area');
+        // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
         const deliverySheetImageInput = document.getElementById('deliverySheetImage');
         const scanAndGenerateButton = document.getElementById('scanAndGenerateButton');
         const scanLoadingIndicator = document.getElementById('scan-loading-indicator');
@@ -1127,7 +1137,6 @@
         });
     };
     
-    // ▼▼▼▼▼ 추가된 부분: 필터 변경 로직을 별도 함수로 분리 ▼▼▼▼▼
     const changeFilter = (newFilter, animationClass = '') => {
         if (newFilter === activeFilter) return;
 
@@ -1155,7 +1164,6 @@
         if (button) button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
         setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
     };
-    // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
     filterButtonsContainer.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-filter]');
@@ -1462,15 +1470,15 @@
             }
             // ------------------------------------
 
-            // ▼▼▼▼▼ 추가된 부분: 스와이프 이벤트 리스너 ▼▼▼▼▼
-            deliveryCardsContainer.addEventListener('touchstart', (event) => {
+            // ▼▼▼▼▼ 수정된 부분: 스와이프 이벤트 리스너를 mainContentArea에 적용 ▼▼▼▼▼
+            mainContentArea.addEventListener('touchstart', (event) => {
                 const touch = event.touches[0];
                 touchStartX = touch.clientX;
                 touchStartY = touch.clientY;
                 touchStartTime = Date.now();
             }, { passive: true });
 
-            deliveryCardsContainer.addEventListener('touchend', (event) => {
+            mainContentArea.addEventListener('touchend', (event) => {
                 const touch = event.changedTouches[0];
                 const touchEndX = touch.clientX;
                 const touchEndY = touch.clientY;
@@ -1497,7 +1505,7 @@
                     }
                 }
             });
-            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             // '배송중' FAB 이벤트
             fabSortNo.addEventListener('click', () => {
