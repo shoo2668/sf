@@ -405,7 +405,7 @@
             const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`, {
                 headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
             });
-            if (!response.ok) throw new Error('Kakao Geocoding API call failed');
+            if (!response.ok) throw new Error('Kakao API call failed');
             const data = await response.json();
             if (data.documents && data.documents.length > 0) {
                 const location = data.documents[0];
@@ -1463,7 +1463,6 @@
             });
 
             // --- 외부 스캐너 앱 연동 로직 ---
-            // ▼▼▼▼▼ 수정된 부분: setTimeout으로 감싸 타이밍 문제 해결 ▼▼▼▼▼
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
@@ -1475,12 +1474,11 @@
                 }
 
                 if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                    changeFilter(filterFromUrl, '', true); // isInitialLoad = true
+                    changeFilter(filterFromUrl, '', true);
                 } else {
-                    changeFilter('배송준비', '', true); // isInitialLoad = true
+                    changeFilter('배송준비', '', true);
                 }
             }, 0);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             // ------------------------------------
 
             document.body.addEventListener('touchstart', (event) => {
@@ -1653,9 +1651,11 @@
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
             
+            // ▼▼▼▼▼ 수정된 부분: 초기 로드 로직을 setTimeout 밖으로 이동 ▼▼▼▼▼
             if (!hawbFromUrl && !filterFromUrl) {
                 changeFilter('배송준비', '', true);
             }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         } catch (error) {
             console.error("초기화 오류:", error);
