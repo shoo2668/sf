@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; overflow-x: hidden; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; }
-        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal, .scan-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
-        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content, .scan-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
+        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
-        #reader a { display: none !important; } /* hide html5-qrcode library link */
         
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
         .key-pop {
@@ -120,12 +118,9 @@
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="scanBarcodeButton" class="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
-                </button>
-                <button id="searchButton" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
-                <button id="resetButton" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-1/2 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
+                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
+                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
             </div>
         </div>
     </div>
@@ -177,17 +172,6 @@
         </div>
     </div>
 
-    <!-- 바코드 스캔 모달 -->
-    <div id="scan-modal" class="scan-modal" style="display: none;">
-        <div class="scan-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">바코드 스캔</h2>
-            <div id="reader" class="w-full" style="aspect-ratio: 1 / 1;"></div>
-            <div class="flex justify-end mt-6">
-                <button id="scan-modal-close" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">닫기</button>
-            </div>
-        </div>
-    </div>
-    
     <!-- 스마트 편집 모달 -->
     <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
         <div class="smart-edit-modal-content">
@@ -304,7 +288,7 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.61 - 2024-05-24";
+            const version = "v1.1.6 - 2024-05-24";
             const changelog = "바코드 스캐너 연동 시 자동 검색 기능 수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -630,13 +614,6 @@
 
         const actionBarContainer = document.getElementById('action-bar-container');
         const actionButtons = document.getElementById('action-buttons');
-        
-        // Barcode Scanner Elements
-        const scanBarcodeButton = document.getElementById('scanBarcodeButton');
-        const scanModal = document.getElementById('scan-modal');
-        const scanModalClose = document.getElementById('scan-modal-close');
-        let html5QrCode = null;
-
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -1471,66 +1448,10 @@
         );
     });
 
-    // --- Barcode Scanner Logic ---
-    const onScanSuccess = (decodedText, decodedResult) => {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => {
-                scanModal.style.display = 'none';
-                invoiceNumberInput.value = decodedText;
-                searchTerm = decodedText;
-                triggerHapticFeedback();
-                showToastMessage(`스캔 완료: ${decodedText}`);
-                renderDeliveryCards(activeFilter);
-            }).catch(err => {
-                console.error("스캐너 중지 실패", err);
-                scanModal.style.display = 'none';
-            });
-        }
-    };
-
-    const onScanFailure = (error) => {
-        // 스캔 실패는 계속 발생하므로 무시합니다.
-    };
-
-    const startScanner = () => {
-        scanModal.style.display = 'flex';
-        const config = { 
-            fps: 10, 
-            qrbox: { width: 250, height: 150 },
-            supportedScanTypes: [
-                Html5QrcodeScanType.SCAN_TYPE_CAMERA
-            ]
-        };
-        // 후면 카메라를 우선적으로 사용합니다.
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-            .catch(err => {
-                console.log(`카메라를 시작할 수 없습니다. 전면 카메라로 재시도합니다. 오류: ${err}`);
-                // 후면 카메라 실패 시 전면 카메라로 다시 시도
-                html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, onScanFailure)
-                    .catch(err2 => {
-                        showMessage(`모든 카메라를 시작하는데 실패했습니다. 카메라 권한을 확인해주세요. 오류: ${err2}`, "오류");
-                        scanModal.style.display = 'none';
-                    });
-            });
-    };
-    
-    const stopScanner = () => {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().catch(err => console.error("스캐너를 중지하는 동안 오류 발생", err));
-        }
-        scanModal.style.display = 'none';
-    };
-
-
     document.addEventListener('DOMContentLoaded', () => {
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
-
-            // 바코드 스캐너 초기화
-            html5QrCode = new Html5Qrcode("reader");
-            scanBarcodeButton.addEventListener('click', startScanner);
-            scanModalClose.addEventListener('click', stopScanner);
 
             // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
             invoiceNumberInput.addEventListener('keydown', (event) => {
@@ -1542,6 +1463,7 @@
             });
 
             // --- 외부 스캐너 앱 연동 로직 ---
+            // ▼▼▼▼▼ 수정된 부분: setTimeout으로 감싸 타이밍 문제 해결 ▼▼▼▼▼
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
@@ -1561,6 +1483,8 @@
                     changeFilter('배송준비', '', initialLoad);
                 }
             }, 0);
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+            // ------------------------------------
 
             document.body.addEventListener('touchstart', (event) => {
                 const touch = event.touches[0];
@@ -1573,8 +1497,7 @@
                 if (signatureModal.style.display === 'flex' ||
                     confirmationModal.style.display === 'flex' ||
                     smartEditModal.style.display === 'flex' ||
-                    numberJumpModal.style.display === 'flex' ||
-                    scanModal.style.display === 'flex') { // 스캔 모달이 열려있을 때도 제외
+                    numberJumpModal.style.display === 'flex') {
                     return;
                 }
 
