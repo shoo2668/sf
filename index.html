@@ -53,7 +53,7 @@
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
         #number-jump-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; overflow-y: auto; padding: 0.5rem; margin: -0.5rem; max-height: 60vh; }
-        .number-jump-item { min-width: 50px; padding: 0.75rem; border-radius: 0.5rem; font-weight: 600; text-align: center; transition: background-color 0.2s, color 0.2s; }
+        .number-jump-item { min-width: 50px; padding: 0.75rem; border-radius: 0.5rem; font-weight: 600; text-align: center; transition: background-color: 0.2s, color 0.2s; }
         .number-jump-item.active { background-color: #2563eb; color: white; cursor: pointer; }
         .number-jump-item.active:hover { background-color: #1d4ed8; }
         .number-jump-item.inactive { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
@@ -288,8 +288,10 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.6 - 2024-05-24";
-            const changelog = "바코드 스캐너 연동 시 자동 검색 기능 수정";
+            // ▼▼▼▼▼ 수정된 부분: 버전 및 변경점 수정 ▼▼▼▼▼
+            const version = "v1.1.7 - 2024-05-25";
+            const changelog = "카드 및 액션 바 아이콘을 심플한 디자인으로 교체";
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -995,10 +997,11 @@
                 const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
                 const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
 
+                // ▼▼▼▼▼ 수정된 부분: 카드 내부 아이콘 교체 ▼▼▼▼▼
                 const detailsHtml = `
                     <div class="flex items-start space-x-2.5">
                         <button data-action="open-naver-map" data-no="${data.no}" class="flex-shrink-0 pt-1 ${isMapButtonActive ? 'text-gray-600 hover:text-black' : 'text-gray-400 cursor-not-allowed'}" ${isMapButtonActive ? '' : 'disabled'}>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                         </button>
                         <div>
                             <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
@@ -1007,7 +1010,7 @@
                     </div>
                     <div class="flex items-start space-x-2.5">
                         <div class="flex-shrink-0 pt-1 text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 11-2 0V4H6a1 1 0 11-2 0zm4 14a1 1 0 100-2h.01a1 1 0 100 2H8zm-2-4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H6zm2 4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H8zm2 4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H10zm2 4a1 1 0 11-2 0v-2a1 1 0 112 0v2zm0-4a1 1 0 100-2h.01a1 1 0 100 2H12z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
                         </div>
                         <div>
                             <p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>
@@ -1016,7 +1019,7 @@
                     </div>
                     <div class="flex items-start space-x-2.5">
                         <div class="flex-shrink-0 pt-1 text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
                         </div>
                         <div>
                             <p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
@@ -1025,7 +1028,7 @@
                     </div>
                     <div class="flex items-start space-x-2.5">
                         <div class="flex-shrink-0 pt-1 text-gray-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.224 3.424A1.5 1.5 0 016.5 2h7a1.5 1.5 0 011.276 1.424l-1.122 6.732A1.5 1.5 0 0112.38 11.5H7.62a1.5 1.5 0 01-1.276-1.344L5.224 3.424zM5 14a1 1 0 112 0v1a1 1 0 11-2 0v-1zm1-4a3 3 0 013-3h2a3 3 0 013 3v5a3 3 0 01-3 3H9a3 3 0 01-3-3v-5z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span>
@@ -1035,6 +1038,7 @@
                     </div>
                     ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 `;
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
                 if (showCompletedCard) {
                     return `
@@ -1120,21 +1124,23 @@
                 const menuItems = [];
                 let buttonClass = '';
 
+                // ▼▼▼▼▼ 수정된 부분: 액션 바 아이콘 교체 ▼▼▼▼▼
                 if (activeFilter === '배송중') {
                     buttonClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 border border-blue-700 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50';
-                    menuItems.push({ icon: '📍', text: '거리', action: 'sort-distance' });
-                    menuItems.push({ icon: '#️⃣', text: '순번', action: 'sort-no' });
-                    menuItems.push({ icon: '🔢', text: '선택', action: 'jump-no' });
+                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, text: '거리', action: 'sort-distance' });
+                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, text: '순번', action: 'sort-no' });
+                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, text: '선택', action: 'jump-no' });
                 } else if (activeFilter === '완료') {
                     buttonClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gray-200 text-black border border-black rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50';
-                    menuItems.push({ icon: '#️⃣', text: '순번', action: 'sort-no-completed' });
-                    menuItems.push({ icon: '🕒', text: '완료시간', action: 'sort-time' });
+                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, text: '순번', action: 'sort-no-completed' });
+                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, text: '완료시간', action: 'sort-time' });
                 }
+                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
                 menuItems.forEach(item => {
                     const button = document.createElement('button');
                     button.className = buttonClass;
-                    button.innerHTML = `<span>${item.icon}</span><span class="font-semibold">${item.text}</span>`;
+                    button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
                     button.dataset.action = item.action;
                     actionButtons.appendChild(button);
                 });
@@ -1463,7 +1469,6 @@
             });
 
             // --- 외부 스캐너 앱 연동 로직 ---
-            // ▼▼▼▼▼ 수정된 부분: setTimeout으로 감싸 타이밍 문제 해결 ▼▼▼▼▼
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
@@ -1483,7 +1488,6 @@
                     changeFilter('배송준비', '', initialLoad);
                 }
             }, 0);
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             // ------------------------------------
 
             document.body.addEventListener('touchstart', (event) => {
