@@ -289,8 +289,8 @@
 
         const setVersionInfo = () => {
             // ▼▼▼▼▼ 수정된 부분: 버전 및 변경점 수정 ▼▼▼▼▼
-            const version = "v1.1.7 - 2024-05-25";
-            const changelog = "카드 및 액션 바 아이콘을 심플한 디자인으로 교체";
+            const version = "v1.1.8 - 2024-05-25";
+            const changelog = "새로고침 및 뒤로가기 동작 제어 기능 추가";
             // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -560,6 +560,10 @@
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
+        // ▼▼▼▼▼ 추가된 부분: 뒤로가기 및 새로고침 제어 관련 변수 ▼▼▼▼▼
+        let backButtonPressedOnce = false;
+        let justReturnedFromExternalApp = false;
+        // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -997,7 +1001,6 @@
                 const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
                 const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
 
-                // ▼▼▼▼▼ 수정된 부분: 카드 내부 아이콘 교체 ▼▼▼▼▼
                 const detailsHtml = `
                     <div class="flex items-start space-x-2.5">
                         <button data-action="open-naver-map" data-no="${data.no}" class="flex-shrink-0 pt-1 ${isMapButtonActive ? 'text-gray-600 hover:text-black' : 'text-gray-400 cursor-not-allowed'}" ${isMapButtonActive ? '' : 'disabled'}>
@@ -1038,7 +1041,6 @@
                     </div>
                     ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 `;
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
                 if (showCompletedCard) {
                     return `
@@ -1124,7 +1126,6 @@
                 const menuItems = [];
                 let buttonClass = '';
 
-                // ▼▼▼▼▼ 수정된 부분: 액션 바 아이콘 교체 ▼▼▼▼▼
                 if (activeFilter === '배송중') {
                     buttonClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 border border-blue-700 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50';
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, text: '거리', action: 'sort-distance' });
@@ -1135,7 +1136,6 @@
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, text: '순번', action: 'sort-no-completed' });
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, text: '완료시간', action: 'sort-time' });
                 }
-                // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
                 menuItems.forEach(item => {
                     const button = document.createElement('button');
@@ -1490,6 +1490,49 @@
             }, 0);
             // ------------------------------------
 
+            // ▼▼▼▼▼ 추가된 부분: 새로고침 및 뒤로가기 제어 로직 ▼▼▼▼▼
+            document.body.addEventListener('touchmove', (event) => {
+                if (window.scrollY === 0 && touchStartY < event.touches[0].clientY && activeFilter !== '배송준비') {
+                    event.preventDefault();
+                }
+            }, { passive: false });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    justReturnedFromExternalApp = true;
+                    setTimeout(() => {
+                        justReturnedFromExternalApp = false;
+                    }, 500);
+                }
+            });
+
+            history.pushState(null, '', location.href);
+            window.addEventListener('popstate', (event) => {
+                if (smartEditModal.style.display === 'flex') {
+                    smartEditModal.style.display = 'none';
+                    currentEditItemNo = null;
+                    return;
+                }
+
+                if (justReturnedFromExternalApp) {
+                    return;
+                }
+
+                if (backButtonPressedOnce) {
+                    history.back();
+                    return;
+                }
+
+                backButtonPressedOnce = true;
+                showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
+                setTimeout(() => {
+                    backButtonPressedOnce = false;
+                }, 2000);
+
+                history.pushState(null, '', location.href);
+            });
+            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
+
             document.body.addEventListener('touchstart', (event) => {
                 const touch = event.touches[0];
                 touchStartX = touch.clientX;
@@ -1637,13 +1680,6 @@
                     actionBarContainer.classList.remove('hidden');
                 }
                 lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
-            });
-
-            window.addEventListener('popstate', (event) => {
-                if (smartEditModal.style.display === 'flex') {
-                    smartEditModal.style.display = 'none';
-                    currentEditItemNo = null;
-                }
             });
 
             const storedItems = localStorage.getItem('deliveryItems');
