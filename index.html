@@ -7,10 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ▼▼▼▼▼ 수정된 부분: scroll-padding-top 속성 추가 ▼▼▼▼▼ */
-        html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 72px; /* 기본값, JS가 동적으로 변경 */ }
+        html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 88px; /* JS가 동적으로 변경 */ }
+        /* ▼▼▼▼▼ 수정된 부분: body에 padding-top 기본값 추가 ▼▼▼▼▼ */
+        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; padding-top: 88px; /* JS가 동적으로 변경 */ }
         /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
-        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; }
         .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
@@ -290,8 +290,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.9 - 2024-05-25";
-            const changelog = "상단 필터 바에 콘텐츠가 가려지는 현상 수정";
+            const version = "v1.2.0 - 2024-05-25";
+            const changelog = "상단 필터 바 고정 시 콘텐츠 가려짐 현상 수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1106,10 +1106,8 @@
     const updateStickyHeaderPositions = () => {
         requestAnimationFrame(() => {
             const topOffset = filterButtonsContainer.offsetHeight;
-            // ▼▼▼▼▼ 수정된 부분: scroll-padding-top 동적 설정 추가 ▼▼▼▼▼
             document.body.style.paddingTop = `${topOffset}px`;
             document.documentElement.style.scrollPaddingTop = `${topOffset}px`;
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             const isScanVisible = activeFilter === '배송준비';
             scanSectionContainer.classList.toggle('hidden', !isScanVisible);
@@ -1491,7 +1489,6 @@
             }, 0);
             // ------------------------------------
 
-            // ▼▼▼▼▼ 추가된 부분: 새로고침 및 뒤로가기 제어 로직 ▼▼▼▼▼
             document.body.addEventListener('touchmove', (event) => {
                 if (window.scrollY === 0 && touchStartY < event.touches[0].clientY && activeFilter !== '배송준비') {
                     event.preventDefault();
@@ -1532,7 +1529,6 @@
 
                 history.pushState(null, '', location.href);
             });
-            // ▲▲▲▲▲ 여기까지 추가 ▲▲▲▲▲
 
             document.body.addEventListener('touchstart', (event) => {
                 const touch = event.touches[0];
@@ -1634,9 +1630,7 @@
                                 btn.onclick = () => {
                                     const targetCard = document.querySelector(`[data-no="${i}"]`);
                                     if (targetCard) {
-                                        // ▼▼▼▼▼ 수정된 부분: scrollIntoView로 변경하여 scroll-padding-top 활용 ▼▼▼▼▼
                                         targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
                                     }
                                     numberJumpModal.style.display = 'none';
                                 };
