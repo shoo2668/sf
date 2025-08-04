@@ -288,8 +288,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.2.1 - 2024-05-26";
-            const changelog = "순번 없는 카드 자동 병합 기능 추가";
+            const version = "v1.2.2 - 2024-05-26";
+            const changelog = "자동 병합 기능 제거, 순번 없는 카드 표시";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -525,7 +525,7 @@
                 return { baseAddress: '', detailAddress: detailAddress || '' };
             }
             try {
-                const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(baseAddress)}`, {
+                const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`, {
                     headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
                 });
                 if (!response.ok) throw new Error('Kakao API call failed');
@@ -1060,12 +1060,12 @@
                     `;
                 } else {
                     return `
-                        <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
+                        <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no || 'N/A'}">
                             <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
                                 <div class="flex justify-between items-start w-full">
                                     <div class="flex items-start space-x-4">
                                         <div>
-                                            <h3 class="text-3xl font-semibold text-red-500">${data.no}</h3>
+                                            <h3 class="text-3xl font-semibold text-red-500">${data.no || '?'}</h3>
                                             ${distanceInfo}
                                         </div>
                                         <div class="pt-1.5">
@@ -1224,7 +1224,7 @@
         const resizedImageObjects = await Promise.all(resizePromises);
         scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
         
-        const tempMergedResults = new Map();
+        const tempResults = [];
         const failedFileObjectsForRetry = [];
         const requestQueue = [...resizedImageObjects]; 
 
@@ -1253,7 +1253,7 @@
 
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        if (Array.isArray(parsedData) && parsedData.length > 0) {
+                        if (Array.isArray(parsedData)) { // 데이터가 없어도 빈 배열을 반환할 수 있음
                              return parsedData;
                         }
                     }
@@ -1276,16 +1276,10 @@
                     try {
                         const apiResultArray = await processApiRequest(requestObject);
                         for (const geminiItem of apiResultArray) {
-                            const no = parseInt(geminiItem.no || '0', 10);
-                            if (no === 0 && !geminiItem.hawbNo) continue; // 순번도 없고 송장번호도 없으면 무시
-                            
                             const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
                             geminiItem.baseAddressKorean = baseAddress;
                             geminiItem.detailAddressKorean = detailAddress;
-
-                            // 고유 ID를 생성하여 임시로 맵에 저장 (순번이 0일 수 있으므로)
-                            const uniqueId = no > 0 ? `no-${no}` : `hawb-${geminiItem.hawbNo || Math.random()}`;
-                            tempMergedResults.set(uniqueId, geminiItem);
+                            tempResults.push(geminiItem);
                         }
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
@@ -1303,48 +1297,9 @@
         let newCount = 0;
         let updateCount = 0;
         
-        // ▼▼▼▼▼ 수정된 부분: 자동 병합 로직 추가 ▼▼▼▼▼
-        let allNewItems = Array.from(tempMergedResults.values());
-        
-        // 1. 순번이 있는 카드와 없는 카드로 분리
-        const numberedItems = allNewItems.filter(item => item.no && parseInt(item.no, 10) > 0);
-        const unnumberedItems = allNewItems.filter(item => !item.no || parseInt(item.no, 10) === 0);
-
-        // 2. 순번 있는 카드를 기준으로 Map 생성
-        const numberedItemsMap = new Map(numberedItems.map(item => [parseInt(item.no, 10), item]));
-
-        // 3. 순번 없는 카드를 이전 순번 카드에 병합
-        if (unnumberedItems.length > 0 && numberedItems.length > 0) {
-            // 순번 있는 카드를 순서대로 정렬
-            const sortedNumberedItems = [...numberedItems].sort((a, b) => parseInt(a.no, 10) - parseInt(b.no, 10));
-            
-            let lastValidNumberedItem = sortedNumberedItems[0];
-            
-            // AI 결과는 순서가 보장되지 않으므로, 순번 없는 항목을 처리하기 전에 전체 목록을 순번 기준으로 정렬해야 함.
-            // 하지만 병렬 처리에서는 정확한 '이전' 항목을 특정하기 어려움.
-            // 여기서는 임시로, 순번 없는 항목을 가장 마지막에 처리된 순번 항목에 합치는 로직을 구현.
-            // (향후 순차 처리로 변경 시 더 안정적으로 동작 가능)
-            
-            const lastNumberedItem = sortedNumberedItems[sortedNumberedItems.length - 1];
-            if (lastNumberedItem) {
-                unnumberedItems.forEach(unItem => {
-                    // 비어있는 필드만 합치기
-                    Object.keys(unItem).forEach(key => {
-                        if (unItem[key] && !lastNumberedItem[key]) {
-                            lastNumberedItem[key] = unItem[key];
-                        }
-                    });
-                    console.log(`순번 없는 카드 [${unItem.receiverName}]를 ${lastNumberedItem.no}번 카드에 병합 시도`);
-                });
-            }
-        }
-        
-        allNewItems = Array.from(numberedItemsMap.values());
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
-
-        if (allNewItems.length > 0) {
-            const finalItems = allNewItems.map(item => ({
-                no: parseInt(item.no, 10),
+        if (tempResults.length > 0) {
+            const finalItems = tempResults.map(item => ({
+                no: parseInt(item.no, 10) || null, // 순번이 없으면 null
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
@@ -1360,17 +1315,29 @@
             }));
             
             finalItems.forEach(newItem => {
-                if (!newItem.no) return; // 순번 없는 카드는 최종 목록에 추가하지 않음
-                const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
-                if (existingItemIndex > -1) {
-                    deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
-                    updateCount++;
+                // 순번이 있는 카드만 기존 데이터와 비교하여 업데이트 또는 추가
+                if (newItem.no) {
+                    const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
+                    if (existingItemIndex > -1) {
+                        deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
+                        updateCount++;
+                    } else {
+                        deliveryItems.push(newItem);
+                        newCount++;
+                    }
                 } else {
+                    // 순번이 없는 카드는 그냥 새로 추가
                     deliveryItems.push(newItem);
                     newCount++;
                 }
             });
-            deliveryItems.sort((a, b) => a.no - b.no);
+            // 순번이 있는 항목들만 정렬하고, 없는 항목들은 뒤에 붙임
+            deliveryItems.sort((a, b) => {
+                if (a.no && b.no) return a.no - b.no;
+                if (a.no) return -1;
+                if (b.no) return 1;
+                return 0;
+            });
             saveDeliveryItemsToLocalStorage();
         }
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
