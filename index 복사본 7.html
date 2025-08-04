@@ -7,8 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 88px; }
-        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; padding-top: 88px; }
+        html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 88px; /* JS가 동적으로 변경 */ }
+        /* ▼▼▼▼▼ 수정된 부분: body에 padding-top 기본값 추가 ▼▼▼▼▼ */
+        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; padding-top: 88px; /* JS가 동적으로 변경 */ }
+        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
@@ -288,8 +290,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.2.1 - 2024-05-26";
-            const changelog = "순번 없는 카드 자동 병합 기능 추가";
+            const version = "v1.2.01 - 2024-05-25";
+            const changelog = "상단 필터 바 고정 시 콘텐츠 가려짐 현상 수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1277,15 +1279,13 @@
                         const apiResultArray = await processApiRequest(requestObject);
                         for (const geminiItem of apiResultArray) {
                             const no = parseInt(geminiItem.no || '0', 10);
-                            if (no === 0 && !geminiItem.hawbNo) continue; // 순번도 없고 송장번호도 없으면 무시
+                            if (no === 0) continue;
                             
                             const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
                             geminiItem.baseAddressKorean = baseAddress;
                             geminiItem.detailAddressKorean = detailAddress;
 
-                            // 고유 ID를 생성하여 임시로 맵에 저장 (순번이 0일 수 있으므로)
-                            const uniqueId = no > 0 ? `no-${no}` : `hawb-${geminiItem.hawbNo || Math.random()}`;
-                            tempMergedResults.set(uniqueId, geminiItem);
+                            tempMergedResults.set(no, geminiItem);
                         }
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
@@ -1302,45 +1302,7 @@
 
         let newCount = 0;
         let updateCount = 0;
-        
-        // ▼▼▼▼▼ 수정된 부분: 자동 병합 로직 추가 ▼▼▼▼▼
-        let allNewItems = Array.from(tempMergedResults.values());
-        
-        // 1. 순번이 있는 카드와 없는 카드로 분리
-        const numberedItems = allNewItems.filter(item => item.no && parseInt(item.no, 10) > 0);
-        const unnumberedItems = allNewItems.filter(item => !item.no || parseInt(item.no, 10) === 0);
-
-        // 2. 순번 있는 카드를 기준으로 Map 생성
-        const numberedItemsMap = new Map(numberedItems.map(item => [parseInt(item.no, 10), item]));
-
-        // 3. 순번 없는 카드를 이전 순번 카드에 병합
-        if (unnumberedItems.length > 0 && numberedItems.length > 0) {
-            // 순번 있는 카드를 순서대로 정렬
-            const sortedNumberedItems = [...numberedItems].sort((a, b) => parseInt(a.no, 10) - parseInt(b.no, 10));
-            
-            let lastValidNumberedItem = sortedNumberedItems[0];
-            
-            // AI 결과는 순서가 보장되지 않으므로, 순번 없는 항목을 처리하기 전에 전체 목록을 순번 기준으로 정렬해야 함.
-            // 하지만 병렬 처리에서는 정확한 '이전' 항목을 특정하기 어려움.
-            // 여기서는 임시로, 순번 없는 항목을 가장 마지막에 처리된 순번 항목에 합치는 로직을 구현.
-            // (향후 순차 처리로 변경 시 더 안정적으로 동작 가능)
-            
-            const lastNumberedItem = sortedNumberedItems[sortedNumberedItems.length - 1];
-            if (lastNumberedItem) {
-                unnumberedItems.forEach(unItem => {
-                    // 비어있는 필드만 합치기
-                    Object.keys(unItem).forEach(key => {
-                        if (unItem[key] && !lastNumberedItem[key]) {
-                            lastNumberedItem[key] = unItem[key];
-                        }
-                    });
-                    console.log(`순번 없는 카드 [${unItem.receiverName}]를 ${lastNumberedItem.no}번 카드에 병합 시도`);
-                });
-            }
-        }
-        
-        allNewItems = Array.from(numberedItemsMap.values());
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
+        const allNewItems = Array.from(tempMergedResults.values()); 
 
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
@@ -1360,7 +1322,6 @@
             }));
             
             finalItems.forEach(newItem => {
-                if (!newItem.no) return; // 순번 없는 카드는 최종 목록에 추가하지 않음
                 const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
                 if (existingItemIndex > -1) {
                     deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
