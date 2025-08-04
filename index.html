@@ -227,30 +227,29 @@
     </div>
 
     <script type="text/javascript">
+        // ▼▼▼▼▼ 수정된 부분: GEMINI_PROMPT 수정 ▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
 
-1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
+1.  **IDENTIFY EVERY BLOCK:** Treat each logical information block as a separate item, even if it seems incomplete. If a block contains any recipient information (like a name, address, or phone number), you MUST include it in the output.
 
-2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
+2.  **EXTRACT KEY-VALUE PAIRS:** For each block, extract the following fields if present: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
 
-3.  **SEPARATE COMPANY AND PERSONAL NAME:**
-    *   **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
-    *   **Scenario B (Combined Field):** If the recipient information is in a single combined field, intelligently separate the company/organization name and the personal name.
-    *   **Handling Edge Cases:**
-        *   If only a personal name is found, put it in "receiverName" and omit "receiverCompanyName".
-        *   If only a company name is found (e.g., "ABC Mart", "(주)DEF"), put it in "receiverCompanyName" and repeat it in "receiverName".
-        *   If you cannot separate them, put the entire text into both "receiverCompanyName" and "receiverName".
+3.  **HANDLE MISSING 'no':** If a block does not have a printed or handwritten number in the 'no' position, **DO NOT invent one.** Simply omit the "no" field for that JSON object. It is critical that you still process and output the rest of the information for that block.
 
-4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
+4.  **SEPARATE COMPANY AND PERSONAL NAME:**
+    *   If the recipient information is in a single combined field, intelligently separate the company/organization name and the personal name.
+    *   If only a personal name is found, put it in "receiverName".
+    *   If only a company name is found, put it in "receiverCompanyName" and repeat it in "receiverName".
+    *   If you cannot separate them, put the entire text into both fields.
+
+5.  **TRANSLATE AND SEPARATE ADDRESS:**
+    *   Translate "receiverName" and "receiverCompanyName" to Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean".
     *   Translate "receiverAddress" to a standard Korean address format.
-    *   **Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".**
-        *   "baseAddressKorean" should contain the main, searchable part of the address (e.g., "서울 송파구 양재대로 1300").
-        *   "detailAddressKorean" should contain the rest (e.g., "올림픽파크포레온 319동 307호"). Omit if not present.
+    *   Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".
 
-5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
@@ -266,20 +265,17 @@
     "baseAddressKorean": "서울 강동구 양재대로 1300",
     "detailAddressKorean": "422동 601호"
   },
-  {
-    "no": "1",
-    "hawbNo": "SF319999130 4534",
-    "receiverCompanyName": "Jiyoung Her",
-    "receiverCompanyNameKorean": "허지영",
-    "receiverName": "Jiyoung Her",
-    "receiverNameKorean": "허지영",
-    "receiverPhone": "01025190714",
-    "receiverAddress": "Songpagu Olympic-ro 102-408",
-    "baseAddressKorean": "서울 송파구 올림픽로",
-    "detailAddressKorean": "102-408"
+  { 
+    // Example of a block with a missing 'no'
+    "hawbNo": "1Z987654321",
+    "receiverName": "Incomplete Info",
+    "receiverNameKorean": "정보없음",
+    "receiverAddress": "Next Page",
+    "baseAddressKorean": "다음 페이지"
   }
 ]
 `;
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -288,8 +284,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.2.2 - 2024-05-26";
-            const changelog = "자동 병합 기능 제거, 순번 없는 카드 표시";
+            const version = "v1.2.3 - 2024-05-26";
+            const changelog = "AI가 잘린 정보 조각을 누락하지 않도록 프롬프트 수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1253,7 +1249,7 @@
 
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        if (Array.isArray(parsedData)) { // 데이터가 없어도 빈 배열을 반환할 수 있음
+                        if (Array.isArray(parsedData)) {
                              return parsedData;
                         }
                     }
@@ -1299,7 +1295,7 @@
         
         if (tempResults.length > 0) {
             const finalItems = tempResults.map(item => ({
-                no: parseInt(item.no, 10) || null, // 순번이 없으면 null
+                no: parseInt(item.no, 10) || null,
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
@@ -1315,7 +1311,6 @@
             }));
             
             finalItems.forEach(newItem => {
-                // 순번이 있는 카드만 기존 데이터와 비교하여 업데이트 또는 추가
                 if (newItem.no) {
                     const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
                     if (existingItemIndex > -1) {
@@ -1326,12 +1321,11 @@
                         newCount++;
                     }
                 } else {
-                    // 순번이 없는 카드는 그냥 새로 추가
                     deliveryItems.push(newItem);
                     newCount++;
                 }
             });
-            // 순번이 있는 항목들만 정렬하고, 없는 항목들은 뒤에 붙임
+            
             deliveryItems.sort((a, b) => {
                 if (a.no && b.no) return a.no - b.no;
                 if (a.no) return -1;
