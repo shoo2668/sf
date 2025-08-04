@@ -227,7 +227,6 @@
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼ 수정된 부분: GEMINI_PROMPT 수정 ▼▼▼▼▼
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
@@ -275,7 +274,6 @@
   }
 ]
 `;
-        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
@@ -284,8 +282,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.2.3 - 2024-05-26";
-            const changelog = "AI가 잘린 정보 조각을 누락하지 않도록 프롬프트 수정";
+            const version = "v1.2.2 - 2024-05-26";
+            const changelog = "자동 병합 기능 제거, 순번 없는 카드 표시";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
