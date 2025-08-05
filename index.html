@@ -301,8 +301,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.6.0 - 2024-05-27";
-            const changelog = "카드 순번 정렬 로직 개선 (페이지 번호 및 이미지 내 순서 기반), 송장번호 복사 버튼 추가";
+            const version = "v1.7.0 - 2024-05-27";
+            const changelog = "카드 누락/순서 오류 해결, 송장번호 복사 기능 제거";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -366,12 +366,6 @@
                         break;
                     case 'open-smart-edit':
                         openSmartEditModal(itemNo);
-                        break;
-                    case 'copy-text':
-                        const textToCopy = target.dataset.copyText;
-                        if (textToCopy) {
-                            copyToClipboard(textToCopy);
-                        }
                         break;
                 }
             });
@@ -562,37 +556,6 @@
                 console.error('Error validating address with Kakao API:', error);
                 return { baseAddress, detailAddress: detailAddress || '' }; // 에러나도 원본 유지
             }
-        };
-
-        const copyToClipboard = (text) => {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text)
-                    .then(() => showToastMessage('클립보드에 복사되었습니다!'))
-                    .catch(err => {
-                        console.error('클립보드 복사 실패 (navigator.clipboard):', err);
-                        fallbackCopyToClipboard(text);
-                    });
-            } else {
-                fallbackCopyToClipboard(text);
-            }
-        };
-
-        const fallbackCopyToClipboard = (text) => {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed'; // Prevent scrolling to bottom of page in iOS.
-            textarea.style.opacity = 0; // Hide it
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showToastMessage('클립보드에 복사되었습니다!');
-            } catch (err) {
-                console.error('클립보드 복사 실패 (document.execCommand):', err);
-                showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
-            }
-            document.body.removeChild(textarea);
         };
 
         // --- Global state and DOM elements ---
@@ -1026,20 +989,7 @@
         const openNaverMap = (item) => {
             const addressForMapSearch = item.baseAddress || '';
             const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
-            const textarea = document.createElement('textarea');
-            textarea.value = textToCopy;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = 0;
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            try {
-                document.execCommand('copy');
-            } catch (err) {
-                console.error('클립보드 복사 실패:', err);
-                showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
-            }
-            document.body.removeChild(textarea);
+            copyToClipboard(textToCopy);
             window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
         };
 
@@ -1101,29 +1051,12 @@
 
                 const hawbNos = (data.hawbNo || '').split('\n').filter(Boolean);
                 const confirmedHawbNos = data.confirmedHawbNos || [];
-                const hawbHtml = hawbNos.length > 1
-                    ? hawbNos.map(hawb => `
-                        <div class="flex items-center justify-between w-full">
-                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(hawb, searchTerm)}</span>
-                            <div class="flex items-center space-x-2">
-                                <button data-action="copy-text" data-copy-text="${hawb}" class="p-1 rounded-full text-gray-500 hover:bg-gray-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6zM5 9a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z"/></svg>
-                                </button>
-                                <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${hawb}" ${confirmedHawbNos.includes(hawb) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded"/>
-                            </div>
-                        </div>
-                    `).join('')
-                    : `
-                        <div class="flex items-center justify-between w-full">
-                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(formatHawbNoForDisplay(data.hawbNo, data.carrier), searchTerm)}</span>
-                            <div class="flex items-center space-x-2">
-                                <button data-action="copy-text" data-copy-text="${data.hawbNo}" class="p-1 rounded-full text-gray-500 hover:bg-gray-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6zM5 9a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z"/></svg>
-                                </button>
-                                <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${data.hawbNo}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded"/>
-                            </div>
-                        </div>
-                    `;
+                const hawbHtml = hawbNos.map(hawb => `
+                    <div class="flex items-center justify-between w-full">
+                        <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(hawb, searchTerm)}</span>
+                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${hawb}" ${confirmedHawbNos.includes(hawb) || (hawbNos.length === 1 && data.isHawbConfirmed) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                    </div>
+                `).join('');
 
                 const detailsHtml = `
                     <div class="flex items-start space-x-2.5">
@@ -1426,22 +1359,18 @@
 
         let newCount = 0;
         let updateCount = 0;
-        let globalItemCounter = 1; // Global sequential counter for all items
 
         if (sortedGeminiItems.length > 0) {
-            const finalItemsPromises = sortedGeminiItems.map(async (item) => {
-                const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.receiverAddressOriginal); // Use receiverAddressOriginal for detail address validation
+            const finalItemsPromises = sortedGeminiItems.map(async (item, index) => {
+                const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
                 
-                // Assign a new global sequential 'no' to ALL items
-                const assignedNo = globalItemCounter++; 
-
                 return {
-                    no: assignedNo, // All items get a new global sequential number
+                    no: index + 1, // Assign a new global sequential number
                     carrier: item.carrier || 'SF',
                     hawbNo: item.hawbNo || '',
                     baseAddress: baseAddress || '',
                     detailAddress: detailAddress || '',
-                    receiverAddressOriginal: item.receiverAddress || '', // Keep original AI extracted address
+                    receiverAddressOriginal: item.receiverAddress || '',
                     companyNameOriginal: item.receiverCompanyName || '',
                     receiverNameOriginal: item.receiverName || '',
                     companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
@@ -1458,10 +1387,9 @@
             
             // Replace existing deliveryItems with the new, sorted, and re-numbered list
             deliveryItems = finalItems;
-            newCount = finalItems.length; // All are "new" in terms of this scan operation
-            updateCount = 0; // No specific update count as we replace the list
+            newCount = finalItems.length;
+            updateCount = 0;
 
-            deliveryItems.sort((a, b) => a.no - b.no); // Final sort by the new 'no'
             saveDeliveryItemsToLocalStorage();
         }
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
@@ -1485,7 +1413,7 @@
             const timeString = `(소요 시간: ${minutes}분 ${seconds}초)`;
 
             if (result.failedFiles.length === 0) {
-                showMessage(`${result.newCount}개의 카드가 새로 생성되었습니다. ${timeString}`); // Adjusted message for replacement logic
+                showMessage(`${result.newCount}개의 카드가 새로 생성되었습니다. ${timeString}`);
             } else {
                 failedFileObjects = result.failedFiles;
                 const successCount = initialFiles.length - failedFileObjects.length;
