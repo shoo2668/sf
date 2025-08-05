@@ -889,7 +889,7 @@
                     if (newStatus !== '배송전') {
                         updatedItem.isHawbConfirmed = true;
                         if (item.hawbNo.includes('\n')) {
-                            const hawbNos = item.hawbNo.split('\n');
+                            const hawbNos = item.hawbNo.split('\n').filter(Boolean);
                             updatedItem.confirmedHawbNos = hawbNos;
                         }
                     } else {
@@ -945,8 +945,11 @@
                             console.error("체크인 실패 (주소 좌표 획득 오류):", error.message);
                             closeConfirmationModal();
                             showMessage(`주소 좌표를 가져올 수 없습니다: ${error.message}\n주소를 확인하고 다시 시도해주세요.`, '오류');
-                            allCheckboxes.forEach(cb => { cb.checked = false; cb.disabled = false; });
+                            allCheckboxes.forEach(cb => { cb.checked = false; });
                             item.confirmedHawbNos = [];
+                            saveDeliveryItemsToLocalStorage(); // Save the reverted state
+                            renderDeliveryCards(activeFilter); // Re-render to show unchecked boxes
+                            allCheckboxes.forEach(cb => cb.disabled = false);
                             return;
                         }
                     }
@@ -965,7 +968,7 @@
                 if (item.status === '배송중') {
                     item.isHawbConfirmed = false;
                     item.status = '배송전';
-                    item.confirmedHawbNos = [];
+                    // Do not clear confirmedHawbNos here, to remember partial checks
                     
                     saveDeliveryItemsToLocalStorage();
                     searchTerm = '';
@@ -983,14 +986,18 @@
             const addressForMapSearch = item.baseAddress || '';
             const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
             const textarea = document.createElement('textarea');
-textarea.value = textToCopy;
+            textarea.value = textToCopy;
             textarea.style.position = 'fixed';
             textarea.style.opacity = 0;
             document.body.appendChild(textarea);
             textarea.focus();
             textarea.select();
-            try { document.execCommand('copy'); }
-            catch (err) { console.error('클립보드 복사 실패:', err); showMessage('클립보드 복사에 실패했습니다.', '복사 실패'); }
+            try { 
+                document.execCommand('copy'); 
+            } catch (err) { 
+                console.error('클립보드 복사 실패:', err); 
+                showMessage('클립보드 복사에 실패했습니다.', '복사 실패'); 
+            }
             document.body.removeChild(textarea);
             window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
         };
@@ -1750,11 +1757,15 @@ textarea.value = textToCopy;
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
                 deliveryItems = parsedItems.map(item => {
+                    // Ensure backward compatibility for items stored before these fields were added
                     if (typeof item.addressLocation === 'undefined') {
                         item.addressLocation = null;
                     }
                     if (typeof item.confirmedHawbNos === 'undefined') {
                         item.confirmedHawbNos = [];
+                    }
+                    if (typeof item.carrier === 'undefined') {
+                        item.carrier = 'SF'; // Default to SF for old data
                     }
                     return item;
                 }).sort((a, b) => a.no - b.no);
