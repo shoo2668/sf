@@ -244,8 +244,8 @@
         *   **Assign Sequential 'no':** Since UPS invoices lack a printed number, you MUST assign a sequential number starting from 1 for each invoice block you identify in the image.
         *   **Extract 'hawbNo':** The 'TrackingNumber' (usually starting with "1Z...") is located BELOW the recipient's info. If there are multiple TrackingNumbers for one recipient, combine them into a single string separated by a newline character ('\\n').
         *   **Extract Names:**
-            *   `receiverCompanyName`: The text next to "Total:".
-            *   `receiverName`: The text next to "NDOC".
+            *   "receiverCompanyName": The text next to "Total:".
+            *   "receiverName": The text next to "NDOC".
         *   **Extract 'receiverAddress':** The text next to "운임:".
         *   **Extract 'receiverPhone':** The text next to "참고료:".
         *   Set the "carrier" field to "UPS".
