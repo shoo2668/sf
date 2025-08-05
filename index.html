@@ -302,7 +302,7 @@
 
         const setVersionInfo = () => {
             const version = "v1.8.0 - 2024-05-27";
-            const changelog = "체크박스 기능 오류 수정 및 안정성 강화";
+            const changelog = "체크박스 기능 오류 수정 및 상태 관리 로직 안정화";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -892,10 +892,8 @@
                     const updatedItem = { ...item, status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail };
                     if (newStatus !== '배송전') {
                         updatedItem.isHawbConfirmed = true;
-                        if (item.hawbNo.includes('\n')) {
-                            const hawbNos = item.hawbNo.split('\n').filter(Boolean);
-                            updatedItem.confirmedHawbNos = hawbNos;
-                        }
+                        const hawbNos = item.hawbNo.split('\n').filter(Boolean);
+                        updatedItem.confirmedHawbNos = hawbNos;
                     } else {
                         updatedItem.isHawbConfirmed = false;
                         updatedItem.confirmedHawbNos = [];
@@ -931,6 +929,7 @@
             }
 
             const allChecked = allCheckboxes.length > 0 && Array.from(allCheckboxes).every(cb => cb.checked);
+            item.isHawbConfirmed = allChecked; // Sync isHawbConfirmed with allChecked status
 
             if (allChecked) { // All boxes are now checked
                 if (item.status === '배송전') {
@@ -951,6 +950,7 @@
                             showMessage(`주소 좌표를 가져올 수 없습니다: ${error.message}\n주소를 확인하고 다시 시도해주세요.`, '오류');
                             allCheckboxes.forEach(cb => { cb.checked = false; });
                             item.confirmedHawbNos = [];
+                            item.isHawbConfirmed = false;
                             saveDeliveryItemsToLocalStorage(); // Save the reverted state
                             renderDeliveryCards(activeFilter); // Re-render to show unchecked boxes
                             allCheckboxes.forEach(cb => cb.disabled = false);
@@ -958,7 +958,6 @@
                         }
                     }
                     
-                    item.isHawbConfirmed = true;
                     item.status = '배송중';
                     
                     saveDeliveryItemsToLocalStorage();
@@ -970,9 +969,7 @@
                 }
             } else { // At least one box is unchecked
                 if (item.status === '배송중') {
-                    item.isHawbConfirmed = false;
                     item.status = '배송전';
-                    // Do not clear confirmedHawbNos here, to remember partial checks
                     
                     saveDeliveryItemsToLocalStorage();
                     searchTerm = '';
@@ -1065,22 +1062,12 @@
                 const hawbNos = (data.hawbNo || '').split('\n').filter(Boolean);
                 const confirmedHawbNos = data.confirmedHawbNos || [];
                 
-                let hawbHtml;
-                if (hawbNos.length > 1) {
-                    hawbHtml = hawbNos.map(hawb => `
-                        <div class="flex items-center justify-between w-full">
-                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(hawb, searchTerm)}</span>
-                            <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${hawb}" ${confirmedHawbNos.includes(hawb) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
-                        </div>
-                    `).join('');
-                } else {
-                    hawbHtml = `
-                        <div class="flex items-center justify-between w-full">
-                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(formatHawbNoForDisplay(data.hawbNo, data.carrier), searchTerm)}</span>
-                            <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${data.hawbNo}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
-                        </div>
-                    `;
-                }
+                const hawbHtml = hawbNos.map(hawb => `
+                    <div class="flex items-center justify-between w-full">
+                        <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(formatHawbNoForDisplay(hawb, data.carrier), searchTerm)}</span>
+                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${hawb}" ${confirmedHawbNos.includes(hawb) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                    </div>
+                `).join('');
 
                 const detailsHtml = `
                     <div class="flex items-start space-x-2.5">
