@@ -241,7 +241,7 @@
         *   Set the "carrier" field to "SF".
 
     *   **If the carrier is "United Parcel Service" (UPS):**
-        *   **Assign Sequential 'no':** Since UPS invoices lack a printed number, you MUST assign a sequential number starting from 1 for each invoice block you identify in the image.
+        *   **Assign Sequential 'no':** You MUST assign a sequential number starting from 1 for each invoice block you identify *within this single image*.
         *   **Extract 'hawbNo':** The 'TrackingNumber' (usually starting with "1Z...") is located BELOW the recipient's info. If there are multiple TrackingNumbers for one recipient, combine them into a single string separated by a newline character ('\\n').
         *   **Extract Names:**
             *   "receiverCompanyName": The text next to "Total:".
@@ -257,25 +257,17 @@
         *   "baseAddressKorean" should be the main, searchable part (e.g., "서울 송파구 양재대로 1300").
         *   "detailAddressKorean" should be the rest (e.g., "올림픽파크포레온 319동 307호").
 
-4.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+4.  **EXTRACT PAGE NUMBER (CRITICAL):**
+    *   Identify the page number (e.g., 'Page: 1', 'Page:1', 'Page 1') from the top right of the image.
+    *   You MUST include this number in the **first object only** of the returned JSON array for this image, using the key "pageNo". Example: \`"pageNo": 1\`. If no page number is found, omit this field.
+
+5.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
   {
-    "carrier": "SF",
-    "no": "40",
-    "hawbNo": "SF028452891 8577",
-    "receiverCompanyName": "Techfiber.Co.,-Ltd",
-    "receiverCompanyNameKorean": "테크파이버",
-    "receiverName": "Richard Kim",
-    "receiverNameKorean": "김리차드",
-    "receiverPhone": "24080670",
-    "receiverAddress": "No.601, 422-dong, yangjae-daero 1300",
-    "baseAddressKorean": "서울 강동구 양재대로 1300",
-    "detailAddressKorean": "422동 601호"
-  },
-  {
     "carrier": "UPS",
+    "pageNo": 1,
     "no": "1",
     "hawbNo": "1Z0R407V0460289285",
     "receiverCompanyName": "MINWOO KWON",
@@ -286,6 +278,19 @@
     "receiverAddress": "67, 390 GURO-GU",
     "baseAddressKorean": "서울 구로구 디지털로 306",
     "detailAddressKorean": "대륭포스트타워 2차 1004호"
+  },
+  {
+    "carrier": "UPS",
+    "no": "2",
+    "hawbNo": "1Z...\\n1Z...",
+    "receiverCompanyName": "SUNGYUN KIM",
+    "receiverCompanyNameKorean": "김성윤",
+    "receiverName": "SUNGYUN KIM",
+    "receiverNameKorean": "김성윤",
+    "receiverPhone": "01054411707",
+    "receiverAddress": "96, 790 YEOKSAM-RO",
+    "baseAddressKorean": "서울 강남구 역삼로 790",
+    "detailAddressKorean": "96"
   }
 ]
 `;
@@ -297,8 +302,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.4.0 - 2024-05-26";
-            const changelog = "페이지 로딩 오류 최종 수정 및 UPS 송장 지원 기능 안정화";
+            const version = "v1.5.0 - 2024-05-27";
+            const changelog = "페이지 번호 인식 기능 추가로 카드 순서 보장, 파일 누락 문제 해결";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1301,7 +1306,7 @@
         const resizedImageObjects = await Promise.all(resizePromises);
         scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
         
-        const tempMergedResults = new Map();
+        let pageResults = [];
         const failedFileObjectsForRetry = [];
         const requestQueue = [...resizedImageObjects]; 
 
@@ -1331,7 +1336,8 @@
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                         if (Array.isArray(parsedData) && parsedData.length > 0) {
-                             return parsedData;
+                            const pageNo = parsedData[0]?.pageNo || 99; // 페이지 번호 없으면 맨 뒤로
+                            return { pageNo, data: parsedData };
                         }
                     }
                     throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
@@ -1351,17 +1357,8 @@
                 const requestObject = requestQueue.shift(); 
                 if (requestObject) {
                     try {
-                        const apiResultArray = await processApiRequest(requestObject);
-                        for (const geminiItem of apiResultArray) {
-                            const no = parseInt(geminiItem.no || '0', 10);
-                            if (no === 0) continue;
-                            
-                            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-                            geminiItem.baseAddressKorean = baseAddress;
-                            geminiItem.detailAddressKorean = detailAddress;
-
-                            tempMergedResults.set(no, geminiItem);
-                        }
+                        const apiResult = await processApiRequest(requestObject);
+                        pageResults.push(apiResult);
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
                         failedFileObjectsForRetry.push(requestObject.file);
@@ -1375,28 +1372,47 @@
         const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
 
+        // Sort results by page number
+        pageResults.sort((a, b) => a.pageNo - b.pageNo);
+
+        // Flatten the sorted results into a single array
+        const sortedGeminiItems = pageResults.flatMap(result => result.data);
+
         let newCount = 0;
         let updateCount = 0;
-        const allNewItems = Array.from(tempMergedResults.values()); 
+        let upsCounter = 1;
 
-        if (allNewItems.length > 0) {
-            const finalItems = allNewItems.map(item => ({
-                no: parseInt(item.no, 10),
-                carrier: item.carrier || 'SF',
-                hawbNo: item.hawbNo || '',
-                baseAddress: item.baseAddressKorean || '',
-                detailAddress: item.detailAddressKorean || '',
-                receiverAddressOriginal: item.receiverAddress || '',
-                companyNameOriginal: item.receiverCompanyName || '',
-                receiverNameOriginal: item.receiverName || '',
-                companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
-                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
-                receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
-                status: '배송전', isHawbConfirmed: false,
-                deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                addressLocation: null,
-                confirmedHawbNos: []
-            }));
+        if (sortedGeminiItems.length > 0) {
+            const finalItemsPromises = sortedGeminiItems.map(async (item) => {
+                const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
+                
+                let finalNo;
+                if (item.carrier === 'UPS') {
+                    finalNo = upsCounter++;
+                } else {
+                    finalNo = parseInt(item.no, 10);
+                }
+
+                return {
+                    no: finalNo,
+                    carrier: item.carrier || 'SF',
+                    hawbNo: item.hawbNo || '',
+                    baseAddress: baseAddress || '',
+                    detailAddress: detailAddress || '',
+                    receiverAddressOriginal: item.receiverAddress || '',
+                    companyNameOriginal: item.receiverCompanyName || '',
+                    receiverNameOriginal: item.receiverName || '',
+                    companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
+                    receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                    receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
+                    status: '배송전', isHawbConfirmed: false,
+                    deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                    addressLocation: null,
+                    confirmedHawbNos: []
+                };
+            });
+
+            const finalItems = await Promise.all(finalItemsPromises);
             
             finalItems.forEach(newItem => {
                 const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
