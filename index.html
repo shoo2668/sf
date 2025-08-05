@@ -297,8 +297,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.3.0 - 2024-05-26";
-            const changelog = "UPS 송장 스캔 지원 추가 (다중 송장번호 및 개별 체크박스 기능 포함)";
+            const version = "v1.3.1 - 2024-05-26";
+            const changelog = "페이지 로딩 SyntaxError 버그 수정 및 안정성 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -992,11 +992,11 @@
             document.body.appendChild(textarea);
             textarea.focus();
             textarea.select();
-            try { 
-                document.execCommand('copy'); 
-            } catch (err) { 
-                console.error('클립보드 복사 실패:', err); 
-                showMessage('클립보드 복사에 실패했습니다.', '복사 실패'); 
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('클립보드 복사 실패:', err);
+                showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
             }
             document.body.removeChild(textarea);
             window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
@@ -1478,7 +1478,7 @@
         try {
             const today = new Date();
             const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            const fileName = `SF-${formattedDate}.json`;
+            const fileName = `DeliveryData-${formattedDate}.json`;
             const dataStr = JSON.stringify(deliveryItems, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
