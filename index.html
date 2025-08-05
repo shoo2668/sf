@@ -301,8 +301,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.7.0 - 2024-05-27";
-            const changelog = "카드 누락/순서 오류 해결, 송장번호 복사 기능 제거";
+            const version = "v1.8.0 - 2024-05-27";
+            const changelog = "체크박스 기능 오류 수정 및 안정성 강화";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -989,7 +989,20 @@
         const openNaverMap = (item) => {
             const addressForMapSearch = item.baseAddress || '';
             const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
-            copyToClipboard(textToCopy);
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = 0;
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('클립보드 복사 실패:', err);
+                showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
+            }
+            document.body.removeChild(textarea);
             window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
         };
 
@@ -1051,12 +1064,23 @@
 
                 const hawbNos = (data.hawbNo || '').split('\n').filter(Boolean);
                 const confirmedHawbNos = data.confirmedHawbNos || [];
-                const hawbHtml = hawbNos.map(hawb => `
-                    <div class="flex items-center justify-between w-full">
-                        <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(hawb, searchTerm)}</span>
-                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${hawb}" ${confirmedHawbNos.includes(hawb) || (hawbNos.length === 1 && data.isHawbConfirmed) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
-                    </div>
-                `).join('');
+                
+                let hawbHtml;
+                if (hawbNos.length > 1) {
+                    hawbHtml = hawbNos.map(hawb => `
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(hawb, searchTerm)}</span>
+                            <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${hawb}" ${confirmedHawbNos.includes(hawb) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                        </div>
+                    `).join('');
+                } else {
+                    hawbHtml = `
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(formatHawbNoForDisplay(data.hawbNo, data.carrier), searchTerm)}</span>
+                            <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${data.hawbNo}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                        </div>
+                    `;
+                }
 
                 const detailsHtml = `
                     <div class="flex items-start space-x-2.5">
