@@ -297,8 +297,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.3.1 - 2024-05-26";
-            const changelog = "페이지 로딩 SyntaxError 버그 수정 및 안정성 개선";
+            const version = "v1.3.2 - 2024-05-26";
+            const changelog = "반복적인 페이지 로딩 SyntaxError 버그 최종 수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1561,7 +1561,7 @@
                 if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                     changeFilter(filterFromUrl, '', initialLoad);
                 } else {
-                    changeFilter('배송준비', '', initialLoad);
+                    changeFilter('배송준비', '', true);
                 }
             }, 0);
             // ------------------------------------
