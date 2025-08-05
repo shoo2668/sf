@@ -8,9 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 88px; /* JS가 동적으로 변경 */ }
-        /* ▼▼▼▼▼ 수정된 부분: body에 padding-top 기본값 추가 ▼▼▼▼▼ */
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; padding-top: 88px; /* JS가 동적으로 변경 */ }
-        /* ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ */
         .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
@@ -229,34 +227,42 @@
     </div>
 
     <script type="text/javascript">
-        const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
+        const GEMINI_PROMPT = `Analyze the provided image of delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
 
-1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
+1.  **IDENTIFY CARRIER:** First, identify the carrier by looking for "SF Express" or "United Parcel Service" logos/text.
 
-2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
+2.  **EXTRACT DATA BASED ON CARRIER:**
 
-3.  **SEPARATE COMPANY AND PERSONAL NAME:**
-    *   **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
-    *   **Scenario B (Combined Field):** If the recipient information is in a single combined field, intelligently separate the company/organization name and the personal name.
-    *   **Handling Edge Cases:**
-        *   If only a personal name is found, put it in "receiverName" and omit "receiverCompanyName".
-        *   If only a company name is found (e.g., "ABC Mart", "(주)DEF"), put it in "receiverCompanyName" and repeat it in "receiverName".
-        *   If you cannot separate them, put the entire text into both "receiverCompanyName" and "receiverName".
+    *   **If the carrier is "SF Express":**
+        *   Extract "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName" from their respective fields.
+        *   Intelligently separate company and personal names if they are in a combined field.
+        *   Set the "carrier" field to "SF".
 
-4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
+    *   **If the carrier is "United Parcel Service" (UPS):**
+        *   **Assign Sequential 'no':** Since UPS invoices lack a printed number, you MUST assign a sequential number starting from 1 for each invoice block you identify in the image.
+        *   **Extract 'hawbNo':** The 'TrackingNumber' (usually starting with "1Z...") is located BELOW the recipient's info. If there are multiple TrackingNumbers for one recipient, combine them into a single string separated by a newline character ('\\n').
+        *   **Extract Names:**
+            *   `receiverCompanyName`: The text next to "Total:".
+            *   `receiverName`: The text next to "NDOC".
+        *   **Extract 'receiverAddress':** The text next to "운임:".
+        *   **Extract 'receiverPhone':** The text next to "참고료:".
+        *   Set the "carrier" field to "UPS".
+
+3.  **TRANSLATE AND SEPARATE (FOR BOTH CARRIERS):**
+    *   Translate "receiverName" and "receiverCompanyName" to Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already Korean, just copy.
     *   Translate "receiverAddress" to a standard Korean address format.
     *   **Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".**
-        *   "baseAddressKorean" should contain the main, searchable part of the address (e.g., "서울 송파구 양재대로 1300").
-        *   "detailAddressKorean" should contain the rest (e.g., "올림픽파크포레온 319동 307호"). Omit if not present.
+        *   "baseAddressKorean" should be the main, searchable part (e.g., "서울 송파구 양재대로 1300").
+        *   "detailAddressKorean" should be the rest (e.g., "올림픽파크포레온 319동 307호").
 
-5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+4.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
   {
+    "carrier": "SF",
     "no": "40",
     "hawbNo": "SF028452891 8577",
     "receiverCompanyName": "Techfiber.Co.,-Ltd",
@@ -269,16 +275,17 @@
     "detailAddressKorean": "422동 601호"
   },
   {
+    "carrier": "UPS",
     "no": "1",
-    "hawbNo": "SF319999130 4534",
-    "receiverCompanyName": "Jiyoung Her",
-    "receiverCompanyNameKorean": "허지영",
-    "receiverName": "Jiyoung Her",
-    "receiverNameKorean": "허지영",
-    "receiverPhone": "01025190714",
-    "receiverAddress": "Songpagu Olympic-ro 102-408",
-    "baseAddressKorean": "서울 송파구 올림픽로",
-    "detailAddressKorean": "102-408"
+    "hawbNo": "1Z0R407V0460289285",
+    "receiverCompanyName": "MINWOO KWON",
+    "receiverCompanyNameKorean": "권민우",
+    "receiverName": "MINWOO KWON",
+    "receiverNameKorean": "권민우",
+    "receiverPhone": "821097925895",
+    "receiverAddress": "67, 390 GURO-GU",
+    "baseAddressKorean": "서울 구로구 디지털로 306",
+    "detailAddressKorean": "대륭포스트타워 2차 1004호"
   }
 ]
 `;
@@ -290,8 +297,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.2.01 - 2024-05-25";
-            const changelog = "상단 필터 바 고정 시 콘텐츠 가려짐 현상 수정";
+            const version = "v1.3.0 - 2024-05-26";
+            const changelog = "UPS 송장 스캔 지원 추가 (다중 송장번호 및 개별 체크박스 기능 포함)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -306,7 +313,7 @@
 
                 switch (action) {
                     case 'toggle-hawb-confirm':
-                        handleCheckboxToggleAndResetSearch(itemNo, target.checked);
+                        handleCheckboxToggleAndResetSearch(itemNo, target);
                         break;
                     case 'open-naver-map':
                         {
@@ -489,11 +496,14 @@
             return cleaned;
         };
 
-        const formatHawbNoForDisplay = (hawbNo) => {
-            if (!hawbNo || hawbNo.length < 4) return hawbNo;
-            const prefix = hawbNo.substring(0, hawbNo.length - 4);
-            const suffix = hawbNo.substring(hawbNo.length - 4);
-            return `${prefix} ${suffix}`;
+        const formatHawbNoForDisplay = (hawbNo, carrier) => {
+            if (!hawbNo) return '';
+            if (carrier === 'SF' && hawbNo.length > 4) {
+                const prefix = hawbNo.substring(0, hawbNo.length - 4);
+                const suffix = hawbNo.substring(hawbNo.length - 4);
+                return `${prefix} ${suffix}`;
+            }
+            return hawbNo;
         };
 
         const formatCompletionTime = (dateTimeString) => {
@@ -873,69 +883,107 @@
             localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
         };
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
-            deliveryItems = deliveryItems.map(item => item.no === itemNo ? { ...item, status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail, isHawbConfirmed: newStatus !== '배송전' } : item);
+            deliveryItems = deliveryItems.map(item => {
+                if (item.no === itemNo) {
+                    const updatedItem = { ...item, status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail };
+                    if (newStatus !== '배송전') {
+                        updatedItem.isHawbConfirmed = true;
+                        if (item.hawbNo.includes('\n')) {
+                            const hawbNos = item.hawbNo.split('\n');
+                            updatedItem.confirmedHawbNos = hawbNos;
+                        }
+                    } else {
+                        updatedItem.isHawbConfirmed = false;
+                        updatedItem.confirmedHawbNos = [];
+                    }
+                    return updatedItem;
+                }
+                return item;
+            });
             saveDeliveryItemsToLocalStorage();
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
         };
 
-        const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
-            const checkbox = document.querySelector(`input[data-action="toggle-hawb-confirm"][data-no="${itemNo}"]`);
-            if (!checkbox) return;
-
+        const handleCheckboxToggleAndResetSearch = async (itemNo, checkboxElement) => {
             const itemIndex = deliveryItems.findIndex(item => item.no === itemNo);
             if (itemIndex === -1) return;
 
-            if (newCheckboxState) { // 체크박스를 켤 때 (체크인)
-                checkbox.disabled = true;
-                
-                if (deliveryItems[itemIndex].addressLocation) {
-                    showToastMessage('이미 좌표가 저장되어 있습니다.');
-                } else {
-                    showLoadingMessage('주소 좌표 확인 중...');
-                    try {
-                        const coords = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
-                        deliveryItems[itemIndex].addressLocation = coords;
-                        closeConfirmationModal();
-                        showToastMessage('주소 좌표 저장 완료!');
-                    } catch (error) {
-                        console.error("체크인 실패 (주소 좌표 획득 오류):", error.message);
-                        closeConfirmationModal();
-                        showMessage(`주소 좌표를 가져올 수 없습니다: ${error.message}\n주소를 확인하고 다시 시도해주세요.`, '오류');
-                        checkbox.checked = false;
-                        checkbox.disabled = false;
-                        return;
-                    }
-                }
+            const item = deliveryItems[itemIndex];
+            const cardElement = checkboxElement.closest(`[data-no="${item.no}"]`);
+            const allCheckboxes = cardElement.querySelectorAll('input[data-action="toggle-hawb-confirm"]');
 
-                deliveryItems[itemIndex].isHawbConfirmed = true;
-                deliveryItems[itemIndex].status = '배송중';
-                
-                saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
-                checkbox.disabled = false;
-
-            } else { // 체크박스를 끌 때 (체크인 취소)
-                deliveryItems[itemIndex].isHawbConfirmed = false;
-                deliveryItems[itemIndex].status = '배송전';
-                
-                saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
-                showToastMessage('체크인이 취소되었습니다.');
+            // Update confirmedHawbNos state
+            if (!Array.isArray(item.confirmedHawbNos)) {
+                item.confirmedHawbNos = [];
             }
+            const hawbValue = checkboxElement.dataset.hawb;
+            if (checkboxElement.checked) {
+                if (!item.confirmedHawbNos.includes(hawbValue)) {
+                    item.confirmedHawbNos.push(hawbValue);
+                }
+            } else {
+                item.confirmedHawbNos = item.confirmedHawbNos.filter(h => h !== hawbValue);
+            }
+
+            const allChecked = allCheckboxes.length > 0 && Array.from(allCheckboxes).every(cb => cb.checked);
+
+            if (allChecked) { // All boxes are now checked
+                if (item.status === '배송전') {
+                    allCheckboxes.forEach(cb => cb.disabled = true);
+                    
+                    if (item.addressLocation) {
+                        showToastMessage('이미 좌표가 저장되어 있습니다.');
+                    } else {
+                        showLoadingMessage('주소 좌표 확인 중...');
+                        try {
+                            const coords = await getCoordsFromAddress(item.baseAddress);
+                            item.addressLocation = coords;
+                            closeConfirmationModal();
+                            showToastMessage('주소 좌표 저장 완료!');
+                        } catch (error) {
+                            console.error("체크인 실패 (주소 좌표 획득 오류):", error.message);
+                            closeConfirmationModal();
+                            showMessage(`주소 좌표를 가져올 수 없습니다: ${error.message}\n주소를 확인하고 다시 시도해주세요.`, '오류');
+                            allCheckboxes.forEach(cb => { cb.checked = false; cb.disabled = false; });
+                            item.confirmedHawbNos = [];
+                            return;
+                        }
+                    }
+                    
+                    item.isHawbConfirmed = true;
+                    item.status = '배송중';
+                    
+                    saveDeliveryItemsToLocalStorage();
+                    searchTerm = '';
+                    invoiceNumberInput.value = '';
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                    allCheckboxes.forEach(cb => cb.disabled = false);
+                }
+            } else { // At least one box is unchecked
+                if (item.status === '배송중') {
+                    item.isHawbConfirmed = false;
+                    item.status = '배송전';
+                    item.confirmedHawbNos = [];
+                    
+                    saveDeliveryItemsToLocalStorage();
+                    searchTerm = '';
+                    invoiceNumberInput.value = '';
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                    showToastMessage('체크인이 취소되었습니다.');
+                }
+            }
+            // Always save the intermediate state of confirmed HAWBs
+            saveDeliveryItemsToLocalStorage();
         };
         
         const openNaverMap = (item) => {
             const addressForMapSearch = item.baseAddress || '';
             const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
             const textarea = document.createElement('textarea');
-            textarea.value = textToCopy;
+textarea.value = textToCopy;
             textarea.style.position = 'fixed';
             textarea.style.opacity = 0;
             document.body.appendChild(textarea);
@@ -949,7 +997,7 @@
 
         const highlightHawbNo = (hawbNo, term) => {
             if (!hawbNo) return '';
-            const formattedHawbNo = formatHawbNoForDisplay(hawbNo);
+            const formattedHawbNo = hawbNo.replace(/\n/g, '<br>'); // Handle multiline for display
             if (!term || !formattedHawbNo.toLowerCase().includes(term.toLowerCase())) return formattedHawbNo;
             const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
@@ -971,7 +1019,7 @@
             if (searchTerm) {
                 const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
                 dataToRender = baseData.filter(item => 
-                    item.hawbNo?.replace(/[\s-]/g, '').toLowerCase().includes(cleanedSearchTerm)
+                    item.hawbNo?.replace(/[\s-\n]/g, '').toLowerCase().includes(cleanedSearchTerm)
                 );
             } else {
                 dataToRender = baseData;
@@ -998,6 +1046,26 @@
 
                 const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
                 const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
+
+                const carrierBadge = data.carrier === 'UPS' 
+                    ? `<span class="text-xs font-bold text-yellow-700 bg-yellow-300 px-2 py-1 rounded-full">UPS</span>`
+                    : `<span class="text-xs font-bold text-red-700 bg-red-200 px-2 py-1 rounded-full">SF</span>`;
+
+                const hawbNos = (data.hawbNo || '').split('\n').filter(Boolean);
+                const confirmedHawbNos = data.confirmedHawbNos || [];
+                const hawbHtml = hawbNos.length > 1
+                    ? hawbNos.map(hawb => `
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(hawb, searchTerm)}</span>
+                            <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${hawb}" ${confirmedHawbNos.includes(hawb) ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                        </div>
+                    `).join('')
+                    : `
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(formatHawbNoForDisplay(data.hawbNo, data.carrier), searchTerm)}</span>
+                            <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-hawb="${data.hawbNo}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                        </div>
+                    `;
 
                 const detailsHtml = `
                     <div class="flex items-start space-x-2.5">
@@ -1070,12 +1138,12 @@
                                             <h3 class="text-3xl font-semibold text-red-500">${data.no}</h3>
                                             ${distanceInfo}
                                         </div>
-                                        <div class="pt-1.5">
-                                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
+                                        <div class="pt-1.5 flex flex-col space-y-1">
+                                            ${hawbHtml}
                                         </div>
                                     </div>
                                     <div class="pt-1.5">
-                                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                                        ${carrierBadge}
                                     </div>
                                 </div>
                             </div>
@@ -1307,6 +1375,7 @@
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
                 no: parseInt(item.no, 10),
+                carrier: item.carrier || 'SF',
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
@@ -1318,7 +1387,8 @@
                 receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                addressLocation: null
+                addressLocation: null,
+                confirmedHawbNos: []
             }));
             
             finalItems.forEach(newItem => {
@@ -1682,6 +1752,9 @@
                 deliveryItems = parsedItems.map(item => {
                     if (typeof item.addressLocation === 'undefined') {
                         item.addressLocation = null;
+                    }
+                    if (typeof item.confirmedHawbNos === 'undefined') {
+                        item.confirmedHawbNos = [];
                     }
                     return item;
                 }).sort((a, b) => a.no - b.no);
