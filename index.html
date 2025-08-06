@@ -227,59 +227,56 @@
     </div>
 
     <script type="text/javascript">
-        const GEMINI_PROMPT = `Analyze the provided image of a delivery invoice page. Your task is to extract all key information and follow the specified format precisely based on the carrier.
+        const GEMINI_PROMPT = `Analyze the provided image of delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array, performing all necessary processing.
 
-**PRIMARY INSTRUCTIONS:**
+**CRITICAL INSTRUCTIONS:**
 
-1.  **IDENTIFY CARRIER:** First, identify the carrier ("SF Express" or "United Parcel Service"). The entire output structure depends on this.
+1.  **IDENTIFY CARRIER:** First, identify the carrier ("SF Express" or "United Parcel Service").
 
 2.  **EXTRACT PAGE NUMBER (MANDATORY):**
     *   This is critical for ordering. **You MUST NOT skip this.**
     *   Find the page number (e.g., 'Page: 1', 'Page 1') from the top right.
-    *   Store this number in a top-level "pageNo" field.
-    *   If a page number is absolutely not visible, use \`"pageNo": 9999\`.
+    *   Include this number in the **first object only** of the returned JSON array, using the key "pageNo".
+    *   If a page number is absolutely not visible, omit this field.
 
-3.  **TRANSLATE & SEPARATE (MANDATORY FOR ALL DATA):**
-    *   For all extracted names and addresses, you MUST translate them into standard Korean.
-    *   **Names:** Translate "receiverName" and "receiverCompanyName" to Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already Korean, just copy.
-    *   **Addresses:** Translate "receiverAddress" to a standard Korean address format. Then, separate it into "baseAddressKorean" (main part, e.g., "서울 송파구 양재대로 1300") and "detailAddressKorean" (the rest, e.g., "올림픽파크포레온 319동 307호").
+3.  **PROCESS EACH INVOICE BLOCK INTO A JSON OBJECT:**
 
-**OUTPUT FORMAT BY CARRIER:**
+    *   **If the carrier is "SF Express":**
+        *   A block is a standard SF invoice layout.
+        *   Extract "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
 
-*   **If carrier is "SF Express":**
-    *   Output a **JSON array of objects**.
-    *   Each object represents one delivery item and MUST contain:
-        *   "carrier": "SF"
-        *   "no", "hawbNo"
-        *   "receiverCompanyName", "receiverCompanyNameKorean"
-        *   "receiverName", "receiverNameKorean"
-        *   "receiverPhone"
-        *   "receiverAddress" (original full address)
-        *   "baseAddressKorean", "detailAddressKorean"
-    *   Include the "pageNo" in the **first object only** of the array.
+    *   **If the carrier is "United Parcel Service" (UPS):**
+        *   **CRITICAL GROUPING:** A single invoice block starts with the recipient's details (lines with "Total:", "NDOC:", "운임:", "참고료:") and **ENDS** with the "TrackingNumber" (starts with "1Z...") that appears directly below those details.
+        *   You MUST correctly associate the "TrackingNumber" with the recipient details immediately above it. **DO NOT mis-associate the TrackingNumber with the *next* recipient block.**
+        *   Extract "hawbNo" from the "TrackingNumber" field.
+        *   Extract "receiverCompanyName" from the text next to "Total:".
+        *   Extract "receiverName" from the text next to "NDOC".
+        *   Extract "receiverAddress" from the text next to "운임:".
+        *   Extract "receiverPhone" from the text next to "참고료:".
+        *   **CRITICAL ORDERING:** The order of objects in the JSON array MUST strictly reflect the visual top-to-bottom order of the invoice blocks on the page. Do NOT assign a "no" field for UPS items.
 
-*   **If carrier is "United Parcel Service" (UPS):**
-    *   Output a **SINGLE JSON OBJECT**.
-    *   This object will contain the top-level "pageNo" and "carrier": "UPS".
-    *   It will also contain several arrays of data. **Go down the page and extract all instances of each field type into its corresponding array, maintaining the strict top-to-bottom order.**
-    *   The required arrays are:
-        *   \`trackingNumbers\`: All "TrackingNumber" values (starting with "1Z...").
-        *   \`companyNames\`: All texts next to "Total:".
-        *   \`receiverNames\`: All texts next to "NDOC".
-        *   \`addresses\`: All texts next to "운임:".
-        *   \`phoneNumbers\`: All texts next to "참고료:".
-    *   **CRITICAL FOR DATA INTEGRITY:** The number of elements in ALL these arrays **MUST BE EXACTLY THE SAME**. If a field is missing for an item (e.g., no phone number), you MUST add an empty string "" to its corresponding array at the correct index to maintain alignment. Do not skip it.
+4.  **TRANSLATE & SEPARATE (MANDATORY FOR ALL CARRIERS):**
+    *   For each object you create, you MUST perform the following translations and separations:
+    *   **Translate Names:** Translate the extracted "receiverName" and "receiverCompanyName" to Korean. Store them in new fields: "receiverNameKorean" and "receiverCompanyNameKorean". If already Korean, just copy the values.
+    *   **Translate & Separate Address:** Translate the extracted "receiverAddress" to a standard Korean address format. Then, you MUST separate this translated address into two new fields:
+        *   "baseAddressKorean": The main, searchable part (e.g., "서울 송파구 양재대로 1300").
+        *   "detailAddressKorean": The rest of the address details (e.g., "올림픽파크포레온 319동 307호").
 
-**Example Output for UPS (SINGLE OBJECT):**
+5.  **FINAL OUTPUT:** Your entire output MUST be a single, valid JSON array of fully processed objects.
+
+**Example Output Object (should be in a JSON array):**
 \`\`\`json
 {
   "carrier": "UPS",
-  "pageNo": 1,
-  "trackingNumbers": ["1Z...", "1Z...", "1Z..."],
-  "companyNames": ["Company A", "Company B", "Company C"],
-  "receiverNames": ["Receiver A", "Receiver B", "Receiver C"],
-  "addresses": ["Address A...", "Address B...", "Address C..."],
-  "phoneNumbers": ["Phone A", "", "Phone C"]
+  "hawbNo": "1Z...",
+  "receiverCompanyName": "Original Company Name",
+  "receiverCompanyNameKorean": "번역된 회사 이름",
+  "receiverName": "Original Receiver Name",
+  "receiverNameKorean": "번역된 수취인 이름",
+  "receiverPhone": "010-1234-5678",
+  "receiverAddress": "Original Full Address Text",
+  "baseAddressKorean": "번역 및 분리된 기본 주소",
+  "detailAddressKorean": "번역 및 분리된 상세 주소"
 }
 \`\`\`
 `;
@@ -1315,9 +1312,11 @@
 
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        return parsedData;
+                        if (Array.isArray(parsedData)) {
+                            return parsedData;
+                        }
                     }
-                    throw new Error("AI가 유효한 JSON 형식으로 응답하지 않았습니다.");
+                    throw new Error("AI가 유효한 JSON 배열 형식으로 응답하지 않았습니다.");
                 } catch (error) {
                     lastError = error;
                     console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
@@ -1349,49 +1348,18 @@
         const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
 
-        pageResults.sort((a, b) => (a.pageNo || 9999) - (b.pageNo || 9999));
+        pageResults.sort((a, b) => (a[0]?.pageNo || 9999) - (b[0]?.pageNo || 9999));
 
-        let rawItems = [];
-        for (const result of pageResults) {
-            if (result.carrier === 'UPS') {
-                const { trackingNumbers = [], companyNames = [], receiverNames = [], addresses = [], phoneNumbers = [] } = result;
-                const lengths = [trackingNumbers.length, companyNames.length, receiverNames.length, addresses.length, phoneNumbers.length];
-                const allLengthsEqual = lengths.every(len => len === lengths[0]);
-
-                if (!allLengthsEqual) {
-                    console.warn(`[Page ${result.pageNo}] 데이터 배열 길이가 일치하지 않아 해당 페이지를 건너뜁니다.`, lengths);
-                    showToastMessage(`페이지 ${result.pageNo} 데이터가 불완전하여 건너뜁니다.`);
-                    continue;
-                }
-
-                for (let i = 0; i < lengths[0]; i++) {
-                    rawItems.push({
-                        carrier: 'UPS',
-                        hawbNo: trackingNumbers[i],
-                        receiverCompanyName: companyNames[i],
-                        receiverName: receiverNames[i],
-                        receiverAddress: addresses[i],
-                        receiverPhone: phoneNumbers[i],
-                        // AI가 번역/분리한 데이터를 그대로 사용
-                        receiverCompanyNameKorean: companyNames[i], // 임시
-                        receiverNameKorean: receiverNames[i], // 임시
-                        baseAddressKorean: addresses[i], // 임시
-                        detailAddressKorean: '' // 임시
-                    });
-                }
-            } else if (Array.isArray(result)) { // SF Express
-                rawItems.push(...result);
-            }
-        }
+        const rawItems = pageResults.flat();
 
         const processAndTranslateItem = async (item, index) => {
-            const { baseAddressKorean, detailAddressKorean } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
+            const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
             return {
                 no: index + 1,
                 carrier: item.carrier || 'SF',
                 hawbNo: item.hawbNo || '',
-                baseAddress: baseAddressKorean,
-                detailAddress: detailAddressKorean,
+                baseAddress: baseAddress,
+                detailAddress: detailAddress,
                 receiverAddressOriginal: item.receiverAddress || '',
                 companyNameOriginal: item.receiverCompanyName || '',
                 receiverNameOriginal: item.receiverName || '',
