@@ -227,74 +227,91 @@
     </div>
 
     <script type="text/javascript">
-        const GEMINI_PROMPT = `Analyze the provided image of delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
+        const GEMINI_PROMPT = `Analyze the provided image of a delivery invoice page. Your task is to extract all key information into a single, structured JSON object.
 
 **CRITICAL INSTRUCTIONS:**
 
-1.  **IDENTIFY CARRIER:** First, identify the carrier by looking for "SF Express" or "United Parcel Service" logos/text.
+1.  **IDENTIFY CARRIER:** First, identify the carrier by looking for "SF Express" or "United Parcel Service" logos/text. Your output format will depend on this.
 
-2.  **EXTRACT DATA BASED ON CARRIER:**
+2.  **EXTRACT PAGE NUMBER (MANDATORY):**
+    *   This is a critical step for ordering. **You MUST NOT skip this.**
+    *   Identify the page number (e.g., 'Page: 1', 'Page 1') from the top right of the image.
+    *   Store this number in a top-level "pageNo" field.
+    *   If a page number is absolutely not visible, use \`"pageNo": 9999\`.
+
+3.  **CHOOSE OUTPUT FORMAT BASED ON CARRIER:**
 
     *   **If the carrier is "SF Express":**
-        *   Extract "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName" from their respective fields.
-        *   Intelligently separate company and personal names if they are in a combined field.
-        *   Set the "carrier" field to "SF".
+        *   Your output must be a **JSON array of objects**.
+        *   Each object in the array represents one delivery item and must contain: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", "receiverName".
+        *   Also include the "pageNo" in the **first object only** of the array.
+        *   Set "carrier" to "SF" for each object.
 
     *   **If the carrier is "United Parcel Service" (UPS):**
-        *   **CRITICAL GROUPING LOGIC:** A single UPS invoice block is defined as a group containing the recipient's details (\`Total:\`, \`NDOC\`, \`운임:\`, \`참고료:\`) AND the \`TrackingNumber\` (starts with "1Z...") that appears directly underneath those details. You MUST associate the \`TrackingNumber\` with the recipient details immediately above it. Do not let the \`TrackingNumber\` "slip" to the next recipient.
-        *   **Extract 'hawbNo':** Extract the \`TrackingNumber\` that belongs to the recipient block directly above it. If multiple \`TrackingNumber\` lines exist for one recipient, combine them into a single string separated by a newline character ('\\n').
-        *   **Extract Names:**
-            *   "receiverCompanyName": The text next to "Total:".
-            *   "receiverName": The text next to "NDOC".
-        *   **Extract 'receiverAddress':** The text next to "운임:".
-        *   **Extract 'receiverPhone':** The text next to "참고료:".
-        *   Set the "carrier" field to "UPS".
-        *   **CRITICAL for UPS:** The order of objects in the JSON array for this image MUST strictly reflect the visual top-to-bottom order of the invoice blocks. Do NOT assign any 'no' field for UPS items; JavaScript will handle the global numbering.
+        *   Your output must be a **SINGLE JSON OBJECT**, not an array.
+        *   This object will contain the "pageNo" and several arrays of data.
+        *   **Go down the page and extract all instances of each field type into its corresponding array, maintaining the top-to-bottom order.**
+        *   The required arrays are:
+            *   \`trackingNumbers\`: All "TrackingNumber" values (starting with "1Z..."). If multiple "1Z" numbers are for a single recipient, combine them with a newline ('\\n') before adding to the array.
+            *   \`companyNames\`: All texts next to "Total:".
+            *   \`receiverNames\`: All texts next to "NDOC".
+            *   \`addresses\`: All texts next to "운임:".
+            *   \`phoneNumbers\`: All texts next to "참고료:".
+        *   **CRITICAL:** The number of elements in each array should be the same. If a field is missing for an item, add an empty string "" to its array to maintain the correct index alignment.
+        *   Also include a top-level "carrier" field with the value "UPS".
 
-3.  **TRANSLATE AND SEPARATE (FOR BOTH CARRIERS):**
-    *   Translate "receiverName" and "receiverCompanyName" to Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already Korean, just copy.
-    *   Translate "receiverAddress" to a standard Korean address format.
-    *   **Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".**
-        *   "baseAddressKorean" should be the main, searchable part (e.g., "서울 송파구 양재대로 1300").
-        *   "detailAddressKorean" should be the rest (e.g., "올림픽파크포레온 319동 307호").
+4.  **TRANSLATION AND SEPARATION (POST-PROCESSING):**
+    *   For all extracted data, translate English names and addresses to Korean.
+    *   Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean". This step will be handled by the application after receiving the data. You only need to provide the raw extracted text.
 
-4.  **EXTRACT PAGE NUMBER (MANDATORY):**
-    *   **This is a critical step for ordering. You MUST NOT skip this.**
-    *   Identify the page number (e.g., 'Page: 1', 'Page:1', 'Page 1', 'Page:2') from the top right of the image.
-    *   You MUST include this number in the **first object only** of the returned JSON array for this image, using the key "pageNo". Example: \`"pageNo": 1\`.
-    *   If a page number is absolutely not visible anywhere on the image, and only in that case, you may omit the "pageNo" field.
+**Example Output for UPS (SINGLE OBJECT):**
+\`\`\`json
+{
+  "carrier": "UPS",
+  "pageNo": 1,
+  "trackingNumbers": [
+    "1Z...",
+    "1Z...\\n1Z...",
+    "1Z..."
+  ],
+  "companyNames": [
+    "Company A",
+    "Company B",
+    "Company C"
+  ],
+  "receiverNames": [
+    "Receiver A",
+    "Receiver B",
+    "Receiver C"
+  ],
+  "addresses": [
+    "Address A...",
+    "Address B...",
+    "Address C..."
+  ],
+  "phoneNumbers": [
+    "Phone A",
+    "Phone B",
+    "Phone C"
+  ]
+}
+\`\`\`
 
-5.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
-
-**Example Output (DO NOT COPY VALUES, EXTRACT FROM IMAGE):**
+**Example Output for SF Express (ARRAY OF OBJECTS):**
+\`\`\`json
 [
   {
     "carrier": "SF",
-    "no": "(extracted number)",
-    "hawbNo": "(extracted SF hawbNo)",
-    "receiverCompanyName": "(extracted company name)",
-    "receiverCompanyNameKorean": "(translated company name)",
-    "receiverName": "(extracted receiver name)",
-    "receiverNameKorean": "(translated receiver name)",
-    "receiverPhone": "(extracted phone number)",
-    "receiverAddress": "(original full address)",
-    "baseAddressKorean": "(translated and separated base address)",
-    "detailAddressKorean": "(translated and separated detail address)"
-  },
-  {
-    "carrier": "UPS",
     "pageNo": 1,
-    "hawbNo": "(extracted TrackingNumber, use '\\n' for multiple)",
-    "receiverCompanyName": "(text next to 'Total:')",
-    "receiverCompanyNameKorean": "(translated company name)",
-    "receiverName": "(text next to 'NDOC')",
-    "receiverNameKorean": "(translated receiver name)",
-    "receiverPhone": "(text next to '참고료:')",
-    "receiverAddress": "(text next to '운임:')",
-    "baseAddressKorean": "(translated and separated base address)",
-    "detailAddressKorean": "(translated and separated detail address)"
+    "no": "1",
+    "hawbNo": "SF...",
+    "receiverCompanyName": "...",
+    "receiverName": "...",
+    "receiverPhone": "...",
+    "receiverAddress": "..."
   }
 ]
+\`\`\`
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -304,8 +321,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.9.03 - 2024-05-27";
-            const changelog = "여러 페이지 스캔 시 순서가 섞이는 현상 수정 (AI 프롬프트 pageNo 추출 로직 강화)";
+            const version = "v1.9.04 - 2024-05-28";
+            const changelog = "AI 스캔 안정성 대폭 개선 (AI 역할 단순화 및 JS 후처리 강화 방식으로 변경)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1299,7 +1316,7 @@
         const resizedImageObjects = await Promise.all(resizePromises);
         scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
         
-        let pageResults = []; // Stores { pageNo, data: [...] } for each image
+        let pageResults = [];
         const failedFileObjectsForRetry = [];
         const requestQueue = [...resizedImageObjects]; 
 
@@ -1328,12 +1345,10 @@
 
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        if (Array.isArray(parsedData) && parsedData.length > 0) {
-                            const pageNo = parsedData[0]?.pageNo || 9999; // Default to a high number if pageNo is missing
-                            return { pageNo, data: parsedData };
-                        }
+                        // The entire parsedData is now the result for this page
+                        return parsedData;
                     }
-                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
+                    throw new Error("AI가 유효한 JSON 형식으로 응답하지 않았습니다.");
                 } catch (error) {
                     lastError = error;
                     console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
@@ -1366,20 +1381,40 @@
         await Promise.all(workerPromises);
 
         // Sort results by page number
-        pageResults.sort((a, b) => a.pageNo - b.pageNo);
+        pageResults.sort((a, b) => (a.pageNo || 9999) - (b.pageNo || 9999));
 
-        // Flatten the sorted results into a single array
-        const sortedGeminiItems = pageResults.flatMap(result => result.data);
+        let allItems = [];
+        for (const result of pageResults) {
+            if (result.carrier === 'UPS') {
+                const { trackingNumbers = [], companyNames = [], receiverNames = [], addresses = [], phoneNumbers = [] } = result;
+                const numItems = Math.min(trackingNumbers.length, companyNames.length, receiverNames.length, addresses.length, phoneNumbers.length);
+
+                if (new Set([trackingNumbers.length, companyNames.length, receiverNames.length, addresses.length, phoneNumbers.length]).size > 1) {
+                    console.warn(`[Page ${result.pageNo}] 데이터 배열 길이가 일치하지 않습니다. 가장 짧은 길이를 기준으로 처리합니다.`, result);
+                }
+
+                for (let i = 0; i < numItems; i++) {
+                    allItems.push({
+                        carrier: 'UPS',
+                        hawbNo: trackingNumbers[i],
+                        receiverCompanyName: companyNames[i],
+                        receiverName: receiverNames[i],
+                        receiverAddress: addresses[i],
+                        receiverPhone: phoneNumbers[i],
+                    });
+                }
+            } else if (Array.isArray(result)) { // SF Express or other array-based results
+                allItems.push(...result);
+            }
+        }
 
         let newCount = 0;
-        let updateCount = 0;
-
-        if (sortedGeminiItems.length > 0) {
-            const finalItemsPromises = sortedGeminiItems.map(async (item, index) => {
+        if (allItems.length > 0) {
+            const finalItemsPromises = allItems.map(async (item, index) => {
                 const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
                 
                 return {
-                    no: index + 1, // Assign a new global sequential number
+                    no: index + 1,
                     carrier: item.carrier || 'SF',
                     hawbNo: item.hawbNo || '',
                     baseAddress: baseAddress || '',
@@ -1399,14 +1434,12 @@
 
             const finalItems = await Promise.all(finalItemsPromises);
             
-            // Replace existing deliveryItems with the new, sorted, and re-numbered list
             deliveryItems = finalItems;
             newCount = finalItems.length;
-            updateCount = 0;
 
             saveDeliveryItemsToLocalStorage();
         }
-        return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
+        return { newCount, updateCount: 0, failedFiles: failedFileObjectsForRetry };
     }
     
     scanAndGenerateButton.addEventListener('click', async () => {
