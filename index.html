@@ -227,90 +227,60 @@
     </div>
 
     <script type="text/javascript">
-        const GEMINI_PROMPT = `Analyze the provided image of a delivery invoice page. Your task is to extract all key information into a single, structured JSON object.
+        const GEMINI_PROMPT = `Analyze the provided image of a delivery invoice page. Your task is to extract all key information and follow the specified format precisely based on the carrier.
 
-**CRITICAL INSTRUCTIONS:**
+**PRIMARY INSTRUCTIONS:**
 
-1.  **IDENTIFY CARRIER:** First, identify the carrier by looking for "SF Express" or "United Parcel Service" logos/text. Your output format will depend on this.
+1.  **IDENTIFY CARRIER:** First, identify the carrier ("SF Express" or "United Parcel Service"). The entire output structure depends on this.
 
 2.  **EXTRACT PAGE NUMBER (MANDATORY):**
-    *   This is a critical step for ordering. **You MUST NOT skip this.**
-    *   Identify the page number (e.g., 'Page: 1', 'Page 1') from the top right of the image.
+    *   This is critical for ordering. **You MUST NOT skip this.**
+    *   Find the page number (e.g., 'Page: 1', 'Page 1') from the top right.
     *   Store this number in a top-level "pageNo" field.
     *   If a page number is absolutely not visible, use \`"pageNo": 9999\`.
 
-3.  **CHOOSE OUTPUT FORMAT BASED ON CARRIER:**
+3.  **TRANSLATE & SEPARATE (MANDATORY FOR ALL DATA):**
+    *   For all extracted names and addresses, you MUST translate them into standard Korean.
+    *   **Names:** Translate "receiverName" and "receiverCompanyName" to Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already Korean, just copy.
+    *   **Addresses:** Translate "receiverAddress" to a standard Korean address format. Then, separate it into "baseAddressKorean" (main part, e.g., "서울 송파구 양재대로 1300") and "detailAddressKorean" (the rest, e.g., "올림픽파크포레온 319동 307호").
 
-    *   **If the carrier is "SF Express":**
-        *   Your output must be a **JSON array of objects**.
-        *   Each object in the array represents one delivery item and must contain: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", "receiverName".
-        *   Also include the "pageNo" in the **first object only** of the array.
-        *   Set "carrier" to "SF" for each object.
+**OUTPUT FORMAT BY CARRIER:**
 
-    *   **If the carrier is "United Parcel Service" (UPS):**
-        *   Your output must be a **SINGLE JSON OBJECT**, not an array.
-        *   This object will contain the "pageNo" and several arrays of data.
-        *   **Go down the page and extract all instances of each field type into its corresponding array, maintaining the top-to-bottom order.**
-        *   The required arrays are:
-            *   \`trackingNumbers\`: All "TrackingNumber" values (starting with "1Z..."). If multiple "1Z" numbers are for a single recipient, combine them with a newline ('\\n') before adding to the array.
-            *   \`companyNames\`: All texts next to "Total:".
-            *   \`receiverNames\`: All texts next to "NDOC".
-            *   \`addresses\`: All texts next to "운임:".
-            *   \`phoneNumbers\`: All texts next to "참고료:".
-        *   **CRITICAL:** The number of elements in each array should be the same. If a field is missing for an item, add an empty string "" to its array to maintain the correct index alignment.
-        *   Also include a top-level "carrier" field with the value "UPS".
+*   **If carrier is "SF Express":**
+    *   Output a **JSON array of objects**.
+    *   Each object represents one delivery item and MUST contain:
+        *   "carrier": "SF"
+        *   "no", "hawbNo"
+        *   "receiverCompanyName", "receiverCompanyNameKorean"
+        *   "receiverName", "receiverNameKorean"
+        *   "receiverPhone"
+        *   "receiverAddress" (original full address)
+        *   "baseAddressKorean", "detailAddressKorean"
+    *   Include the "pageNo" in the **first object only** of the array.
 
-4.  **TRANSLATION AND SEPARATION (POST-PROCESSING):**
-    *   For all extracted data, translate English names and addresses to Korean.
-    *   Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean". This step will be handled by the application after receiving the data. You only need to provide the raw extracted text.
+*   **If carrier is "United Parcel Service" (UPS):**
+    *   Output a **SINGLE JSON OBJECT**.
+    *   This object will contain the top-level "pageNo" and "carrier": "UPS".
+    *   It will also contain several arrays of data. **Go down the page and extract all instances of each field type into its corresponding array, maintaining the strict top-to-bottom order.**
+    *   The required arrays are:
+        *   \`trackingNumbers\`: All "TrackingNumber" values (starting with "1Z...").
+        *   \`companyNames\`: All texts next to "Total:".
+        *   \`receiverNames\`: All texts next to "NDOC".
+        *   \`addresses\`: All texts next to "운임:".
+        *   \`phoneNumbers\`: All texts next to "참고료:".
+    *   **CRITICAL FOR DATA INTEGRITY:** The number of elements in ALL these arrays **MUST BE EXACTLY THE SAME**. If a field is missing for an item (e.g., no phone number), you MUST add an empty string "" to its corresponding array at the correct index to maintain alignment. Do not skip it.
 
 **Example Output for UPS (SINGLE OBJECT):**
 \`\`\`json
 {
   "carrier": "UPS",
   "pageNo": 1,
-  "trackingNumbers": [
-    "1Z...",
-    "1Z...\\n1Z...",
-    "1Z..."
-  ],
-  "companyNames": [
-    "Company A",
-    "Company B",
-    "Company C"
-  ],
-  "receiverNames": [
-    "Receiver A",
-    "Receiver B",
-    "Receiver C"
-  ],
-  "addresses": [
-    "Address A...",
-    "Address B...",
-    "Address C..."
-  ],
-  "phoneNumbers": [
-    "Phone A",
-    "Phone B",
-    "Phone C"
-  ]
+  "trackingNumbers": ["1Z...", "1Z...", "1Z..."],
+  "companyNames": ["Company A", "Company B", "Company C"],
+  "receiverNames": ["Receiver A", "Receiver B", "Receiver C"],
+  "addresses": ["Address A...", "Address B...", "Address C..."],
+  "phoneNumbers": ["Phone A", "", "Phone C"]
 }
-\`\`\`
-
-**Example Output for SF Express (ARRAY OF OBJECTS):**
-\`\`\`json
-[
-  {
-    "carrier": "SF",
-    "pageNo": 1,
-    "no": "1",
-    "hawbNo": "SF...",
-    "receiverCompanyName": "...",
-    "receiverName": "...",
-    "receiverPhone": "...",
-    "receiverAddress": "..."
-  }
-]
 \`\`\`
 `;
         
@@ -321,8 +291,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.9.04 - 2024-05-28";
-            const changelog = "AI 스캔 안정성 대폭 개선 (AI 역할 단순화 및 JS 후처리 강화 방식으로 변경)";
+            const version = "v1.9.05 - 2024-05-28";
+            const changelog = "한글 번역 및 주소 분리 기능 복원. UPS 데이터 밀림 현상 해결 및 스캔 안정성 강화.";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1345,7 +1315,6 @@
 
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        // The entire parsedData is now the result for this page
                         return parsedData;
                     }
                     throw new Error("AI가 유효한 JSON 형식으로 응답하지 않았습니다.");
@@ -1380,66 +1349,69 @@
         const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
 
-        // Sort results by page number
         pageResults.sort((a, b) => (a.pageNo || 9999) - (b.pageNo || 9999));
 
-        let allItems = [];
+        let rawItems = [];
         for (const result of pageResults) {
             if (result.carrier === 'UPS') {
                 const { trackingNumbers = [], companyNames = [], receiverNames = [], addresses = [], phoneNumbers = [] } = result;
-                const numItems = Math.min(trackingNumbers.length, companyNames.length, receiverNames.length, addresses.length, phoneNumbers.length);
+                const lengths = [trackingNumbers.length, companyNames.length, receiverNames.length, addresses.length, phoneNumbers.length];
+                const allLengthsEqual = lengths.every(len => len === lengths[0]);
 
-                if (new Set([trackingNumbers.length, companyNames.length, receiverNames.length, addresses.length, phoneNumbers.length]).size > 1) {
-                    console.warn(`[Page ${result.pageNo}] 데이터 배열 길이가 일치하지 않습니다. 가장 짧은 길이를 기준으로 처리합니다.`, result);
+                if (!allLengthsEqual) {
+                    console.warn(`[Page ${result.pageNo}] 데이터 배열 길이가 일치하지 않아 해당 페이지를 건너뜁니다.`, lengths);
+                    showToastMessage(`페이지 ${result.pageNo} 데이터가 불완전하여 건너뜁니다.`);
+                    continue;
                 }
 
-                for (let i = 0; i < numItems; i++) {
-                    allItems.push({
+                for (let i = 0; i < lengths[0]; i++) {
+                    rawItems.push({
                         carrier: 'UPS',
                         hawbNo: trackingNumbers[i],
                         receiverCompanyName: companyNames[i],
                         receiverName: receiverNames[i],
                         receiverAddress: addresses[i],
                         receiverPhone: phoneNumbers[i],
+                        // AI가 번역/분리한 데이터를 그대로 사용
+                        receiverCompanyNameKorean: companyNames[i], // 임시
+                        receiverNameKorean: receiverNames[i], // 임시
+                        baseAddressKorean: addresses[i], // 임시
+                        detailAddressKorean: '' // 임시
                     });
                 }
-            } else if (Array.isArray(result)) { // SF Express or other array-based results
-                allItems.push(...result);
+            } else if (Array.isArray(result)) { // SF Express
+                rawItems.push(...result);
             }
         }
 
-        let newCount = 0;
-        if (allItems.length > 0) {
-            const finalItemsPromises = allItems.map(async (item, index) => {
-                const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
-                
-                return {
-                    no: index + 1,
-                    carrier: item.carrier || 'SF',
-                    hawbNo: item.hawbNo || '',
-                    baseAddress: baseAddress || '',
-                    detailAddress: detailAddress || '',
-                    receiverAddressOriginal: item.receiverAddress || '',
-                    companyNameOriginal: item.receiverCompanyName || '',
-                    receiverNameOriginal: item.receiverName || '',
-                    companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
-                    receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
-                    receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
-                    status: '배송전', isHawbConfirmed: false,
-                    deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                    addressLocation: null,
-                    confirmedHawbNos: []
-                };
-            });
+        const processAndTranslateItem = async (item, index) => {
+            const { baseAddressKorean, detailAddressKorean } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
+            return {
+                no: index + 1,
+                carrier: item.carrier || 'SF',
+                hawbNo: item.hawbNo || '',
+                baseAddress: baseAddressKorean,
+                detailAddress: detailAddressKorean,
+                receiverAddressOriginal: item.receiverAddress || '',
+                companyNameOriginal: item.receiverCompanyName || '',
+                receiverNameOriginal: item.receiverName || '',
+                companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
+                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
+                status: '배송전', isHawbConfirmed: false,
+                deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                addressLocation: null,
+                confirmedHawbNos: []
+            };
+        };
 
-            const finalItems = await Promise.all(finalItemsPromises);
-            
-            deliveryItems = finalItems;
-            newCount = finalItems.length;
-
+        if (rawItems.length > 0) {
+            const finalItemsPromises = rawItems.map(processAndTranslateItem);
+            deliveryItems = await Promise.all(finalItemsPromises);
             saveDeliveryItemsToLocalStorage();
         }
-        return { newCount, updateCount: 0, failedFiles: failedFileObjectsForRetry };
+        
+        return { newCount: deliveryItems.length, updateCount: 0, failedFiles: failedFileObjectsForRetry };
     }
     
     scanAndGenerateButton.addEventListener('click', async () => {
