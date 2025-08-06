@@ -241,7 +241,8 @@
         *   Set the "carrier" field to "SF".
 
     *   **If the carrier is "United Parcel Service" (UPS):**
-        *   **Extract 'hawbNo':** The 'TrackingNumber' (usually starting with "1Z...") is located BELOW the recipient's info. If there are multiple TrackingNumbers for one recipient, combine them into a single string separated by a newline character ('\\n').
+        *   **CRITICAL GROUPING LOGIC:** A single UPS invoice block is defined as a group containing the recipient's details (\`Total:\`, \`NDOC\`, \`운임:\`, \`참고료:\`) AND the \`TrackingNumber\` (starts with "1Z...") that appears directly underneath those details. You MUST associate the \`TrackingNumber\` with the recipient details immediately above it. Do not let the \`TrackingNumber\` "slip" to the next recipient.
+        *   **Extract 'hawbNo':** Extract the \`TrackingNumber\` that belongs to the recipient block directly above it. If multiple \`TrackingNumber\` lines exist for one recipient, combine them into a single string separated by a newline character ('\\n').
         *   **Extract Names:**
             *   "receiverCompanyName": The text next to "Total:".
             *   "receiverName": The text next to "NDOC".
@@ -301,8 +302,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.9.01 - 2024-05-27";
-            const changelog = "체크박스 기능 오류 수정 및 상태 관리 로직 안정화";
+            const version = "v1.9.02 - 2024-05-27";
+            const changelog = "UPS 송장 스캔 시 송장번호가 밀리는 현상 수정 (AI 프롬프트 개선)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
