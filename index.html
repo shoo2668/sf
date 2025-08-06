@@ -263,33 +263,33 @@
 
 5.  **OUTPUT A VALID JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
-**Example Output (Note: 'no' field is omitted for UPS in AI output, will be assigned by JS):**
+**Example Output (DO NOT COPY VALUES, EXTRACT FROM IMAGE):**
 [
   {
     "carrier": "SF",
-    "no": "40",
-    "hawbNo": "SF028452891 8577",
-    "receiverCompanyName": "Techfiber.Co.,-Ltd",
-    "receiverCompanyNameKorean": "테크파이버",
-    "receiverName": "Richard Kim",
-    "receiverNameKorean": "김리차드",
-    "receiverPhone": "24080670",
-    "receiverAddress": "No.601, 422-dong, yangjae-daero 1300",
-    "baseAddressKorean": "서울 강동구 양재대로 1300",
-    "detailAddressKorean": "422동 601호"
+    "no": "(extracted number)",
+    "hawbNo": "(extracted SF hawbNo)",
+    "receiverCompanyName": "(extracted company name)",
+    "receiverCompanyNameKorean": "(translated company name)",
+    "receiverName": "(extracted receiver name)",
+    "receiverNameKorean": "(translated receiver name)",
+    "receiverPhone": "(extracted phone number)",
+    "receiverAddress": "(original full address)",
+    "baseAddressKorean": "(translated and separated base address)",
+    "detailAddressKorean": "(translated and separated detail address)"
   },
   {
     "carrier": "UPS",
-    "pageNo": 1,
-    "hawbNo": "1Z0R407V0460289285",
-    "receiverCompanyName": "MINWOO KWON",
-    "receiverCompanyNameKorean": "권민우",
-    "receiverName": "MINWOO KWON",
-    "receiverNameKorean": "권민우",
-    "receiverPhone": "821097925895",
-    "receiverAddress": "67, 390 GURO-GU",
-    "baseAddressKorean": "서울 구로구 디지털로 306",
-    "detailAddressKorean": "대륭포스트타워 2차 1004호"
+    "pageNo": "(extracted page number, only in first item)",
+    "hawbNo": "(extracted TrackingNumber, use '\\n' for multiple)",
+    "receiverCompanyName": "(text next to 'Total:')",
+    "receiverCompanyNameKorean": "(translated company name)",
+    "receiverName": "(text next to 'NDOC')",
+    "receiverNameKorean": "(translated receiver name)",
+    "receiverPhone": "(text next to '참고료:')",
+    "receiverAddress": "(text next to '운임:')",
+    "baseAddressKorean": "(translated and separated base address)",
+    "detailAddressKorean": "(translated and separated detail address)"
   }
 ]
 `;
