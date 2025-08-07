@@ -236,7 +236,7 @@
 2.  **EXTRACT PAGE NUMBER (MANDATORY):**
     *   This is critical for ordering. **You MUST NOT skip this.**
     *   Find the page number (e.g., 'Page: 1', 'Page 1') from the top right.
-    *   Include this number in the **first object only** of the returned JSON array, using the key "pageNo".
+    *   Include this number in the **first object only** of the returned JSON array for this image, using the key "pageNo".
     *   If a page number is absolutely not visible, omit this field.
 
 3.  **PROCESS EACH INVOICE BLOCK INTO A JSON OBJECT:**
@@ -248,7 +248,7 @@
     *   **If the carrier is "United Parcel Service" (UPS):**
         *   **CRITICAL GROUPING:** A single invoice block starts with the recipient's details (lines with "Total:", "NDOC:", "운임:", "참고료:") and **ENDS** with the "TrackingNumber" (starts with "1Z...") that appears directly below those details.
         *   You MUST correctly associate the "TrackingNumber" with the recipient details immediately above it. **DO NOT mis-associate the TrackingNumber with the *next* recipient block.**
-        *   Extract "hawbNo" from the "TrackingNumber" field.
+        *   Extract "hawbNo" from the "TrackingNumber" field. If multiple TrackingNumbers exist for one recipient, combine them with a newline '\\n'.
         *   Extract "receiverCompanyName" from the text next to "Total:".
         *   Extract "receiverName" from the text next to "NDOC".
         *   Extract "receiverAddress" from the text next to "운임:".
@@ -288,7 +288,7 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.9.05 - 2024-05-28";
+            const version = "v1.9.6 - 2024-05-28";
             const changelog = "한글 번역 및 주소 분리 기능 복원. UPS 데이터 밀림 현상 해결 및 스캔 안정성 강화.";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1313,6 +1313,7 @@
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                         if (Array.isArray(parsedData)) {
+                            // Return the entire array from the API for this page
                             return parsedData;
                         }
                     }
@@ -1334,6 +1335,7 @@
                 if (requestObject) {
                     try {
                         const apiResult = await processApiRequest(requestObject);
+                        // Push the entire array for the page into pageResults
                         pageResults.push(apiResult);
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
@@ -1348,14 +1350,16 @@
         const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
 
+        // Sort pages based on pageNo found in the first item of each page's array
         pageResults.sort((a, b) => (a[0]?.pageNo || 9999) - (b[0]?.pageNo || 9999));
 
+        // Flatten the sorted pages into a single array of items
         const rawItems = pageResults.flat();
 
         const processAndTranslateItem = async (item, index) => {
             const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
             return {
-                no: index + 1,
+                no: index + 1, // Assign global sequential number
                 carrier: item.carrier || 'SF',
                 hawbNo: item.hawbNo || '',
                 baseAddress: baseAddress,
@@ -1375,7 +1379,8 @@
 
         if (rawItems.length > 0) {
             const finalItemsPromises = rawItems.map(processAndTranslateItem);
-            deliveryItems = await Promise.all(finalItemsPromises);
+            const finalItems = await Promise.all(finalItemsPromises);
+            deliveryItems = finalItems; // Replace the old list entirely
             saveDeliveryItemsToLocalStorage();
         }
         
