@@ -246,7 +246,7 @@
         *   Extract "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
 
     *   **If the carrier is "United Parcel Service" (UPS):**
-        *   **CRITICAL GROUPING:** A single invoice block starts with the recipient's details (lines with "Total:", "NDOC:", "운임:", "참고료:") and **ENDS** with the "TrackingNumber" (starts with "1Z...") that appears directly below those details.
+        *   **CRITICAL GROUPING:** A single invoice block starts with the recipient's details (lines with "Total:", "NDOC:", "운임:", "참고료:") and **ENDS** with the "TrackingNumber" (starts with "1Z...") that appears directly below those details. Even if the TrackingNumber is on the next page, you must recognize it belongs to the last recipient block of the current page.
         *   You MUST correctly associate the "TrackingNumber" with the recipient details immediately above it. **DO NOT mis-associate the TrackingNumber with the *next* recipient block.**
         *   Extract "hawbNo" from the "TrackingNumber" field. If multiple TrackingNumbers exist for one recipient, combine them with a newline '\\n'.
         *   Extract "receiverCompanyName" from the text next to "Total:".
@@ -254,6 +254,7 @@
         *   Extract "receiverAddress" from the text next to "운임:".
         *   Extract "receiverPhone" from the text next to "참고료:".
         *   **CRITICAL ORDERING:** The order of objects in the JSON array MUST strictly reflect the visual top-to-bottom order of the invoice blocks on the page. Do NOT assign a "no" field for UPS items.
+        *   **If a block at the end of a page has recipient info but no visible TrackingNumber below it, still create the object for it.** The missing TrackingNumber will be on the next page.
 
 4.  **TRANSLATE & SEPARATE (MANDATORY FOR ALL CARRIERS):**
     *   For each object you create, you MUST perform the following translations and separations:
@@ -288,8 +289,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.9.6 - 2024-05-28";
-            const changelog = "한글 번역 및 주소 분리 기능 복원. UPS 데이터 밀림 현상 해결 및 스캔 안정성 강화.";
+            const version = "v1.9.06 - 2024-05-28";
+            const changelog = "페이지 경계에서 카드 정보가 잘리는 현상 후처리 로직으로 해결.";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1313,7 +1314,6 @@
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
                         if (Array.isArray(parsedData)) {
-                            // Return the entire array from the API for this page
                             return parsedData;
                         }
                     }
@@ -1335,7 +1335,6 @@
                 if (requestObject) {
                     try {
                         const apiResult = await processApiRequest(requestObject);
-                        // Push the entire array for the page into pageResults
                         pageResults.push(apiResult);
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
@@ -1350,16 +1349,41 @@
         const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
 
-        // Sort pages based on pageNo found in the first item of each page's array
         pageResults.sort((a, b) => (a[0]?.pageNo || 9999) - (b[0]?.pageNo || 9999));
 
-        // Flatten the sorted pages into a single array of items
-        const rawItems = pageResults.flat();
+        let rawItems = pageResults.flat();
+
+        // ** 후처리 로직: 페이지 경계에서 잘린 데이터 합치기 **
+        const stitchedItems = [];
+        for (let i = 0; i < rawItems.length; i++) {
+            const currentItem = rawItems[i];
+            const nextItem = rawItems[i + 1];
+
+            // 현재 아이템: 송장번호 없고, 이름/주소 등 다른 정보는 있음
+            // 다음 아이템: 송장번호 있고, 다른 정보는 거의 없음
+            const isCurrentItemSplit = (!currentItem.hawbNo || currentItem.hawbNo.trim() === '') && (currentItem.receiverName || currentItem.receiverAddress);
+            const isNextItemSplit = nextItem && nextItem.hawbNo && (!nextItem.receiverName || nextItem.receiverName.trim() === '') && (!nextItem.receiverAddress || nextItem.receiverAddress.trim() === '');
+
+            if (isCurrentItemSplit && isNextItemSplit) {
+                // 다음 아이템의 송장번호를 현재 아이템으로 합치기
+                currentItem.hawbNo = nextItem.hawbNo;
+                // 다중 송장번호의 경우도 고려하여 합치기
+                if (nextItem.hawbNo) {
+                   currentItem.hawbNo = [currentItem.hawbNo, nextItem.hawbNo].filter(Boolean).join('\n');
+                }
+                stitchedItems.push(currentItem);
+                i++; // 다음 아이템은 처리했으므로 건너뛰기
+            } else {
+                stitchedItems.push(currentItem);
+            }
+        }
+        rawItems = stitchedItems;
+        // ** 후처리 로직 끝 **
 
         const processAndTranslateItem = async (item, index) => {
             const { baseAddress, detailAddress } = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
             return {
-                no: index + 1, // Assign global sequential number
+                no: index + 1,
                 carrier: item.carrier || 'SF',
                 hawbNo: item.hawbNo || '',
                 baseAddress: baseAddress,
@@ -1380,7 +1404,7 @@
         if (rawItems.length > 0) {
             const finalItemsPromises = rawItems.map(processAndTranslateItem);
             const finalItems = await Promise.all(finalItemsPromises);
-            deliveryItems = finalItems; // Replace the old list entirely
+            deliveryItems = finalItems;
             saveDeliveryItemsToLocalStorage();
         }
         
