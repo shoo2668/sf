@@ -291,7 +291,7 @@
 
         const setVersionInfo = () => {
             const version = "v1.0.0 - 2025-08-11";
-            const changelog = "상단 필터 바 고정 시 콘텐츠 가려짐 현상 수정";
+            const changelog = "카드오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -315,8 +315,8 @@
                         }
                         break;
                     case 'revert-delivery':
-                        openConfirmationModal(`${itemNo}번 항목을 '배송전' 상태로 되돌리시겠습니까?`, () => {
-                            handleStatusChange(itemNo, '배송전');
+                        openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
+                            handleStatusChange(itemNo, '배송중');
                             showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
                         });
                         break;
