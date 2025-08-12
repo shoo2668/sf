@@ -294,8 +294,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v3.0.1-stable - 2025-08-12";
-            const changelog = "송장 정리 기능 추가, IndexedDB 기반 데이터 안정성 확보";
+            const version = "v3.0.2-stable - 2025-08-12";
+            const changelog = "송장 정리 기능 UI/UX 개선, 코드 안정성 강화";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -547,7 +547,6 @@
         const scanErrorText = document.getElementById('scan-error-text');
         const scanSectionContainer = document.getElementById('scan-section-container');
         const clearAllCardsButton = document.getElementById('clearAllCardsButton');
-        const clearCompletedCardsButton = document.getElementById('clearCompletedCardsButton');
         const dataManagementContainer = document.getElementById('data-management-container');
         const exportDataButton = document.getElementById('exportDataButton');
         const importDataInput = document.getElementById('importDataInput');
@@ -829,33 +828,6 @@
             }
         };
         
-        applyPiecesBtn.addEventListener('click', () => applyAddressEdit(piecesAddressInput.value.trim()));
-        applyDirectBtn.addEventListener('click', () => applyAddressEdit(directAddressInput.value.trim()));
-        
-        resetPiecesBtn.addEventListener('click', () => {
-            piecesAddressInput.value = '';
-            autoResizeTextarea({target: piecesAddressInput});
-        });
-        
-        revertDirectBtn.addEventListener('click', () => {
-            const item = deliveryItems.find(i => i.no === currentEditItemNo);
-            if(item) {
-                directAddressInput.value = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
-                autoResizeTextarea({target: directAddressInput});
-            }
-        });
-        
-        smartEditExitBtn.addEventListener('click', closeSmartEditModal);
-
-        piecesAddressInput.addEventListener('input', autoResizeTextarea);
-        directAddressInput.addEventListener('input', autoResizeTextarea);
-        
-        confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
-        confirmCancelButton.addEventListener('click', closeConfirmationModal);
-        clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
-        cancelSignatureBtn.addEventListener('click', closeSignatureModal);
-        saveSignatureBtn.addEventListener('click', saveSignature);
-
         const handleStatusChange = async (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
             const itemIndex = deliveryItems.findIndex(item => item.no === itemNo);
             if (itemIndex > -1) {
@@ -1134,300 +1106,6 @@
         setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
     };
 
-    filterButtonsContainer.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-filter]');
-        if (!button) return;
-        const newFilter = button.dataset.filter;
-        
-        const oldIndex = filterCategories.indexOf(activeFilter);
-        const newIndex = filterCategories.indexOf(newFilter);
-        const animation = newIndex > oldIndex ? 'animate-slide-in-right' : 'animate-slide-in-left';
-
-        changeFilter(newFilter, animation);
-    });
-
-    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
-    resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
-    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
-
-    deliverySheetImageInput.addEventListener('change', (event) => {
-        currentFileToScan = event.target.files;
-        selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
-    });
-    
-    clearAllCardsButton.addEventListener('click', () => {
-        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", async () => {
-            await db.clearAllCards();
-            deliveryItems = [];
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            showToastMessage("모든 카드가 삭제되었습니다.");
-        });
-    });
-
-    clearCompletedCardsButton.addEventListener('click', () => {
-        const completedCount = deliveryItems.filter(item => item.status === '완료').length;
-        if (completedCount === 0) {
-            showMessage("삭제할 완료된 카드가 없습니다.");
-            return;
-        }
-        openConfirmationModal(`${completedCount}개의 완료된 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`, async () => {
-            await db.deleteCompletedCards();
-            deliveryItems = deliveryItems.filter(item => item.status !== '완료');
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            showToastMessage("완료된 카드가 모두 삭제되었습니다.");
-        });
-    });
-
-    async function performScan(filesToScan) {
-        const CONCURRENT_LIMIT = 4;
-        const totalFiles = filesToScan.length;
-        let completedCount = 0;
-
-        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
-        const resizePromises = filesToScan.map((file, index) => 
-            resizeImage(file).then(resizedObject => {
-                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
-                return resizedObject;
-            })
-        );
-        const resizedImageObjects = await Promise.all(resizePromises);
-        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
-        
-        const tempMergedResults = new Map();
-        const failedFileObjectsForRetry = [];
-        const requestQueue = [...resizedImageObjects]; 
-
-        const updateApiProgress = () => {
-            completedCount++;
-            scanProgressText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
-        };
-
-        const processApiRequest = async (resizedObject) => {
-            const { file, data: base64ImageData } = resizedObject;
-            let lastError = null;
-
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    const payload = {
-                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
-                        generationConfig: { temperature: 0, responseMimeType: "application/json" }
-                    };
-                    const tempApiKeyForLocalTest = "AIzaSyCNYPhrVzBC-wQoZU3ftYEznfUZv3vZEFs";
-                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
-
-                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
-                    
-                    const result = await response.json();
-
-                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
-                        if (Array.isArray(parsedData) && parsedData.length > 0) {
-                             return parsedData;
-                        }
-                    }
-                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
-                    if (attempt < 3) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                }
-            }
-            throw lastError;
-        };
-        
-        const worker = async () => {
-            while (requestQueue.length > 0) {
-                const requestObject = requestQueue.shift(); 
-                if (requestObject) {
-                    const sourceImageId = Date.now() + '-' + requestObject.file.name;
-                    const originalImage = `data:image/jpeg;base64,${requestObject.data}`;
-                    try {
-                        const apiResultArray = await processApiRequest(requestObject);
-                        for (const geminiItem of apiResultArray) {
-                            const no = parseInt(geminiItem.no || '0', 10);
-                            if (no === 0) continue;
-                            
-                            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-                            geminiItem.baseAddressKorean = baseAddress;
-                            geminiItem.detailAddressKorean = detailAddress;
-                            geminiItem.sourceImageId = sourceImageId;
-                            geminiItem.originalImage = originalImage;
-
-                            tempMergedResults.set(no, geminiItem);
-                        }
-                    } catch (error) {
-                        console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
-                        failedFileObjectsForRetry.push(requestObject.file);
-                    } finally {
-                        updateApiProgress();
-                    }
-                }
-            }
-        };
-
-        const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
-        await Promise.all(workerPromises);
-
-        let newCount = 0;
-        let updateCount = 0;
-        const allNewItems = Array.from(tempMergedResults.values()); 
-
-        if (allNewItems.length > 0) {
-            const finalItems = allNewItems.map(item => ({
-                no: parseInt(item.no, 10),
-                hawbNo: item.hawbNo || '',
-                baseAddress: item.baseAddressKorean || '',
-                detailAddress: item.detailAddressKorean || '',
-                receiverAddressOriginal: item.receiverAddress || '',
-                companyNameOriginal: item.receiverCompanyName || '',
-                receiverNameOriginal: item.receiverName || '',
-                companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
-                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
-                receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
-                status: '배송전', isHawbConfirmed: false,
-                deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                addressLocation: null,
-                originalImage: item.originalImage || null,
-                sourceImageId: item.sourceImageId || null
-            }));
-            
-            for (const newItem of finalItems) {
-                const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
-                if (existingItemIndex > -1) {
-                    deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
-                    updateCount++;
-                } else {
-                    deliveryItems.push(newItem);
-                    newCount++;
-                }
-                await db.addOrUpdateCard(deliveryItems.find(item => item.no === newItem.no));
-            }
-            deliveryItems.sort((a, b) => a.no - b.no);
-        }
-        return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
-    }
-    
-    scanAndGenerateButton.addEventListener('click', async () => {
-        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
-        
-        const startTime = Date.now();
-        scanLoadingIndicator.style.display = 'block';
-        scanErrorMessage.style.display = 'none';
-        failedFileObjects = []; 
-
-        try {
-            const initialFiles = Array.from(currentFileToScan);
-            const result = await performScan(initialFiles);
-
-            const endTime = Date.now();
-            const elapsedTime = Math.round((endTime - startTime) / 1000);
-            const minutes = Math.floor(elapsedTime / 60);
-            const seconds = elapsedTime % 60;
-            const timeString = `(소요 시간: ${minutes}분 ${seconds}초)`;
-
-            if (result.failedFiles.length === 0) {
-                showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다. ${timeString}`);
-            } else {
-                failedFileObjects = result.failedFiles;
-                const successCount = initialFiles.length - failedFileObjects.length;
-                const failedFileNames = failedFileObjects.map(f => f.name);
-                
-                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공. ${timeString}\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
-
-                const onRetry = async () => {
-                    scanLoadingIndicator.style.display = 'block';
-                    
-                    const retryResult = await performScan(failedFileObjects);
-
-                    scanLoadingIndicator.style.display = 'none';
-
-                    if (retryResult.failedFiles.length === 0) {
-                        showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
-                    } else {
-                        const stillFailingNames = retryResult.failedFiles.map(f => f.name);
-                        showMessage(`재시도 후에도 아래 ${stillFailingNames.length}개 파일이 실패했습니다.\n- ${stillFailingNames.join('\n- ')}`, '재시도 일부 실패');
-                    }
-                    renderDeliveryCards(activeFilter);
-                    updateFilterCounts();
-                };
-                openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
-            }
-        } catch (error) {
-            console.error("전체 스캔 프로세스 오류:", error);
-            scanErrorText.textContent = error.message;
-            scanErrorMessage.style.display = 'block';
-        } finally {
-            scanLoadingIndicator.style.display = 'none';
-            deliverySheetImageInput.value = '';
-            currentFileToScan = null;
-            selectedFilesDisplay.textContent = '선택된 파일 없음';
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            updateStickyHeaderPositions();
-        }
-    });
-    
-    exportDataButton.addEventListener('click', () => {
-        if (deliveryItems.length === 0) { showMessage("저장할 데이터가 없습니다."); return; }
-        try {
-            const today = new Date();
-            const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            const fileName = `SF-${formattedDate}.json`;
-            const dataStr = JSON.stringify(deliveryItems, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToastMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
-        } catch (error) {
-            showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
-        }
-    });
-
-    importDataInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        openConfirmationModal( `'${file.name}' 파일의 데이터로 현재 목록을 모두 덮어씁니다. 계속하시겠습니까?`, () => {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        const importedData = JSON.parse(e.target.result);
-                        if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
-                        
-                        const firstItem = importedData[0];
-                        if (importedData.length > 0 && typeof firstItem.no === 'undefined' && typeof firstItem.baseAddress === 'undefined') {
-                           throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
-                        }
-                        
-                        await db.saveAllCards(importedData);
-                        deliveryItems = importedData;
-                        updateFilterCounts();
-                        updateStickyHeaderPositions();
-                        renderDeliveryCards(activeFilter);
-                        showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
-                    } catch (error) {
-                        showMessage(`파일을 불러오는 중 오류가 발생했습니다: ${error.message}`, "오류");
-                    } finally {
-                        importDataInput.value = '';
-                    }
-                };
-                reader.onerror = () => { showMessage("파일을 읽는 데 실패했습니다.", "오류"); importDataInput.value = ''; };
-                reader.readAsText(file);
-            }
-        );
-    });
-
     // --- Report Generation Functions ---
     let reportEditorState = {
         ctx: null,
@@ -1435,41 +1113,6 @@
         sourceId: null,
         placements: [] // {no, x, y, text}
     };
-
-    openReportGeneratorButton.addEventListener('click', () => {
-        const sourceImages = deliveryItems.reduce((acc, item) => {
-            if (item.sourceImageId && !acc[item.sourceImageId]) {
-                acc[item.sourceImageId] = item.originalImage;
-            }
-            return acc;
-        }, {});
-
-        if (Object.keys(sourceImages).length === 0) {
-            showMessage('정리할 스캔된 송장이 없습니다.');
-            return;
-        }
-
-        reportImageList.innerHTML = Object.entries(sourceImages).map(([id, src]) => `
-            <div class="cursor-pointer group" data-source-id="${id}">
-                <img src="${src}" class="w-full h-32 object-cover rounded-md border-2 border-transparent group-hover:border-blue-500 transition-all"/>
-            </div>
-        `).join('');
-        
-        reportGeneratorModal.style.display = 'flex';
-        reportImageSelector.style.display = 'flex';
-        reportEditor.style.display = 'none';
-        history.pushState({ modalOpen: 'report-selector' }, "");
-    });
-
-    reportImageList.addEventListener('click', (event) => {
-        const target = event.target.closest('[data-source-id]');
-        if (!target) return;
-        const sourceId = target.dataset.sourceId;
-        const imageSrc = deliveryItems.find(item => item.sourceImageId === sourceId)?.originalImage;
-        if (imageSrc) {
-            openReportEditor(sourceId, imageSrc);
-        }
-    });
 
     function openReportEditor(sourceId, imageSrc) {
         reportImageSelector.style.display = 'none';
@@ -1524,100 +1167,12 @@
         ctx.fillText(placement.text, placement.x, placement.y);
     }
 
-    reportEditorCanvas.addEventListener('click', (event) => {
-        const rect = reportEditorCanvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-
-        const itemsForSource = deliveryItems
-            .filter(item => item.sourceImageId === reportEditorState.sourceId && item.status === '완료')
-            .sort((a, b) => a.no - b.no);
-
-        const placedNos = reportEditorState.placements.map(p => p.no);
-        const availableItems = itemsForSource.filter(item => !placedNos.includes(item.no));
-
-        if (availableItems.length === 0) {
-            showToastMessage('모든 완료 항목을 배치했습니다.');
-            return;
-        }
-
-        reportNumberList.innerHTML = availableItems.map(item => `
-            <button class="number-jump-item active" data-no="${item.no}">${item.no}</button>
-        `).join('');
-
-        reportNumberPicker.style.left = `${event.clientX}px`;
-        reportNumberPicker.style.top = `${event.clientY}px`;
-        reportNumberPicker.style.display = 'block';
-
-        const pickerHandler = (e) => {
-            const button = e.target.closest('button[data-no]');
-            if (button) {
-                const no = parseInt(button.dataset.no, 10);
-                const item = availableItems.find(i => i.no === no);
-                if (item) {
-                    const time = formatCompletionTime(item.deliveryCompletionTime);
-                    let detail = item.completionType === '서명' ? `서명:${item.completionDetail}` : item.completionType;
-                    const text = `${item.no}:${detail}(${time})`;
-                    
-                    reportEditorState.placements.push({ no: item.no, x, y, text });
-                    redrawCanvas();
-                }
-            }
-            reportNumberPicker.style.display = 'none';
-            document.removeEventListener('click', pickerHandler, true);
-        };
-        setTimeout(() => document.addEventListener('click', pickerHandler, true), 0);
-    });
-
-    reportEditorSave.addEventListener('click', () => {
-        const { image, placements } = reportEditorState;
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = image.width;
-        finalCanvas.height = image.height;
-        const finalCtx = finalCanvas.getContext('2d');
-
-        finalCtx.drawImage(image, 0, 0);
-
-        const scaleX = image.width / reportEditorCanvas.width;
-        const scaleY = image.height / reportEditorCanvas.height;
-
-        placements.forEach(p => {
-            const scaledPlacement = {
-                ...p,
-                x: p.x * scaleX,
-                y: p.y * scaleY
-            };
-            drawPlacementText(finalCtx, scaledPlacement);
-        });
-
-        const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.9);
-        const today = new Date();
-        const formattedDate = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-        const fileName = `완료보고_${formattedDate}_${reportEditorState.sourceId.slice(-6)}.jpg`;
-        
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = fileName;
-        a.click();
-        showToastMessage('이미지가 다운로드되었습니다.');
-    });
-
     function closeReportGenerator() {
         if (history.state && history.state.modalOpen && history.state.modalOpen.startsWith('report')) {
             history.back();
         }
         reportGeneratorModal.style.display = 'none';
     }
-
-    reportSelectorClose.addEventListener('click', closeReportGenerator);
-    reportEditorBack.addEventListener('click', () => {
-        if (history.state && history.state.modalOpen === 'report-editor') {
-            history.back();
-        }
-        reportEditor.style.display = 'none';
-        reportImageSelector.style.display = 'flex';
-    });
-
 
     document.addEventListener('DOMContentLoaded', async () => {
         try {
@@ -1630,6 +1185,254 @@
             closeConfirmationModal();
 
             setupDelegatedEventListeners();
+
+            // ▼▼▼▼▼ 수정된 부분: 모든 이벤트 리스너를 DOMContentLoaded 안으로 이동 ▼▼▼▼▼
+            applyPiecesBtn.addEventListener('click', () => applyAddressEdit(piecesAddressInput.value.trim()));
+            applyDirectBtn.addEventListener('click', () => applyAddressEdit(directAddressInput.value.trim()));
+            resetPiecesBtn.addEventListener('click', () => {
+                piecesAddressInput.value = '';
+                autoResizeTextarea({target: piecesAddressInput});
+            });
+            revertDirectBtn.addEventListener('click', () => {
+                const item = deliveryItems.find(i => i.no === currentEditItemNo);
+                if(item) {
+                    directAddressInput.value = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+                    autoResizeTextarea({target: directAddressInput});
+                }
+            });
+            smartEditExitBtn.addEventListener('click', closeSmartEditModal);
+            piecesAddressInput.addEventListener('input', autoResizeTextarea);
+            directAddressInput.addEventListener('input', autoResizeTextarea);
+            confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
+            confirmCancelButton.addEventListener('click', closeConfirmationModal);
+            clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
+            cancelSignatureBtn.addEventListener('click', closeSignatureModal);
+            saveSignatureBtn.addEventListener('click', saveSignature);
+            filterButtonsContainer.addEventListener('click', (event) => {
+                const button = event.target.closest('button[data-filter]');
+                if (!button) return;
+                const newFilter = button.dataset.filter;
+                const oldIndex = filterCategories.indexOf(activeFilter);
+                const newIndex = filterCategories.indexOf(newFilter);
+                const animation = newIndex > oldIndex ? 'animate-slide-in-right' : 'animate-slide-in-left';
+                changeFilter(newFilter, animation);
+            });
+            searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+            resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
+            invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+            deliverySheetImageInput.addEventListener('change', (event) => {
+                currentFileToScan = event.target.files;
+                selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
+            });
+            clearAllCardsButton.addEventListener('click', () => {
+                openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", async () => {
+                    await db.clearAllCards();
+                    deliveryItems = [];
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                    showToastMessage("모든 카드가 삭제되었습니다.");
+                });
+            });
+            scanAndGenerateButton.addEventListener('click', async () => {
+                if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
+                const startTime = Date.now();
+                scanLoadingIndicator.style.display = 'block';
+                scanErrorMessage.style.display = 'none';
+                failedFileObjects = []; 
+                try {
+                    const initialFiles = Array.from(currentFileToScan);
+                    const result = await performScan(initialFiles);
+                    const endTime = Date.now();
+                    const elapsedTime = Math.round((endTime - startTime) / 1000);
+                    const minutes = Math.floor(elapsedTime / 60);
+                    const seconds = elapsedTime % 60;
+                    const timeString = `(소요 시간: ${minutes}분 ${seconds}초)`;
+                    if (result.failedFiles.length === 0) {
+                        showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다. ${timeString}`);
+                    } else {
+                        failedFileObjects = result.failedFiles;
+                        const successCount = initialFiles.length - failedFileObjects.length;
+                        const failedFileNames = failedFileObjects.map(f => f.name);
+                        const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공. ${timeString}\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
+                        const onRetry = async () => {
+                            scanLoadingIndicator.style.display = 'block';
+                            const retryResult = await performScan(failedFileObjects);
+                            scanLoadingIndicator.style.display = 'none';
+                            if (retryResult.failedFiles.length === 0) {
+                                showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
+                            } else {
+                                const stillFailingNames = retryResult.failedFiles.map(f => f.name);
+                                showMessage(`재시도 후에도 아래 ${stillFailingNames.length}개 파일이 실패했습니다.\n- ${stillFailingNames.join('\n- ')}`, '재시도 일부 실패');
+                            }
+                            renderDeliveryCards(activeFilter);
+                            updateFilterCounts();
+                        };
+                        openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
+                    }
+                } catch (error) {
+                    console.error("전체 스캔 프로세스 오류:", error);
+                    scanErrorText.textContent = error.message;
+                    scanErrorMessage.style.display = 'block';
+                } finally {
+                    scanLoadingIndicator.style.display = 'none';
+                    deliverySheetImageInput.value = '';
+                    currentFileToScan = null;
+                    selectedFilesDisplay.textContent = '선택된 파일 없음';
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                    updateStickyHeaderPositions();
+                }
+            });
+            exportDataButton.addEventListener('click', () => {
+                if (deliveryItems.length === 0) { showMessage("저장할 데이터가 없습니다."); return; }
+                try {
+                    const today = new Date();
+                    const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                    const fileName = `SF-${formattedDate}.json`;
+                    const dataStr = JSON.stringify(deliveryItems, null, 2);
+                    const blob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToastMessage(`데이터가 '${fileName}' 파일로 저장되었습니다.`);
+                } catch (error) {
+                    showMessage(`데이터 저장 중 오류가 발생했습니다: ${error.message}`, "오류");
+                }
+            });
+            importDataInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                openConfirmationModal( `'${file.name}' 파일의 데이터로 현재 목록을 모두 덮어씁니다. 계속하시겠습니까?`, () => {
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            try {
+                                const importedData = JSON.parse(e.target.result);
+                                if (!Array.isArray(importedData)) throw new Error("파일 형식이 올바르지 않습니다 (배열이 아님).");
+                                const firstItem = importedData[0];
+                                if (importedData.length > 0 && typeof firstItem.no === 'undefined' && typeof firstItem.baseAddress === 'undefined') {
+                                   throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
+                                }
+                                await db.saveAllCards(importedData);
+                                deliveryItems = importedData;
+                                updateFilterCounts();
+                                updateStickyHeaderPositions();
+                                renderDeliveryCards(activeFilter);
+                                showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
+                            } catch (error) {
+                                showMessage(`파일을 불러오는 중 오류가 발생했습니다: ${error.message}`, "오류");
+                            } finally {
+                                importDataInput.value = '';
+                            }
+                        };
+                        reader.onerror = () => { showMessage("파일을 읽는 데 실패했습니다.", "오류"); importDataInput.value = ''; };
+                        reader.readAsText(file);
+                    }
+                );
+            });
+            openReportGeneratorButton.addEventListener('click', () => {
+                const sourceImages = deliveryItems.reduce((acc, item) => {
+                    if (item.sourceImageId && !acc[item.sourceImageId]) {
+                        acc[item.sourceImageId] = item.originalImage;
+                    }
+                    return acc;
+                }, {});
+                if (Object.keys(sourceImages).length === 0) {
+                    showMessage('정리할 스캔된 송장이 없습니다.');
+                    return;
+                }
+                reportImageList.innerHTML = Object.entries(sourceImages).map(([id, src]) => `
+                    <div class="cursor-pointer group" data-source-id="${id}">
+                        <img src="${src}" class="w-full h-32 object-cover rounded-md border-2 border-transparent group-hover:border-blue-500 transition-all"/>
+                    </div>
+                `).join('');
+                reportGeneratorModal.style.display = 'flex';
+                reportImageSelector.style.display = 'flex';
+                reportEditor.style.display = 'none';
+                history.pushState({ modalOpen: 'report-selector' }, "");
+            });
+            reportImageList.addEventListener('click', (event) => {
+                const target = event.target.closest('[data-source-id]');
+                if (!target) return;
+                const sourceId = target.dataset.sourceId;
+                const imageSrc = deliveryItems.find(item => item.sourceImageId === sourceId)?.originalImage;
+                if (imageSrc) {
+                    openReportEditor(sourceId, imageSrc);
+                }
+            });
+            reportEditorCanvas.addEventListener('click', (event) => {
+                const rect = reportEditorCanvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                const itemsForSource = deliveryItems
+                    .filter(item => item.sourceImageId === reportEditorState.sourceId && item.status === '완료')
+                    .sort((a, b) => a.no - b.no);
+                const placedNos = reportEditorState.placements.map(p => p.no);
+                const availableItems = itemsForSource.filter(item => !placedNos.includes(item.no));
+                if (availableItems.length === 0) {
+                    showToastMessage('모든 완료 항목을 배치했습니다.');
+                    return;
+                }
+                reportNumberList.innerHTML = availableItems.map(item => `
+                    <button class="number-jump-item active" data-no="${item.no}">${item.no}</button>
+                `).join('');
+                reportNumberPicker.style.left = `${event.clientX}px`;
+                reportNumberPicker.style.top = `${event.clientY}px`;
+                reportNumberPicker.style.display = 'block';
+                const pickerHandler = (e) => {
+                    const button = e.target.closest('button[data-no]');
+                    if (button) {
+                        const no = parseInt(button.dataset.no, 10);
+                        const item = availableItems.find(i => i.no === no);
+                        if (item) {
+                            const time = formatCompletionTime(item.deliveryCompletionTime);
+                            let detail = item.completionType === '서명' ? `서명:${item.completionDetail}` : item.completionType;
+                            const text = `${item.no}:${detail}(${time})`;
+                            reportEditorState.placements.push({ no: item.no, x, y, text });
+                            redrawCanvas();
+                        }
+                    }
+                    reportNumberPicker.style.display = 'none';
+                    document.removeEventListener('click', pickerHandler, true);
+                };
+                setTimeout(() => document.addEventListener('click', pickerHandler, true), 0);
+            });
+            reportEditorSave.addEventListener('click', () => {
+                const { image, placements } = reportEditorState;
+                const finalCanvas = document.createElement('canvas');
+                finalCanvas.width = image.width;
+                finalCanvas.height = image.height;
+                const finalCtx = finalCanvas.getContext('2d');
+                finalCtx.drawImage(image, 0, 0);
+                const scaleX = image.width / reportEditorCanvas.width;
+                const scaleY = image.height / reportEditorCanvas.height;
+                placements.forEach(p => {
+                    const scaledPlacement = { ...p, x: p.x * scaleX, y: p.y * scaleY };
+                    drawPlacementText(finalCtx, scaledPlacement);
+                });
+                const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.9);
+                const today = new Date();
+                const formattedDate = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                const fileName = `완료보고_${formattedDate}_${reportEditorState.sourceId.slice(-6)}.jpg`;
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = fileName;
+                a.click();
+                showToastMessage('이미지가 다운로드되었습니다.');
+            });
+            reportSelectorClose.addEventListener('click', closeReportGenerator);
+            reportEditorBack.addEventListener('click', () => {
+                if (history.state && history.state.modalOpen === 'report-editor') {
+                    history.back();
+                }
+                reportEditor.style.display = 'none';
+                reportImageSelector.style.display = 'flex';
+            });
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             invoiceNumberInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
