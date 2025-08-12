@@ -9,8 +9,8 @@
     <style>
         html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 88px; /* JS가 동적으로 변경 */ }
         body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; padding-top: 88px; /* JS가 동적으로 변경 */ }
-        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal, #image-positioning-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
-        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+        .modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
         
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
@@ -20,25 +20,11 @@
             left: 50%;
             transform: translateX(-50%) scale(0.8);
             transform-origin: bottom center;
-            background-color: #374151; /* gray-700 */
-            color: white;
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.5rem;
-            font-size: 1.25rem;
-            font-weight: 600;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s, transform 0.2s;
-            z-index: 10;
-            min-width: 100%;
-            text-align: center;
-            white-space: nowrap;
+            background-color: #374151; color: white; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 1.25rem; font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 10;
+            min-width: 100%; text-align: center; white-space: nowrap;
         }
-        .key-button:active .key-pop {
-            opacity: 1;
-            transform: translateX(-50%) scale(1) translateY(-8px);
-        }
+        .key-button:active .key-pop { opacity: 1; transform: translateX(-50%) scale(1) translateY(-8px); }
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color: 0.2s; }
 
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
@@ -52,7 +38,7 @@
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
-        #number-jump-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; overflow-y: auto; padding: 0.5rem; margin: -0.5rem; max-height: 60vh; }
+        #number-jump-list, #report-number-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; overflow-y: auto; padding: 0.5rem; margin: -0.5rem; max-height: 60vh; }
         .number-jump-item { min-width: 50px; padding: 0.75rem; border-radius: 0.5rem; font-weight: 600; text-align: center; transition: background-color: 0.2s, color 0.2s; }
         .number-jump-item.active { background-color: #2563eb; color: white; cursor: pointer; }
         .number-jump-item.active:hover { background-color: #1d4ed8; }
@@ -60,6 +46,9 @@
         .number-jump-item.placeholder { background-color: transparent; }
         .bottom-bar { position: fixed; bottom: 0; left: 0; width: 100vw; z-index: 46; transition: transform 0.3s ease-out; background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; }
         .bottom-bar.hidden { transform: translateY(100%); }
+        #report-image-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        #report-editor-canvas { max-width: 100%; max-height: 70vh; cursor: crosshair; }
+        #report-number-picker { position: absolute; background-color: rgba(255, 255, 255, 0.9); border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
@@ -86,10 +75,7 @@
         </div>
         <div>
             <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
-            <div class="space-y-2">
-                <button id="clearCompletedCardsButton" class="w-full px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500">완료된 카드만 삭제</button>
-                <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
-            </div>
+            <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
         </div>
     </div>
 
@@ -108,6 +94,13 @@
         <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
     </div>
     
+    <!-- ▼▼▼▼▼ 수정된 부분: 송장 정리 영역 추가 ▼▼▼▼▼ -->
+    <div id="report-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">배송완료 송장 정리</h3>
+        <button id="openReportGeneratorButton" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">송장 정리 시작하기</button>
+    </div>
+    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
+
     <div id="version-info-container" class="max-w-md mx-auto mb-6 text-center hidden">
         <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
         <p id="version-changelog" class="text-xs text-gray-500"></p>
@@ -136,113 +129,39 @@
         </div>
     </div>
 
-    <div id="number-jump-modal" class="number-jump-modal" style="display: none;">
-        <div class="number-jump-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">번호로 이동</h2>
-            <div id="number-jump-list">
-                <!-- 번호 버튼들이 여기에 동적으로 추가됩니다. -->
-            </div>
+    <!-- Modals -->
+    <div id="number-jump-modal" class="modal" style="display: none;"><div class="modal-content"><h2 class="text-xl font-semibold mb-4 text-gray-800">번호로 이동</h2><div id="number-jump-list"></div><div class="flex justify-end mt-6"><button id="number-jump-close" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">닫기</button></div></div></div>
+    <div id="signature-modal" class="modal" style="display: none;"><div class="modal-content"><h2 class="text-xl font-semibold mb-4 text-gray-800">서명 입력</h2><div class="signature-input-container"><textarea id="signature-text-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="여기에 서명 내용을 입력하세요."></textarea></div><div class="flex justify-end space-x-2 mt-4"><button id="clearSignature" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">지우기</button><button id="cancelSignature" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium hover:bg-red-600">취소</button><button id="saveSignature" class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">저장</button></div></div></div>
+    <div id="confirmation-modal" class="modal" style="display: none;"><div class="modal-content"><h2 class="text-xl font-semibold mb-4 text-gray-800" id="confirmation-modal-title">확인</h2><div id="confirmation-modal-body"><p class="text-base text-gray-700 mb-6" id="confirmation-modal-message"></p></div><div class="flex justify-between space-x-2 mt-4" id="confirmation-modal-buttons"><button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button><button id="confirmOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">확인</button></div></div></div>
+    <div id="smart-edit-modal" class="modal" style="display: none;"><div class="modal-content"><div id="smart-edit-scroll-area"><div class="mb-4"><h3 class="text-sm font-semibold text-gray-600 mb-1">AI 추출 원본 (참조용)</h3><p id="original-address-display" class="p-2 bg-gray-100 rounded-md text-gray-800 text-sm font-mono break-all"></p></div><div class="mb-2"><h3 class="text-sm font-semibold text-gray-600 mb-1">주소 조각 (클릭하여 추가)</h3><div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div></div><div id="fixed-buttons-container" class="mt-2 grid grid-cols-2 gap-4"><div id="number-keypad" class="grid grid-cols-3 gap-2"></div><div id="unit-keypad" class="grid grid-cols-2 gap-2"></div></div><hr class="my-4 border-gray-300"/><div class="mt-4"><div class="flex justify-between items-center mb-2"><h3 class="text-lg font-semibold text-gray-800">주소 조각 편집</h3><div class="flex items-center space-x-2"><button id="reset-pieces-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button><button id="apply-pieces-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button></div></div><textarea id="pieces-address-input" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1" readonly></textarea></div><div class="mt-4"><div class="flex justify-between items-center mb-2"><h3 class="text-lg font-semibold text-gray-800">직접 주소 편집</h3><div class="flex items-center space-x-2"><button id="revert-direct-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.354 1.646a.5.5 0 010 .708L2.707 8l5.647 5.646a.5.5 0 01-.708.708l-6-6a.5.5 0 010-.708l6-6a.5.5 0 01.708 0z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M12.5 8a.5.5 0 01.5-.5h5a.5.5 0 010 1h-5a.5.5 0 01-.5-.5z" clip-rule="evenodd" /></svg></button><button id="apply-direct-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button></div></div><textarea id="direct-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea></div></div><div class="flex justify-end mt-auto pt-4 border-t border-gray-200"><button id="smart-edit-exit" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">나가기</button></div></div></div>
+    
+    <!-- ▼▼▼▼▼ 수정된 부분: 보고서 생성기 모달 ▼▼▼▼▼ -->
+    <div id="report-generator-modal" class="modal" style="display: none;">
+        <div id="report-image-selector" class="modal-content">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">정리할 송장 선택</h2>
+            <div id="report-image-list" class="flex-grow overflow-y-auto"></div>
             <div class="flex justify-end mt-6">
-                <button id="number-jump-close" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">닫기</button>
+                <button id="report-selector-close" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">닫기</button>
+            </div>
+        </div>
+        <div id="report-editor" class="modal-content" style="max-width: 95vw; max-height: 95vh; display: none;">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-xl font-semibold text-gray-800">보고서 편집</h2>
+                <div class="space-x-2">
+                    <button id="report-editor-back" class="px-3 py-1.5 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">뒤로</button>
+                    <button id="report-editor-save" class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">이미지 저장</button>
+                </div>
+            </div>
+            <div id="report-editor-workspace" class="relative flex-grow flex items-center justify-center bg-gray-200">
+                <canvas id="report-editor-canvas"></canvas>
+                <div id="report-number-picker" style="display: none;">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">순번 선택</h3>
+                    <div id="report-number-list"></div>
+                </div>
             </div>
         </div>
     </div>
-
-    <div id="signature-modal" class="signature-modal" style="display: none;">
-        <div class="signature-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">서명 입력</h2>
-            <div class="signature-input-container">
-                <textarea id="signature-text-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="여기에 서명 내용을 입력하세요."></textarea>
-            </div>
-            <div class="flex justify-end space-x-2 mt-4">
-                <button id="clearSignature" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">지우기</button>
-                <button id="cancelSignature" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium hover:bg-red-600">취소</button>
-                <button id="saveSignature" class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">저장</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirmation-modal" class="confirmation-modal" style="display: none;">
-        <div class="confirmation-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800" id="confirmation-modal-title">확인</h2>
-            <div id="confirmation-modal-body">
-                <p class="text-base text-gray-700 mb-6" id="confirmation-modal-message"></p>
-            </div>
-            <div class="flex justify-between space-x-2 mt-4" id="confirmation-modal-buttons">
-                <button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
-                <button id="confirmOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">확인</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 스마트 편집 모달 -->
-    <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
-        <div class="smart-edit-modal-content">
-            <div id="smart-edit-scroll-area">
-                <div class="mb-4">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-1">AI 추출 원본 (참조용)</h3>
-                    <p id="original-address-display" class="p-2 bg-gray-100 rounded-md text-gray-800 text-sm font-mono break-all"></p>
-                </div>
-
-                <div class="mb-2">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-1">주소 조각 (클릭하여 추가)</h3>
-                    <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
-                </div>
-                
-                <div id="fixed-buttons-container" class="mt-2 grid grid-cols-2 gap-4">
-                    <div id="number-keypad" class="grid grid-cols-3 gap-2"></div>
-                    <div id="unit-keypad" class="grid grid-cols-2 gap-2"></div>
-                </div>
-
-                <hr class="my-4 border-gray-300"/>
-
-                <div class="mt-4">
-                    <div class="flex justify-between items-center mb-2">
-                         <h3 class="text-lg font-semibold text-gray-800">주소 조각 편집</h3>
-                         <div class="flex items-center space-x-2">
-                            <button id="reset-pieces-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                            </button>
-                            <button id="apply-pieces-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
-                         </div>
-                    </div>
-                    <textarea id="pieces-address-input" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1" readonly></textarea>
-                </div>
-                
-                <div class="mt-4">
-                     <div class="flex justify-between items-center mb-2">
-                         <h3 class="text-lg font-semibold text-gray-800">직접 주소 편집</h3>
-                         <div class="flex items-center space-x-2">
-                             <button id="revert-direct-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.354 1.646a.5.5 0 010 .708L2.707 8l5.647 5.646a.5.5 0 01-.708.708l-6-6a.5.5 0 010-.708l6-6a.5.5 0 01.708 0z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M12.5 8a.5.5 0 01.5-.5h5a.5.5 0 010 1h-5a.5.5 0 01-.5-.5z" clip-rule="evenodd" /></svg>
-                            </button>
-                            <button id="apply-direct-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
-                         </div>
-                    </div>
-                    <textarea id="direct-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
-                </div>
-
-            </div>
-            <div class="flex justify-end mt-auto pt-4 border-t border-gray-200">
-                <button id="smart-edit-exit" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">나가기</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 이미지 위치 지정 모달 -->
-    <div id="image-positioning-modal" class="confirmation-modal" style="display: none;">
-        <div class="confirmation-modal-content" style="max-width: 95vw; max-height: 90vh;">
-            <h2 class="text-xl font-semibold mb-2 text-gray-800">보고서 위치 지정</h2>
-            <p class="text-sm text-gray-600 mb-4">아래 이미지에서 완료 내용이 표시될 위치를 터치하세요.</p>
-            <div id="positioning-image-container" class="w-full h-full overflow-auto border bg-gray-100 flex items-center justify-center relative">
-                <!-- 여기에 이미지가 동적으로 삽입됩니다. -->
-            </div>
-            <div class="flex justify-between space-x-2 mt-4">
-                <button id="positioningCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 font-medium hover:bg-gray-400">취소</button>
-                <button id="positioningOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700" disabled>이 위치로 결정</button>
-            </div>
-        </div>
-    </div>
+    <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
 
     <script type="text/javascript">
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
@@ -303,7 +222,7 @@
 
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
 
-        // --- ▼▼▼▼▼ IndexedDB Database Wrapper (New) ▼▼▼▼▼ ---
+        // --- IndexedDB Database Wrapper ---
         const db = (() => {
             const DB_NAME = 'DeliverySheetDB';
             const DB_VERSION = 1;
@@ -312,29 +231,15 @@
 
             function init() {
                 return new Promise((resolve, reject) => {
-                    if (dbInstance) {
-                        return resolve(dbInstance);
-                    }
-
+                    if (dbInstance) return resolve(dbInstance);
                     const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-                    request.onerror = (event) => {
-                        console.error('IndexedDB error:', event.target.error);
-                        reject('IndexedDB error: ' + event.target.error);
-                    };
-
-                    request.onsuccess = (event) => {
-                        dbInstance = event.target.result;
-                        resolve(dbInstance);
-                    };
-
+                    request.onerror = (event) => reject('IndexedDB error: ' + event.target.error);
+                    request.onsuccess = (event) => { dbInstance = event.target.result; resolve(dbInstance); };
                     request.onupgradeneeded = (event) => {
                         const db = event.target.result;
                         if (!db.objectStoreNames.contains(STORE_NAME)) {
                             const store = db.createObjectStore(STORE_NAME, { keyPath: 'no' });
                             store.createIndex('status', 'status', { unique: false });
-                            store.createIndex('hawbNo', 'hawbNo', { unique: false });
-                            store.createIndex('deliveryCompletionTime', 'deliveryCompletionTime', { unique: false });
                             store.createIndex('sourceImageId', 'sourceImageId', { unique: false });
                         }
                     };
@@ -346,41 +251,23 @@
                 const transaction = dbInstance.transaction(STORE_NAME, mode);
                 const store = transaction.objectStore(STORE_NAME);
                 return new Promise((resolve, reject) => {
-                    callback(store, resolve, reject);
-                    transaction.oncomplete = () => resolve();
-                    transaction.onerror = (event) => reject(event.target.error);
+                    const request = callback(store);
+                    request.onsuccess = (event) => resolve(event.target.result);
+                    request.onerror = (event) => reject(event.target.error);
                 });
             }
 
             return {
                 init,
-                addOrUpdateCard(card) {
-                    return performTransaction('readwrite', (store, resolve) => {
-                        store.put(card).onsuccess = resolve;
-                    });
-                },
-                getCard(no) {
-                    return performTransaction('readonly', (store, resolve) => {
-                        store.get(no).onsuccess = (event) => resolve(event.target.result);
-                    });
-                },
-                getAllCards() {
-                    return performTransaction('readonly', (store, resolve) => {
-                        store.getAll().onsuccess = (event) => resolve(event.target.result);
-                    });
-                },
-                deleteCard(no) {
-                    return performTransaction('readwrite', (store, resolve) => {
-                        store.delete(no).onsuccess = resolve;
-                    });
-                },
-                clearAllCards() {
-                    return performTransaction('readwrite', (store, resolve) => {
-                        store.clear().onsuccess = resolve;
-                    });
-                },
+                addOrUpdateCard(card) { return performTransaction('readwrite', store => store.put(card)); },
+                getCard(no) { return performTransaction('readonly', store => store.get(no)); },
+                getAllCards() { return performTransaction('readonly', store => store.getAll()); },
+                clearAllCards() { return performTransaction('readwrite', store => store.clear()); },
                 deleteCompletedCards() {
-                    return performTransaction('readwrite', (store, resolve) => {
+                    return new Promise(async (resolve, reject) => {
+                        if (!dbInstance) await init();
+                        const transaction = dbInstance.transaction(STORE_NAME, 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
                         const index = store.index('status');
                         const request = index.openCursor('완료');
                         request.onsuccess = (event) => {
@@ -388,29 +275,31 @@
                             if (cursor) {
                                 cursor.delete();
                                 cursor.continue();
-                            } else {
-                                resolve();
                             }
                         };
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = reject;
                     });
                 },
                 saveAllCards(cards) {
-                    return performTransaction('readwrite', (store, resolve) => {
+                    return new Promise(async (resolve, reject) => {
+                        if (!dbInstance) await init();
+                        const transaction = dbInstance.transaction(STORE_NAME, 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
                         store.clear();
                         cards.forEach(card => store.put(card));
-                        resolve();
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = reject;
                     });
                 }
             };
         })();
-        // --- ▲▲▲▲▲ IndexedDB Database Wrapper (New) ▲▲▲▲▲ ---
-
 
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v2.0.0-stable - 2025-08-12";
-            const changelog = "데이터 저장 엔진 IndexedDB로 교체 (안정성 및 용량 확보)";
+            const version = "v3.0.0-final - 2025-08-12";
+            const changelog = "송장 정리 기능 추가, IndexedDB 기반 데이터 안정성 확보";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -422,63 +311,26 @@
 
                 const action = target.dataset.action;
                 const itemNo = target.dataset.no ? parseInt(target.dataset.no, 10) : null;
-                const sourceId = target.dataset.sourceId;
 
                 switch (action) {
-                    case 'toggle-hawb-confirm':
-                        handleCheckboxToggleAndResetSearch(itemNo, target.checked);
-                        break;
-                    case 'open-naver-map':
-                        {
-                            const item = deliveryItems.find(i => i.no === itemNo);
-                            if (item) openNaverMap(item);
+                    case 'toggle-hawb-confirm': handleCheckboxToggleAndResetSearch(itemNo, target.checked); break;
+                    case 'open-naver-map': { const item = deliveryItems.find(i => i.no === itemNo); if (item) openNaverMap(item); break; }
+                    case 'revert-delivery': openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => { handleStatusChange(itemNo, '배송중'); showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`); }); break;
+                    case 'identity-verification': openConfirmationModal(`${itemNo}번 항목을 '본인확인'으로 완료 처리하시겠습니까?`, () => { const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions); handleStatusChange(itemNo, '완료', currentTime, '본인확인', '신분증'); }); break;
+                    case 'front-door-delivery': openConfirmationModal(`${itemNo}번 항목을 '문앞배송'으로 완료 처리하시겠습니까?`, () => { const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions); handleStatusChange(itemNo, '완료', currentTime, '문앞배송'); }); break;
+                    case 'sign-delivery': openSignatureModal(itemNo); break;
+                    case 'toggle-details': {
+                        const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
+                        const iconButton = target.closest('button');
+                        const iconSvg = iconButton.querySelector('svg');
+                        if (detailsContainer && iconSvg) {
+                            const isHidden = detailsContainer.style.display === 'none';
+                            detailsContainer.style.display = isHidden ? 'block' : 'none';
+                            iconSvg.innerHTML = isHidden ? `<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />` : `<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />`;
                         }
                         break;
-                    case 'revert-delivery':
-                        openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
-                            handleStatusChange(itemNo, '배송중');
-                            showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
-                        });
-                        break;
-                    case 'identity-verification':
-                        openConfirmationModal(`${itemNo}번 항목을 '본인확인'으로 완료 처리하시겠습니까?`, () => {
-                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '본인확인', '신분증');
-                        });
-                        break;
-                    case 'front-door-delivery':
-                        openConfirmationModal(`${itemNo}번 항목을 '문앞배송'으로 완료 처리하시겠습니까?`, () => {
-                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '문앞배송');
-                        });
-                        break;
-                    case 'sign-delivery':
-                        openSignatureModal(itemNo);
-                        break;
-                    case 'toggle-details':
-                        {
-                            const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
-                            const iconButton = target.closest('button');
-                            const iconSvg = iconButton.querySelector('svg');
-
-                            if (detailsContainer && iconSvg) {
-                                const isHidden = detailsContainer.style.display === 'none';
-                                detailsContainer.style.display = isHidden ? 'block' : 'none';
-                                
-                                if (isHidden) {
-                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />`; // Up arrow
-                                } else {
-                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />`; // Down arrow
-                                }
-                            }
-                        }
-                        break;
-                    case 'open-smart-edit':
-                        openSmartEditModal(itemNo);
-                        break;
-                    case 'generate-report-group':
-                        startReportGeneration(sourceId);
-                        break;
+                    }
+                    case 'open-smart-edit': openSmartEditModal(itemNo); break;
                 }
             });
         };
@@ -650,10 +502,10 @@
                 return { baseAddress: '', detailAddress: detailAddress || '' };
             }
             try {
-                const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(baseAddress)}`, {
+                const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`, {
                     headers: { 'Authorization': `KakaoAK ${KAKAO_API_KEY}` }
                 });
-                if (!response.ok) throw new Error('Kakao API call failed');
+                if (!response.ok) throw new Error('Kakao Geocoding API call failed');
                 const data = await response.json();
                 if (data.documents && data.documents.length > 0) {
                     const doc = data.documents[0];
@@ -685,8 +537,7 @@
         let touchStartTime = 0;
         let backButtonPressedOnce = false;
         let justReturnedFromExternalApp = false;
-        let currentReportContext = null; // For report generation
-
+        
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
         const searchButton = document.getElementById('searchButton');
@@ -744,10 +595,18 @@
         const actionBarContainer = document.getElementById('action-bar-container');
         const actionButtons = document.getElementById('action-buttons');
 
-        const imagePositioningModal = document.getElementById('image-positioning-modal');
-        const positioningImageContainer = document.getElementById('positioning-image-container');
-        const positioningOkButton = document.getElementById('positioningOkButton');
-        const positioningCancelButton = document.getElementById('positioningCancelButton');
+        const reportSectionContainer = document.getElementById('report-section-container');
+        const openReportGeneratorButton = document.getElementById('openReportGeneratorButton');
+        const reportGeneratorModal = document.getElementById('report-generator-modal');
+        const reportImageSelector = document.getElementById('report-image-selector');
+        const reportEditor = document.getElementById('report-editor');
+        const reportImageList = document.getElementById('report-image-list');
+        const reportSelectorClose = document.getElementById('report-selector-close');
+        const reportEditorBack = document.getElementById('report-editor-back');
+        const reportEditorSave = document.getElementById('report-editor-save');
+        const reportEditorCanvas = document.getElementById('report-editor-canvas');
+        const reportNumberPicker = document.getElementById('report-number-picker');
+        const reportNumberList = document.getElementById('report-number-list');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -898,11 +757,11 @@
             unitKeypad.appendChild(backspaceWordBtn);
 
             smartEditModal.style.display = 'flex';
-            history.pushState({ smartEditModalOpen: true }, "");
+            history.pushState({ modalOpen: 'smart-edit' }, "");
         };
 
         const closeSmartEditModal = () => {
-            if (history.state && history.state.smartEditModalOpen) {
+            if (history.state && history.state.modalOpen === 'smart-edit') {
                 history.back();
             }
             smartEditModal.style.display = 'none';
@@ -1106,94 +965,16 @@
                 return;
             }
 
-            // '완료' 탭일 경우 그룹화하여 렌더링
-            if (currentFilter === '완료') {
-                const completedItems = dataToRender.filter(item => item.status === '완료');
-                const groupedBySource = completedItems.reduce((acc, item) => {
-                    const sourceId = item.sourceImageId || 'unknown';
-                    if (!acc[sourceId]) {
-                        acc[sourceId] = [];
-                    }
-                    acc[sourceId].push(item);
-                    return acc;
-                }, {});
-
-                if (Object.keys(groupedBySource).length === 0) {
-                    deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 px-4">완료된 항목이 없습니다.</p>';
-                    return;
-                }
-
-                deliveryCardsContainer.innerHTML = Object.entries(groupedBySource).map(([sourceId, items]) => {
-                    const firstItem = items[0];
-                    const groupHeader = `
-                        <div class="bg-white rounded-lg shadow-md p-4 mb-4 border border-gray-300">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-3">
-                                    ${firstItem.originalImage ? `<img src="${firstItem.originalImage}" class="w-16 h-16 object-cover rounded-md border"/>` : `<div class="w-16 h-16 bg-gray-200 rounded-md flex items-center justify-center text-gray-500 text-xs">No Img</div>`}
-                                    <div>
-                                        <h3 class="font-semibold text-gray-800">송장 그룹</h3>
-                                        <p class="text-sm text-gray-600">${items.length}개 항목 완료됨</p>
-                                    </div>
-                                </div>
-                                <button data-action="generate-report-group" data-source-id="${sourceId}" class="px-3 py-2 rounded-md bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 whitespace-nowrap">보고서 생성</button>
-                            </div>
-                        </div>
-                    `;
-
-                    const cardsHtml = items.map(data => {
-                        const detailsHtml = `
-                            <div class="flex items-start space-x-2.5">
-                                <div class="flex-shrink-0 pt-1 text-gray-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-700">${data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '')}</p>
-                                </div>
-                            </div>
-                            <div class="mt-4 pt-4 border-t border-gray-300 flex justify-center">
-                                <button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-xs font-medium">되돌리기</button>
-                            </div>
-                        `;
-                        return `
-                            <div class="bg-gray-200 rounded-lg p-4 mb-2" data-no="${data.no}">
-                                <div class="flex justify-between items-center">
-                                    <div class="text-lg font-semibold text-gray-700 text-left">
-                                        <span class="text-red-500 text-xl mr-3">${data.no}</span>
-                                        ${data.completionType === '서명' && data.completionDetail ? `<span class="text-base font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>` : data.completionType === '본인확인' ? `${data.completionType} (${data.completionDetail})` : `${data.completionType || ''}`}
-                                        <span class="ml-2 text-base">${formatCompletionTime(data.deliveryCompletionTime)}</span>
-                                    </div>
-                                    <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-300/50">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div class="space-y-3 mt-3 pt-3 border-t border-gray-300" data-details-container="${data.no}" style="display:none;">
-                                    ${detailsHtml}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-
-                    return `<div class="mb-6">${groupHeader}<div class="pl-4 pr-4">${cardsHtml}</div></div>`;
-                }).join('');
-                return;
-            }
-
-            // '완료' 탭이 아닐 경우 기존 방식으로 렌더링
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
-                const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전'].includes(currentFilter);
+                const isMapButtonActive = isValidAddressForMap(data.baseAddress);
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined)
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
                 
                 let cardBg = 'bg-white';
-                if (data.status === '배송중') {
-                    cardBg = 'bg-blue-100';
-                } else if (data.status === '완료') {
-                    cardBg = 'bg-gray-200';
-                }
+                if (data.status === '배송중') cardBg = 'bg-blue-100';
+                else if (data.status === '완료') cardBg = 'bg-gray-200';
 
                 const showInProgressButtons = data.status === '배송중';
 
@@ -1235,6 +1016,7 @@
                             <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a>
                         </div>
                     </div>
+                    ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 `;
 
                 return `
@@ -1287,6 +1069,7 @@
             const isScanVisible = activeFilter === '배송준비';
             scanSectionContainer.classList.toggle('hidden', !isScanVisible);
             dataManagementContainer.classList.toggle('hidden', !isScanVisible);
+            reportSectionContainer.classList.toggle('hidden', !isScanVisible);
             versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
 
             const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
@@ -1650,164 +1433,210 @@
     });
 
     // --- Report Generation Functions ---
-    const startReportGeneration = (sourceId) => {
-        const itemsInGroup = deliveryItems.filter(item => item.sourceImageId === sourceId && item.status === '완료');
-        if (itemsInGroup.length === 0) {
-            showMessage('보고서를 생성할 완료된 항목이 없습니다.');
-            return;
-        }
+    let reportEditorState = {
+        ctx: null,
+        image: null,
+        sourceId: null,
+        placements: [] // {no, x, y, text}
+    };
 
-        const firstItem = itemsInGroup[0];
-        if (!firstItem.originalImage) {
-            showMessage('저장된 원본 송장 이미지가 없습니다.');
-            return;
-        }
-
-        let reportText = '[완료 보고]\n';
-        itemsInGroup.sort((a, b) => a.no - b.no).forEach(item => {
-            const time = formatCompletionTime(item.deliveryCompletionTime);
-            let detail = '';
-            if (item.completionType === '서명') {
-                detail = `서명: ${item.completionDetail}`;
-            } else {
-                detail = item.completionType || '기타';
+    openReportGeneratorButton.addEventListener('click', () => {
+        const sourceImages = deliveryItems.reduce((acc, item) => {
+            if (item.sourceImageId && !acc[item.sourceImageId]) {
+                acc[item.sourceImageId] = item.originalImage;
             }
-            reportText += `- ${item.no}번: ${detail} (${time})\n`;
+            return acc;
+        }, {});
+
+        if (Object.keys(sourceImages).length === 0) {
+            showMessage('정리할 스캔된 송장이 없습니다.');
+            return;
+        }
+
+        reportImageList.innerHTML = Object.entries(sourceImages).map(([id, src]) => `
+            <div class="cursor-pointer group" data-source-id="${id}">
+                <img src="${src}" class="w-full h-32 object-cover rounded-md border-2 border-transparent group-hover:border-blue-500 transition-all"/>
+            </div>
+        `).join('');
+        
+        reportGeneratorModal.style.display = 'flex';
+        reportImageSelector.style.display = 'flex';
+        reportEditor.style.display = 'none';
+        history.pushState({ modalOpen: 'report-selector' }, "");
+    });
+
+    reportImageList.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-source-id]');
+        if (!target) return;
+        const sourceId = target.dataset.sourceId;
+        const imageSrc = deliveryItems.find(item => item.sourceImageId === sourceId)?.originalImage;
+        if (imageSrc) {
+            openReportEditor(sourceId, imageSrc);
+        }
+    });
+
+    function openReportEditor(sourceId, imageSrc) {
+        reportImageSelector.style.display = 'none';
+        reportEditor.style.display = 'flex';
+        history.pushState({ modalOpen: 'report-editor' }, "");
+
+        const img = new Image();
+        img.src = imageSrc;
+        img.onload = () => {
+            const canvas = reportEditorCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            // 캔버스 크기 조절
+            const container = reportEditorCanvas.parentElement;
+            const maxWidth = container.clientWidth;
+            const maxHeight = container.clientHeight;
+            const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            reportEditorState = {
+                ctx,
+                image: img,
+                sourceId,
+                placements: []
+            };
+            redrawCanvas();
+        };
+    }
+
+    function redrawCanvas() {
+        const { ctx, image, placements } = reportEditorState;
+        if (!ctx || !image) return;
+        
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.drawImage(image, 0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        placements.forEach(p => drawPlacementText(ctx, p));
+    }
+
+    function drawPlacementText(ctx, placement) {
+        const fontSize = Math.max(14, Math.round(ctx.canvas.width / 50));
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textBaseline = 'top';
+        
+        const textMetrics = ctx.measureText(placement.text);
+        const padding = fontSize * 0.3;
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(placement.x - padding, placement.y - padding, textMetrics.width + padding * 2, fontSize + padding * 2);
+        
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(placement.text, placement.x, placement.y);
+    }
+
+    reportEditorCanvas.addEventListener('click', (event) => {
+        const rect = reportEditorCanvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        const itemsForSource = deliveryItems
+            .filter(item => item.sourceImageId === reportEditorState.sourceId && item.status === '완료')
+            .sort((a, b) => a.no - b.no);
+
+        const placedNos = reportEditorState.placements.map(p => p.no);
+        const availableItems = itemsForSource.filter(item => !placedNos.includes(item.no));
+
+        if (availableItems.length === 0) {
+            showToastMessage('모든 완료 항목을 배치했습니다.');
+            return;
+        }
+
+        reportNumberList.innerHTML = availableItems.map(item => `
+            <button class="number-jump-item active" data-no="${item.no}">${item.no}</button>
+        `).join('');
+
+        reportNumberPicker.style.left = `${event.clientX}px`;
+        reportNumberPicker.style.top = `${event.clientY}px`;
+        reportNumberPicker.style.display = 'block';
+
+        const pickerHandler = (e) => {
+            const button = e.target.closest('button[data-no]');
+            if (button) {
+                const no = parseInt(button.dataset.no, 10);
+                const item = availableItems.find(i => i.no === no);
+                if (item) {
+                    const time = formatCompletionTime(item.deliveryCompletionTime);
+                    let detail = item.completionType === '서명' ? `서명:${item.completionDetail}` : item.completionType;
+                    const text = `${item.no}:${detail}(${time})`;
+                    
+                    reportEditorState.placements.push({ no: item.no, x, y, text });
+                    redrawCanvas();
+                }
+            }
+            reportNumberPicker.style.display = 'none';
+            document.removeEventListener('click', pickerHandler, true);
+        };
+        // Use timeout to avoid immediate trigger by the same click
+        setTimeout(() => document.addEventListener('click', pickerHandler, true), 0);
+    });
+
+    reportEditorSave.addEventListener('click', () => {
+        const { image, placements } = reportEditorState;
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = image.width;
+        finalCanvas.height = image.height;
+        const finalCtx = finalCanvas.getContext('2d');
+
+        finalCtx.drawImage(image, 0, 0);
+
+        const scaleX = image.width / reportEditorCanvas.width;
+        const scaleY = image.height / reportEditorCanvas.height;
+
+        placements.forEach(p => {
+            const scaledPlacement = {
+                ...p,
+                x: p.x * scaleX,
+                y: p.y * scaleY
+            };
+            drawPlacementText(finalCtx, scaledPlacement);
         });
 
-        currentReportContext = {
-            image: firstItem.originalImage,
-            text: reportText.trim(),
-            sourceId: sourceId,
-            coords: null
-        };
-
-        positioningOkButton.disabled = true;
-        positioningImageContainer.innerHTML = `<img src="${firstItem.originalImage}" id="report-preview-image" style="max-width: 100%; max-height: 65vh; cursor: crosshair;"/>`;
-        imagePositioningModal.style.display = 'flex';
-
-        const previewImage = document.getElementById('report-preview-image');
-        previewImage.onclick = (event) => {
-            const rect = previewImage.getBoundingClientRect();
-            const scaleX = previewImage.naturalWidth / previewImage.width;
-            const scaleY = previewImage.naturalHeight / previewImage.height;
-            
-            const x = (event.clientX - rect.left) * scaleX;
-            const y = (event.clientY - rect.top) * scaleY;
-
-            currentReportContext.coords = { x, y };
-            
-            positioningOkButton.disabled = false;
-            showToastMessage(`위치 선택됨: (X: ${Math.round(x)}, Y: ${Math.round(y)})`);
-            
-            // 미리보기 십자선 표시
-            let crosshair = positioningImageContainer.querySelector('.crosshair');
-            if (!crosshair) {
-                crosshair = document.createElement('div');
-                crosshair.className = 'crosshair';
-                crosshair.style = 'position: absolute; width: 20px; height: 20px; border: 2px solid red; background: rgba(255,0,0,0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;';
-                positioningImageContainer.appendChild(crosshair);
-            }
-            crosshair.style.left = `${event.clientX - rect.left}px`;
-            crosshair.style.top = `${event.clientY - rect.top}px`;
-        };
-    };
-
-    const createFinalReportImage = () => {
-        if (!currentReportContext || !currentReportContext.coords) return;
-
-        showLoadingMessage('보고서 이미지 생성 중...');
+        const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.9);
+        const today = new Date();
+        const formattedDate = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        const fileName = `완료보고_${formattedDate}_${reportEditorState.sourceId.slice(-6)}.jpg`;
         
-        const { image, text, coords, sourceId } = currentReportContext;
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = image;
-
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-
-            const lines = text.split('\n');
-            const fontSize = Math.max(32, Math.round(img.width / 50));
-            const lineHeight = fontSize * 1.2;
-            ctx.font = `600 ${fontSize}px sans-serif`;
-
-            // 텍스트 블록의 전체 너비와 높이 계산
-            let maxWidth = 0;
-            lines.forEach(line => {
-                const width = ctx.measureText(line).width;
-                if (width > maxWidth) maxWidth = width;
-            });
-            const totalHeight = lineHeight * lines.length;
-            const padding = fontSize * 0.5;
-
-            // 배경 그리기
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-            ctx.fillRect(coords.x - padding, coords.y - padding, maxWidth + padding * 2, totalHeight + padding * 2);
-
-            // 텍스트 그리기
-            ctx.fillStyle = '#FFFFFF';
-            ctx.textBaseline = 'top';
-            lines.forEach((line, index) => {
-                ctx.fillText(line, coords.x, coords.y + (index * lineHeight));
-            });
-
-            const finalImageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            
-            closeConfirmationModal();
-            
-            const today = new Date();
-            const formattedDate = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-            const fileName = `완료보고_${formattedDate}_${sourceId.slice(-6)}.jpg`;
-
-            confirmationModalTitle.textContent = '완료 보고서 생성됨';
-            confirmationModalBody.innerHTML = `
-                <p class="text-sm text-gray-600 mb-2">아래 이미지를 길게 눌러 저장하거나 공유하세요.</p>
-                <img src="${finalImageDataUrl}" alt="완료 보고서" class="w-full rounded-md border"/>
-                <a href="${finalImageDataUrl}" download="${fileName}" class="mt-4 w-full block text-center px-4 py-2 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700">
-                    이미지 다운로드
-                </a>
-            `;
-            confirmCancelButton.style.display = 'none';
-            confirmOkButton.textContent = '닫기';
-            onConfirmCallback = closeConfirmationModal;
-            confirmationModal.style.display = 'flex';
-        };
-
-        img.onerror = () => {
-            closeConfirmationModal();
-            showMessage('이미지를 불러오는 데 실패했습니다.');
-        };
-    };
-
-    positioningOkButton.addEventListener('click', () => {
-        imagePositioningModal.style.display = 'none';
-        createFinalReportImage();
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = fileName;
+        a.click();
+        showToastMessage('이미지가 다운로드되었습니다.');
     });
 
-    positioningCancelButton.addEventListener('click', () => {
-        imagePositioningModal.style.display = 'none';
+    function closeReportGenerator() {
+        if (history.state && history.state.modalOpen && history.state.modalOpen.startsWith('report')) {
+            history.back();
+        }
+        reportGeneratorModal.style.display = 'none';
+    }
+
+    reportSelectorClose.addEventListener('click', closeReportGenerator);
+    reportEditorBack.addEventListener('click', () => {
+        if (history.state && history.state.modalOpen === 'report-editor') {
+            history.back();
+        }
+        reportEditor.style.display = 'none';
+        reportImageSelector.style.display = 'flex';
     });
 
 
-    document.addEventListener('DOMContentLoaded', async () => { // Make this async
+    document.addEventListener('DOMContentLoaded', async () => {
         try {
             setVersionInfo();
             
-            // ▼▼▼▼▼ 수정된 부분: 앱 시작 시 IndexedDB 초기화 및 데이터 로드 ▼▼▼▼▼
             showLoadingMessage('데이터베이스 로딩 중...');
             await db.init();
             deliveryItems = await db.getAllCards();
             deliveryItems.sort((a, b) => a.no - b.no);
             closeConfirmationModal();
-            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
             setupDelegatedEventListeners();
 
-            // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
             invoiceNumberInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
                     event.preventDefault();
@@ -1816,7 +1645,6 @@
                 }
             });
 
-            // --- 외부 스캐너 앱 연동 로직 ---
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
@@ -1836,7 +1664,6 @@
                     changeFilter('배송준비', '', initialLoad);
                 }
             }, 0);
-            // ------------------------------------
 
             document.body.addEventListener('touchmove', (event) => {
                 if (window.scrollY === 0 && touchStartY < event.touches[0].clientY && activeFilter !== '배송준비') {
@@ -1856,14 +1683,20 @@
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', (event) => {
                 if (smartEditModal.style.display === 'flex') {
-                    smartEditModal.style.display = 'none';
-                    currentEditItemNo = null;
+                    closeSmartEditModal();
+                    return;
+                }
+                if (reportGeneratorModal.style.display === 'flex') {
+                    if (reportEditor.style.display === 'flex') {
+                        reportEditor.style.display = 'none';
+                        reportImageSelector.style.display = 'flex';
+                    } else {
+                        reportGeneratorModal.style.display = 'none';
+                    }
                     return;
                 }
 
-                if (justReturnedFromExternalApp) {
-                    return;
-                }
+                if (justReturnedFromExternalApp) return;
 
                 if (backButtonPressedOnce) {
                     history.back();
@@ -1872,9 +1705,7 @@
 
                 backButtonPressedOnce = true;
                 showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
-                setTimeout(() => {
-                    backButtonPressedOnce = false;
-                }, 2000);
+                setTimeout(() => { backButtonPressedOnce = false; }, 2000);
 
                 history.pushState(null, '', location.href);
             });
@@ -1887,11 +1718,7 @@
             }, { passive: true });
 
             document.body.addEventListener('touchend', (event) => {
-                if (signatureModal.style.display === 'flex' ||
-                    confirmationModal.style.display === 'flex' ||
-                    smartEditModal.style.display === 'flex' ||
-                    numberJumpModal.style.display === 'flex' ||
-                    imagePositioningModal.style.display === 'flex') {
+                if (Array.from(document.querySelectorAll('.modal')).some(m => m.style.display === 'flex')) {
                     return;
                 }
 
@@ -2013,27 +1840,21 @@
                 numberJumpModal.style.display = 'none';
             });
 
-            // 스크롤 이벤트
             window.addEventListener('scroll', () => {
                 const currentScrollY = window.scrollY;
-                if (currentScrollY > lastScrollY) { // Scrolling down
+                if (currentScrollY > lastScrollY) {
                     searchBarContainer.classList.add('hidden');
                     actionBarContainer.classList.add('hidden');
-                } else { // Scrolling up
+                } else {
                     searchBarContainer.classList.remove('hidden');
                     actionBarContainer.classList.remove('hidden');
                 }
                 lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
             });
 
-            // localStorage에서 스크롤 위치는 계속 사용
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) {
-                try {
-                    filterScrollPositions = JSON.parse(storedScroll);
-                } catch (e) {
-                    filterScrollPositions = {};
-                }
+                try { filterScrollPositions = JSON.parse(storedScroll); } catch (e) { filterScrollPositions = {}; }
             }
             updateFilterCounts();
             
