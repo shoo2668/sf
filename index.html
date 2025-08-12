@@ -86,12 +86,10 @@
         </div>
         <div>
             <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
-            <!-- ▼▼▼▼▼ 수정된 부분: 완료 카드 삭제 버튼 추가 ▼▼▼▼▼ -->
             <div class="space-y-2">
                 <button id="clearCompletedCardsButton" class="w-full px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500">완료된 카드만 삭제</button>
                 <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
             </div>
-            <!-- ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲ -->
         </div>
     </div>
 
@@ -308,8 +306,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.2.0 - 2025-08-12";
-            const changelog = "완료 카드 삭제 기능 추가, 보고서 생성 UI 개선";
+            const version = "v1.3.0-stable - 2025-08-12";
+            const changelog = "데이터 저장 안정성 강화, 완료 카드 삭제 기능 추가";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -599,7 +597,7 @@
         const scanErrorText = document.getElementById('scan-error-text');
         const scanSectionContainer = document.getElementById('scan-section-container');
         const clearAllCardsButton = document.getElementById('clearAllCardsButton');
-        const clearCompletedCardsButton = document.getElementById('clearCompletedCardsButton'); // 추가된 버튼
+        const clearCompletedCardsButton = document.getElementById('clearCompletedCardsButton');
         const dataManagementContainer = document.getElementById('data-management-container');
         const exportDataButton = document.getElementById('exportDataButton');
         const importDataInput = document.getElementById('importDataInput');
@@ -851,22 +849,26 @@
         });
 
         const applyAddressEdit = (fullAddress) => {
-             if (currentEditItemNo === null) return;
+            if (currentEditItemNo === null) return;
             const itemIndex = deliveryItems.findIndex(item => item.no === currentEditItemNo);
             if (itemIndex > -1) {
+                const tempItems = JSON.parse(JSON.stringify(deliveryItems)); // Create a deep copy
                 const commaIndex = fullAddress.indexOf(',');
                 if (commaIndex > -1) {
-                    deliveryItems[itemIndex].baseAddress = fullAddress.substring(0, commaIndex).trim();
-                    deliveryItems[itemIndex].detailAddress = fullAddress.substring(commaIndex + 1).trim();
+                    tempItems[itemIndex].baseAddress = fullAddress.substring(0, commaIndex).trim();
+                    tempItems[itemIndex].detailAddress = fullAddress.substring(commaIndex + 1).trim();
                 } else {
-                    deliveryItems[itemIndex].baseAddress = fullAddress;
-                    deliveryItems[itemIndex].detailAddress = '';
+                    tempItems[itemIndex].baseAddress = fullAddress;
+                    tempItems[itemIndex].detailAddress = '';
                 }
-                deliveryItems[itemIndex].addressLocation = null;
-                saveDeliveryItemsToLocalStorage();
-                renderDeliveryCards(activeFilter); 
-                showToastMessage('주소가 성공적으로 변경되었습니다.');
-                closeSmartEditModal();
+                tempItems[itemIndex].addressLocation = null;
+                
+                if (trySaveData(tempItems)) {
+                    deliveryItems = tempItems; // Commit changes to global state
+                    renderDeliveryCards(activeFilter); 
+                    showToastMessage('주소가 성공적으로 변경되었습니다.');
+                    closeSmartEditModal();
+                }
             }
         };
         
@@ -897,25 +899,35 @@
         cancelSignatureBtn.addEventListener('click', closeSignatureModal);
         saveSignatureBtn.addEventListener('click', saveSignature);
 
-        const saveDeliveryItemsToLocalStorage = () => {
+        // ▼▼▼▼▼ 수정된 부분: 안전한 데이터 저장 함수 ▼▼▼▼▼
+        const trySaveData = (itemsToSave) => {
             try {
-                localStorage.setItem('deliveryItems', JSON.stringify(deliveryItems));
+                localStorage.setItem('deliveryItems', JSON.stringify(itemsToSave));
+                localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
+                return true; // 저장 성공
             } catch (e) {
                 if (e.name === 'QuotaExceededError') {
-                    showMessage('저장 공간 부족! 더 이상 카드를 저장할 수 없습니다. [배송준비] 탭의 [데이터 관리]에서 완료된 카드를 삭제하여 공간을 확보해주세요.', '오류');
+                    showMessage('저장 공간 부족! 작업을 완료할 수 없습니다. [배송준비] 탭의 [데이터 관리]에서 완료된 카드를 삭제하여 공간을 확보해주세요.', '오류');
                 } else {
                     showMessage(`데이터 저장 중 알 수 없는 오류가 발생했습니다: ${e.message}`, '오류');
                 }
-                throw e; // Prevent further actions if saving fails
+                return false; // 저장 실패
             }
-            localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
         };
+
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
-            deliveryItems = deliveryItems.map(item => item.no === itemNo ? { ...item, status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail, isHawbConfirmed: newStatus !== '배송전' } : item);
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
+            const tempItems = JSON.parse(JSON.stringify(deliveryItems)); // Create a deep copy
+            const itemIndex = tempItems.findIndex(item => item.no === itemNo);
+            if (itemIndex > -1) {
+                tempItems[itemIndex] = { ...tempItems[itemIndex], status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail, isHawbConfirmed: newStatus !== '배송전' };
+                if (trySaveData(tempItems)) {
+                    deliveryItems = tempItems; // Commit changes to global state
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                }
+            }
         };
+        // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
         const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
             const checkbox = document.querySelector(`input[data-action="toggle-hawb-confirm"][data-no="${itemNo}"]`);
@@ -924,16 +936,18 @@
             const itemIndex = deliveryItems.findIndex(item => item.no === itemNo);
             if (itemIndex === -1) return;
 
+            const tempItems = JSON.parse(JSON.stringify(deliveryItems)); // Create a deep copy
+
             if (newCheckboxState) { // 체크박스를 켤 때 (체크인)
                 checkbox.disabled = true;
                 
-                if (deliveryItems[itemIndex].addressLocation) {
+                if (tempItems[itemIndex].addressLocation) {
                     showToastMessage('이미 좌표가 저장되어 있습니다.');
                 } else {
                     showLoadingMessage('주소 좌표 확인 중...');
                     try {
-                        const coords = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
-                        deliveryItems[itemIndex].addressLocation = coords;
+                        const coords = await getCoordsFromAddress(tempItems[itemIndex].baseAddress);
+                        tempItems[itemIndex].addressLocation = coords;
                         closeConfirmationModal();
                         showToastMessage('주소 좌표 저장 완료!');
                     } catch (error) {
@@ -946,26 +960,30 @@
                     }
                 }
 
-                deliveryItems[itemIndex].isHawbConfirmed = true;
-                deliveryItems[itemIndex].status = '배송중';
+                tempItems[itemIndex].isHawbConfirmed = true;
+                tempItems[itemIndex].status = '배송중';
                 
-                saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
+                if (trySaveData(tempItems)) {
+                    deliveryItems = tempItems; // Commit changes
+                    searchTerm = '';
+                    invoiceNumberInput.value = '';
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                }
                 checkbox.disabled = false;
 
             } else { // 체크박스를 끌 때 (체크인 취소)
-                deliveryItems[itemIndex].isHawbConfirmed = false;
-                deliveryItems[itemIndex].status = '배송전';
+                tempItems[itemIndex].isHawbConfirmed = false;
+                tempItems[itemIndex].status = '배송전';
                 
-                saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
-                showToastMessage('체크인이 취소되었습니다.');
+                if (trySaveData(tempItems)) {
+                    deliveryItems = tempItems; // Commit changes
+                    searchTerm = '';
+                    invoiceNumberInput.value = '';
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                    showToastMessage('체크인이 취소되었습니다.');
+                }
             }
         };
         
@@ -1292,15 +1310,15 @@
     
     clearAllCardsButton.addEventListener('click', () => {
         openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
-            deliveryItems = [];
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            showToastMessage("모든 카드가 삭제되었습니다.");
+            if (trySaveData([])) {
+                deliveryItems = [];
+                renderDeliveryCards(activeFilter);
+                updateFilterCounts();
+                showToastMessage("모든 카드가 삭제되었습니다.");
+            }
         });
     });
 
-    // ▼▼▼▼▼ 수정된 부분: 완료 카드 삭제 버튼 이벤트 리스너 추가 ▼▼▼▼▼
     clearCompletedCardsButton.addEventListener('click', () => {
         const completedCount = deliveryItems.filter(item => item.status === '완료').length;
         if (completedCount === 0) {
@@ -1308,14 +1326,15 @@
             return;
         }
         openConfirmationModal(`${completedCount}개의 완료된 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`, () => {
-            deliveryItems = deliveryItems.filter(item => item.status !== '완료');
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            showToastMessage("완료된 카드가 모두 삭제되었습니다.");
+            const remainingItems = deliveryItems.filter(item => item.status !== '완료');
+            if (trySaveData(remainingItems)) {
+                deliveryItems = remainingItems;
+                renderDeliveryCards(activeFilter);
+                updateFilterCounts();
+                showToastMessage("완료된 카드가 모두 삭제되었습니다.");
+            }
         });
     });
-    // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
 
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 4;
@@ -1433,18 +1452,27 @@
                 sourceImageId: item.sourceImageId || null
             }));
             
+            // ▼▼▼▼▼ 수정된 부분: 안전한 저장을 위해 임시 배열 사용 ▼▼▼▼▼
+            const tempItems = JSON.parse(JSON.stringify(deliveryItems));
             finalItems.forEach(newItem => {
-                const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
+                const existingItemIndex = tempItems.findIndex(item => item.no === newItem.no);
                 if (existingItemIndex > -1) {
-                    deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
+                    tempItems[existingItemIndex] = { ...tempItems[existingItemIndex], ...newItem };
                     updateCount++;
                 } else {
-                    deliveryItems.push(newItem);
+                    tempItems.push(newItem);
                     newCount++;
                 }
             });
-            deliveryItems.sort((a, b) => a.no - b.no);
-            saveDeliveryItemsToLocalStorage();
+            tempItems.sort((a, b) => a.no - b.no);
+
+            if (trySaveData(tempItems)) {
+                deliveryItems = tempItems; // 저장이 성공했을 때만 실제 데이터에 반영
+            } else {
+                // 저장이 실패하면, 카운트를 0으로 되돌리고 함수를 종료
+                return { newCount: 0, updateCount: 0, failedFiles: failedFileObjectsForRetry, error: 'quota' };
+            }
+            // ▲▲▲▲▲ 여기까지 수정 ▲▲▲▲▲
         }
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
@@ -1460,6 +1488,16 @@
         try {
             const initialFiles = Array.from(currentFileToScan);
             const result = await performScan(initialFiles);
+
+            // 저장 공간 부족으로 스캔이 중단된 경우
+            if (result.error === 'quota') {
+                scanLoadingIndicator.style.display = 'none';
+                deliverySheetImageInput.value = '';
+                currentFileToScan = null;
+                selectedFilesDisplay.textContent = '선택된 파일 없음';
+                return; // 함수 종료
+            }
+
             const endTime = Date.now();
             const elapsedTime = Math.round((endTime - startTime) / 1000);
             const minutes = Math.floor(elapsedTime / 60);
@@ -1546,13 +1584,13 @@
                            throw new Error("파일 내용이 올바른 배송 데이터 형식이 아닙니다.");
                         }
                         
-                        deliveryItems = importedData;
-
-                        saveDeliveryItemsToLocalStorage();
-                        updateFilterCounts();
-                        updateStickyHeaderPositions();
-                        renderDeliveryCards(activeFilter);
-                        showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
+                        if (trySaveData(importedData)) {
+                            deliveryItems = importedData;
+                            updateFilterCounts();
+                            updateStickyHeaderPositions();
+                            renderDeliveryCards(activeFilter);
+                            showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
+                        }
                     } catch (error) {
                         showMessage(`파일을 불러오는 중 오류가 발생했습니다: ${error.message}`, "오류");
                     } finally {
@@ -1935,16 +1973,27 @@
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
-                let parsedItems = JSON.parse(storedItems);
-                deliveryItems = parsedItems.map(item => {
-                    if (typeof item.addressLocation === 'undefined') {
-                        item.addressLocation = null;
-                    }
-                    return item;
-                }).sort((a, b) => a.no - b.no);
+                try {
+                    let parsedItems = JSON.parse(storedItems);
+                    deliveryItems = parsedItems.map(item => {
+                        if (typeof item.addressLocation === 'undefined') {
+                            item.addressLocation = null;
+                        }
+                        return item;
+                    }).sort((a, b) => a.no - b.no);
+                } catch (e) {
+                    console.error("저장된 데이터 파싱 오류:", e);
+                    deliveryItems = []; // 데이터가 손상되었을 경우 초기화
+                }
             }
             const storedScroll = localStorage.getItem('filterScrollPositions');
-            if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
+            if (storedScroll) {
+                try {
+                    filterScrollPositions = JSON.parse(storedScroll);
+                } catch (e) {
+                    filterScrollPositions = {};
+                }
+            }
             updateFilterCounts();
             
             const urlParamsForCheck = new URLSearchParams(window.location.search);
