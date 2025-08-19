@@ -292,8 +292,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.03 - 2025-08-11";
-            const changelog = "클립보드개선";
+            const version = "v1.0.04 - 2025-08-11";
+            const changelog = "거리순 고정 및 자동갱신";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -598,6 +598,7 @@
         let touchStartTime = 0;
         let backButtonPressedOnce = false;
         let justReturnedFromExternalApp = false;
+        let deliveryInProgressSortOrder = 'no';
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -1174,23 +1175,94 @@
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, text: '거리', action: 'sort-distance' });
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, text: '순번', action: 'sort-no' });
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, text: '선택', action: 'jump-no' });
+                    
+                    menuItems.forEach(item => {
+                        const button = document.createElement('button');
+                        button.className = buttonClass;
+                        button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
+                        button.dataset.action = item.action;
+                        actionButtons.appendChild(button);
+                    });
+                    updateSortButtonsUI();
                 } else if (activeFilter === '완료') {
                     buttonClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gray-200 text-black border border-black rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50';
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, text: '순번', action: 'sort-no-completed' });
                     menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, text: '완료시간', action: 'sort-time' });
+                    
+                    menuItems.forEach(item => {
+                        const button = document.createElement('button');
+                        button.className = buttonClass;
+                        button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
+                        button.dataset.action = item.action;
+                        actionButtons.appendChild(button);
+                    });
                 }
-
-                menuItems.forEach(item => {
-                    const button = document.createElement('button');
-                    button.className = buttonClass;
-                    button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
-                    button.dataset.action = item.action;
-                    actionButtons.appendChild(button);
-                });
             }
         });
     };
     
+    const updateSortButtonsUI = () => {
+        const distanceBtn = actionBarContainer.querySelector('button[data-action="sort-distance"]');
+        const numberBtn = actionBarContainer.querySelector('button[data-action="sort-no"]');
+        if (!distanceBtn || !numberBtn) return;
+
+        const defaultClass = 'bg-blue-100 text-blue-700 border-blue-700 hover:bg-blue-200';
+        const activeClass = 'bg-blue-600 text-white border-blue-800 shadow-md';
+
+        distanceBtn.classList.remove(defaultClass, activeClass);
+        numberBtn.classList.remove(defaultClass, activeClass);
+
+        if (deliveryInProgressSortOrder === 'distance') {
+            distanceBtn.classList.add(activeClass);
+            numberBtn.classList.add(defaultClass);
+        } else {
+            distanceBtn.classList.add(defaultClass);
+            numberBtn.classList.add(activeClass);
+        }
+    };
+
+    const sortItemsByNumber = () => {
+        deliveryInProgressSortOrder = 'no';
+        currentSortOrder = 'no';
+        deliveryItems.sort((a, b) => a.no - b.no);
+        renderDeliveryCards(activeFilter);
+        updateSortButtonsUI();
+    };
+
+    const sortItemsByDistance = async () => {
+        showLoadingMessage('현재 위치 확인 중...');
+        try {
+            const myLocation = await getCurrentLocation();
+            const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
+            const otherItems = deliveryItems.filter(item => item.status !== '배송중');
+            const itemsWithCoords = inProgressItems.filter(item => item.addressLocation);
+            const itemsWithoutCoords = inProgressItems.filter(item => !item.addressLocation);
+            
+            if (itemsWithoutCoords.length > 0) {
+                showToastMessage(`${itemsWithoutCoords.length}개의 카드에 좌표 정보가 없어 정렬에서 제외됩니다.`);
+            }
+            
+            itemsWithCoords.forEach(item => {
+                item.distanceFromMe = calculateDistance(myLocation, item.addressLocation);
+            });
+            itemsWithCoords.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
+            
+            deliveryItems = [...itemsWithCoords, ...itemsWithoutCoords, ...otherItems];
+            deliveryInProgressSortOrder = 'distance';
+            currentSortOrder = 'distance';
+            
+            renderDeliveryCards(activeFilter);
+            closeConfirmationModal();
+            showToastMessage('가까운 거리순으로 정렬되었습니다.');
+        } catch (error) {
+            closeConfirmationModal();
+            showToastMessage('GPS 신호 없음. 마지막 정렬 순서를 유지합니다.', 2500);
+            console.error("위치 갱신 실패:", error.message);
+        } finally {
+            updateSortButtonsUI();
+        }
+    };
+
     const changeFilter = (newFilter, animationClass = '', isInitialLoad = false) => {
         if (newFilter === activeFilter && !isInitialLoad) return;
 
@@ -1202,6 +1274,17 @@
         filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
 
+        if (newFilter === '배송중' && !isInitialLoad) {
+            setTimeout(() => {
+                if (deliveryInProgressSortOrder === 'distance') {
+                    showToastMessage('거리순으로 자동 갱신합니다.');
+                    sortItemsByDistance();
+                } else {
+                    sortItemsByNumber();
+                }
+            }, 100);
+        }
+
         filterButtonsContainer.querySelectorAll('button[data-filter]').forEach(btn => {
             const isActive = btn.dataset.filter === activeFilter;
             btn.classList.remove('bg-blue-500', 'text-white', 'shadow', 'bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
@@ -1212,11 +1295,6 @@
             }
         });
         
-        if (['배송중', '완료', '전체'].includes(activeFilter)) {
-            currentSortOrder = 'no';
-            deliveryItems.sort((a, b) => a.no - b.no);
-        }
-
         renderDeliveryCards(activeFilter, animationClass);
         updateStickyHeaderPositions();
         const button = filterButtonsContainer.querySelector(`button[data-filter="${activeFilter}"]`);
@@ -1625,31 +1703,12 @@
 
                 switch (action) {
                     case 'sort-distance':
-                        showLoadingMessage('현재 위치 확인 중...');
-                        try {
-                            const myLocation = await getCurrentLocation();
-                            const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
-                            const otherItems = deliveryItems.filter(item => item.status !== '배송중');
-                            const itemsWithCoords = inProgressItems.filter(item => item.addressLocation);
-                            const itemsWithoutCoords = inProgressItems.filter(item => !item.addressLocation);
-                            if (itemsWithoutCoords.length > 0) {
-                                showToastMessage(`${itemsWithoutCoords.length}개의 카드에 좌표 정보가 없어 정렬에서 제외됩니다.`);
-                            }
-                            itemsWithCoords.forEach(item => {
-                                item.distanceFromMe = calculateDistance(myLocation, item.addressLocation);
-                            });
-                            itemsWithCoords.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
-                            deliveryItems = [...itemsWithCoords, ...itemsWithoutCoords, ...otherItems];
-                            currentSortOrder = 'distance';
-                            renderDeliveryCards(activeFilter);
-                            closeConfirmationModal();
-                            showToastMessage('가까운 거리순으로 정렬되었습니다.');
-                        } catch (error) {
-                            closeConfirmationModal();
-                            showMessage(`현재 위치를 가져올 수 없습니다: ${error.message}`, '오류');
-                        }
+                        sortItemsByDistance();
                         break;
                     case 'sort-no':
+                        sortItemsByNumber();
+                        showToastMessage('순번순으로 정렬되었습니다.');
+                        break;
                     case 'sort-no-completed':
                         currentSortOrder = 'no';
                         deliveryItems.sort((a, b) => a.no - b.no);
