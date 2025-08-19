@@ -292,8 +292,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.02 - 2025-08-11";
-            const changelog = "전화번호검색가능";
+            const version = "v1.0.03 - 2025-08-11";
+            const changelog = "클립보드개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -526,12 +526,31 @@
         const extractClipboardAddressPart = (item) => {
             if (!item) return '';
             const { baseAddress, detailAddress } = item;
+
             if (detailAddress) {
                 const hyphenMatch = detailAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
                 if (hyphenMatch) return hyphenMatch[1];
                 const dongHoMatch = detailAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
                 if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
             }
+
+            if (baseAddress) {
+                const addressParts = baseAddress.split(' ');
+                const adminSuffixes = ['도', '시', '구', '군'];
+                
+                while (addressParts.length > 0) {
+                    const firstPart = addressParts[0];
+                    if (adminSuffixes.some(suffix => firstPart.endsWith(suffix))) {
+                        addressParts.shift();
+                    } else {
+                        break;
+                    }
+                }
+                
+                const resultAddress = addressParts.join(' ');
+                return resultAddress.length > 0 ? resultAddress : baseAddress;
+            }
+
             return baseAddress || '';
         };
 
