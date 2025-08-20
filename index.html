@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -292,8 +292,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.04 - 2025-08-11";
-            const changelog = "거리순 고정 및 자동갱신";
+            const version = "v1.0.05 - 2025-08-11";
+            const changelog = "클립보드개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -536,11 +536,12 @@
 
             if (baseAddress) {
                 const addressParts = baseAddress.split(' ');
+                const specialCities = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종'];
                 const adminSuffixes = ['도', '시', '구', '군'];
                 
                 while (addressParts.length > 0) {
                     const firstPart = addressParts[0];
-                    if (adminSuffixes.some(suffix => firstPart.endsWith(suffix))) {
+                    if (specialCities.includes(firstPart) || adminSuffixes.some(suffix => firstPart.endsWith(suffix))) {
                         addressParts.shift();
                     } else {
                         break;
