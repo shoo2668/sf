@@ -230,6 +230,18 @@
         </div>
     </div>
 
+    <div id="completion-options-modal" class="confirmation-modal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <h2 class="text-xl font-semibold mb-6 text-gray-800" id="completion-options-title">완료 옵션 선택</h2>
+            <div id="completion-options-list" class="space-y-3">
+                <!-- 옵션 버튼들이 여기에 동적으로 추가됩니다. -->
+            </div>
+            <div class="flex justify-end mt-8">
+                <button id="completion-options-cancel" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">취소</button>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript">
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
@@ -293,30 +305,41 @@
 
         const setVersionInfo = () => {
             const version = "v1.0.7 - 2025-08-11";
-            const changelog = "정렬개선";
+            const changelog = "버튼기능개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
 
         const setupDelegatedEventListeners = () => {
-            deliveryCardsContainer.addEventListener('click', (event) => {
-                const completedCard = event.target.closest('div[data-status="완료"]');
-                const isToggleButton = event.target.closest('button[data-action="toggle-details"]');
-                const isRevertButton = event.target.closest('button[data-action="revert-delivery"]');
+            let touchTarget = null;
 
-                if (completedCard && !isToggleButton && !isRevertButton) {
-                    const itemNo = parseInt(completedCard.dataset.no, 10);
-                    const item = deliveryItems.find(i => i.no === itemNo);
-                    if (item) {
-                        item.isStruckThrough = !item.isStruckThrough;
-                        saveDeliveryItemsToLocalStorage();
-                        renderDeliveryCards(activeFilter);
-                        return;
-                    }
-                }
-                
-                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"]');
+            deliveryCardsContainer.addEventListener('touchstart', (event) => {
+                const target = event.target.closest('button[data-action="front-door-delivery"]');
                 if (!target) return;
+
+                isLongPress = false;
+                touchTarget = target;
+                
+                longPressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    triggerHapticFeedback();
+                    const itemNo = parseInt(target.dataset.no, 10);
+                    openCompletionOptionsModal(itemNo);
+                }, 600);
+            }, { passive: true });
+
+            deliveryCardsContainer.addEventListener('touchend', (event) => {
+                clearTimeout(longPressTimer);
+
+                const target = touchTarget || event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"]');
+                touchTarget = null;
+                if (!target) return;
+
+                if (isLongPress) {
+                    event.preventDefault();
+                    isLongPress = false;
+                    return;
+                }
 
                 const action = target.dataset.action;
                 const itemNo = parseInt(target.dataset.no, 10);
@@ -365,9 +388,9 @@
                                 detailsContainer.style.display = isHidden ? 'block' : 'none';
                                 
                                 if (isHidden) {
-                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />`; // Up arrow
+                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />`;
                                 } else {
-                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />`; // Down arrow
+                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />`;
                                 }
                             }
                         }
@@ -376,6 +399,15 @@
                         openSmartEditModal(itemNo);
                         break;
                 }
+            });
+
+            deliveryCardsContainer.addEventListener('touchmove', () => {
+                clearTimeout(longPressTimer);
+                touchTarget = null;
+            }, { passive: true });
+
+            completionOptionsCancelBtn.addEventListener('click', () => {
+                completionOptionsModal.style.display = 'none';
             });
         };
 
@@ -602,6 +634,8 @@
         let backButtonPressedOnce = false;
         let justReturnedFromExternalApp = false;
         let deliveryInProgressSortOrder = 'no';
+        let longPressTimer = null;
+        let isLongPress = false;
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -658,10 +692,43 @@
 
         const actionBarContainer = document.getElementById('action-bar-container');
         const actionButtons = document.getElementById('action-buttons');
+        
+        const completionOptionsModal = document.getElementById('completion-options-modal');
+        const completionOptionsTitle = document.getElementById('completion-options-title');
+        const completionOptionsList = document.getElementById('completion-options-list');
+        const completionOptionsCancelBtn = document.getElementById('completion-options-cancel');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
         const closeSignatureModal = () => { signatureModal.style.display = 'none'; currentSignatureItemNo = null; };
+        
+        const openCompletionOptionsModal = (itemNo) => {
+            completionOptionsTitle.textContent = `${itemNo}번 완료 옵션 선택`;
+            completionOptionsList.innerHTML = '';
+
+            const options = [
+                { text: '경비실', type: '경비실', detail: '경비실 전달' },
+                { text: '택배함', type: '택배함', detail: '택배함 보관' },
+                { text: '택배보관소', type: '택배보관소', detail: '택배보관소 보관' },
+                { text: '문서수발실', type: '문서수발실', detail: '문서수발실 전달' }
+            ];
+
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'w-full px-4 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-base font-semibold';
+                button.textContent = option.text;
+                button.onclick = () => {
+                    const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                    handleStatusChange(itemNo, '완료', currentTime, option.type, option.detail);
+                    sortItemsByDistanceSilent();
+                    completionOptionsModal.style.display = 'none';
+                };
+                completionOptionsList.appendChild(button);
+            });
+
+            completionOptionsModal.style.display = 'flex';
+        };
+
         const saveSignature = () => {
             if (currentSignatureItemNo === null) return;
             const signatureText = signatureTextInput.value.trim();
@@ -1131,7 +1198,7 @@
                             <div class="space-y-3" data-details-container="${data.no}">
                                 ${detailsHtml}
                             </div>
-                            ${showInProgressButtons ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-start space-x-2 w-10/12"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
+                            ${showInProgressButtons ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-between space-x-2 w-full"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
                         </div>
                     `;
                 }
