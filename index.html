@@ -304,7 +304,7 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.8 - 2025-08-11";
+            const version = "v1.0.9 - 2025-08-11";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -326,7 +326,7 @@
                     triggerHapticFeedback();
                     const itemNo = parseInt(target.dataset.no, 10);
                     openCompletionOptionsModal(itemNo);
-                }, 600); // 0.6초
+                }, 300); // 0.3초
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchmove', () => {
