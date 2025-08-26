@@ -306,8 +306,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.14-1 - 2025-08-11";
-            const changelog = "ui개선";
+            const version = "v1.0.15 - 2025-08-11";
+            const changelog = "검색개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1450,7 +1450,21 @@
 
     searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
     resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
-    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+    invoiceNumberInput.addEventListener('input', (event) => {
+        searchTerm = event.target.value.trim();
+        renderDeliveryCards(activeFilter);
+
+        // 검색 결과의 첫 번째 카드를 찾아서 보이도록 스크롤
+        const firstCard = deliveryCardsContainer.querySelector('div[data-no]');
+        if (firstCard) {
+            // scrollIntoView가 스크롤 위치를 자동으로 맞춰줍니다.
+            // scroll-padding-top 덕분에 상단 필터에 가려지지 않습니다.
+            firstCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            // 검색 결과가 없으면 그냥 맨 위로 이동
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+    });
 
     deliverySheetImageInput.addEventListener('change', (event) => {
         currentFileToScan = event.target.files;
