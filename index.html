@@ -292,8 +292,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.6 - 2025-08-11";
-            const changelog = "위치정렬개선";
+            const version = "v1.0.7 - 2025-08-11";
+            const changelog = "정렬개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1305,15 +1305,8 @@
         filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
 
-        if (newFilter === '배송중' && !isInitialLoad) {
-            setTimeout(() => {
-                if (deliveryInProgressSortOrder === 'distance') {
-                    showToastMessage('거리순으로 자동 갱신합니다.');
-                    sortItemsByDistance();
-                } else {
-                    sortItemsByNumber();
-                }
-            }, 100);
+        if (['전체', '배송전', '완료'].includes(newFilter)) {
+            deliveryItems.sort((a, b) => a.no - b.no);
         }
 
         filterButtonsContainer.querySelectorAll('button[data-filter]').forEach(btn => {
