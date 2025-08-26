@@ -1101,7 +1101,7 @@
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
                 const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전'].includes(currentFilter);
-                const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined)
+                const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
                 
