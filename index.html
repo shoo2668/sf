@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -292,8 +292,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.05 - 2025-08-11";
-            const changelog = "클립보드개선";
+            const version = "v1.0.6 - 2025-08-11";
+            const changelog = "위치정렬개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -341,12 +341,14 @@
                         openConfirmationModal(`${itemNo}번 항목을 '본인확인'으로 완료 처리하시겠습니까?`, () => {
                             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                             handleStatusChange(itemNo, '완료', currentTime, '본인확인', '신분증');
+                            sortItemsByDistanceSilent();
                         });
                         break;
                     case 'front-door-delivery':
                         openConfirmationModal(`${itemNo}번 항목을 '문앞배송'으로 완료 처리하시겠습니까?`, () => {
                             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                             handleStatusChange(itemNo, '완료', currentTime, '문앞배송');
+                            sortItemsByDistanceSilent();
                         });
                         break;
                     case 'sign-delivery':
@@ -666,6 +668,7 @@
             if (signatureText === '') { showToastMessage('서명 내용을 입력해주세요.'); return; }
             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
             handleStatusChange(currentSignatureItemNo, '완료', currentTime, '서명', signatureText);
+            sortItemsByDistanceSilent();
             closeSignatureModal();
             showToastMessage('서명이 성공적으로 저장되었습니다.');
         };
@@ -1228,6 +1231,33 @@
         deliveryItems.sort((a, b) => a.no - b.no);
         renderDeliveryCards(activeFilter);
         updateSortButtonsUI();
+    };
+
+    const sortItemsByDistanceSilent = async () => {
+        if (activeFilter !== '배송중' || deliveryInProgressSortOrder !== 'distance') {
+            return;
+        }
+
+        try {
+            const myLocation = await getCurrentLocation(5000);
+            const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
+            const otherItems = deliveryItems.filter(item => item.status !== '배송중');
+            const itemsWithCoords = inProgressItems.filter(item => item.addressLocation);
+            const itemsWithoutCoords = inProgressItems.filter(item => !item.addressLocation);
+            
+            itemsWithCoords.forEach(item => {
+                item.distanceFromMe = calculateDistance(myLocation, item.addressLocation);
+            });
+            itemsWithCoords.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
+            
+            deliveryItems = [...itemsWithCoords, ...itemsWithoutCoords, ...otherItems];
+            
+            renderDeliveryCards(activeFilter);
+            console.log('자동 거리순 정렬 완료.');
+
+        } catch (error) {
+            console.log('자동 정렬 실패 (GPS 신호 없음):', error.message);
+        }
     };
 
     const sortItemsByDistance = async () => {
