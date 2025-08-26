@@ -304,8 +304,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.7 - 2025-08-11";
-            const changelog = "버튼기능개선";
+            const version = "v1.0.8 - 2025-08-11";
+            const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -313,9 +313,10 @@
         const setupDelegatedEventListeners = () => {
             let touchTarget = null;
 
+            // 롱프레스(길게 누르기) 이벤트 처리
             deliveryCardsContainer.addEventListener('touchstart', (event) => {
                 const target = event.target.closest('button[data-action="front-door-delivery"]');
-                if (!target) return;
+                if (!target) return; // '문앞배송' 버튼이 아니면 무시
 
                 isLongPress = false;
                 touchTarget = target;
@@ -325,21 +326,31 @@
                     triggerHapticFeedback();
                     const itemNo = parseInt(target.dataset.no, 10);
                     openCompletionOptionsModal(itemNo);
-                }, 600);
+                }, 600); // 0.6초
+            }, { passive: true });
+
+            deliveryCardsContainer.addEventListener('touchmove', () => {
+                clearTimeout(longPressTimer);
+                touchTarget = null;
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchend', (event) => {
                 clearTimeout(longPressTimer);
-
-                const target = touchTarget || event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"]');
-                touchTarget = null;
-                if (!target) return;
-
                 if (isLongPress) {
                     event.preventDefault();
                     isLongPress = false;
+                }
+            });
+
+            // 일반 클릭 이벤트 처리
+            deliveryCardsContainer.addEventListener('click', (event) => {
+                if (isLongPress) {
+                    isLongPress = false;
                     return;
                 }
+                
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"]');
+                if (!target) return;
 
                 const action = target.dataset.action;
                 const itemNo = parseInt(target.dataset.no, 10);
@@ -400,11 +411,6 @@
                         break;
                 }
             });
-
-            deliveryCardsContainer.addEventListener('touchmove', () => {
-                clearTimeout(longPressTimer);
-                touchTarget = null;
-            }, { passive: true });
 
             completionOptionsCancelBtn.addEventListener('click', () => {
                 completionOptionsModal.style.display = 'none';
