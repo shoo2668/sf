@@ -304,8 +304,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.12 - 2025-08-11";
-            const changelog = "카드버그수정";
+            const version = "v1.0.13 - 2025-08-11";
+            const changelog = "주소수정개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -601,7 +601,7 @@
         
         const validateAddressWithKakao = async (baseAddress, detailAddress) => {
             if (!baseAddress) {
-                return { baseAddress: '', detailAddress: detailAddress || '' };
+                return { baseAddress: '', detailAddress: detailAddress || '', validated: false };
             }
             try {
                 const response = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(baseAddress)}`, {
@@ -612,12 +612,15 @@
                 if (data.documents && data.documents.length > 0) {
                     const doc = data.documents[0];
                     const kakaoBaseAddress = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
-                    return { baseAddress: kakaoBaseAddress, detailAddress: detailAddress || '' };
+                    // 검증 성공 상태와 함께 반환
+                    return { baseAddress: kakaoBaseAddress, detailAddress: detailAddress || '', validated: true };
                 }
-                return { baseAddress, detailAddress: detailAddress || '' }; // 카카오가 못찾으면 원본 유지
+                // 주소를 찾지 못한 경우, 검증 실패 상태와 함께 원본 반환
+                return { baseAddress, detailAddress: detailAddress || '', validated: false };
             } catch (error) {
                 console.error('Error validating address with Kakao API:', error);
-                return { baseAddress, detailAddress: detailAddress || '' }; // 에러나도 원본 유지
+                // 에러 발생 시, 검증 실패 상태와 함께 원본 반환
+                return { baseAddress, detailAddress: detailAddress || '', validated: false };
             }
         };
 
@@ -935,28 +938,58 @@
             autoResizeTextarea({ target: input });
         });
 
-        const applyAddressEdit = (fullAddress) => {
-             if (currentEditItemNo === null) return;
+        const applyAddressEdit = async (fullAddress) => {
+            if (currentEditItemNo === null) return;
+            
+            showLoadingMessage('주소 검증 중...');
+
             const itemIndex = deliveryItems.findIndex(item => item.no === currentEditItemNo);
-            if (itemIndex > -1) {
-                const commaIndex = fullAddress.indexOf(',');
-                if (commaIndex > -1) {
-                    deliveryItems[itemIndex].baseAddress = fullAddress.substring(0, commaIndex).trim();
-                    deliveryItems[itemIndex].detailAddress = fullAddress.substring(commaIndex + 1).trim();
-                } else {
-                    deliveryItems[itemIndex].baseAddress = fullAddress;
-                    deliveryItems[itemIndex].detailAddress = '';
-                }
+            if (itemIndex === -1) {
+                closeConfirmationModal();
+                showMessage('오류: 수정할 카드를 찾을 수 없습니다.');
+                return;
+            }
+
+            const commaIndex = fullAddress.indexOf(',');
+            let tempBaseAddress, tempDetailAddress;
+
+            if (commaIndex > -1) {
+                tempBaseAddress = fullAddress.substring(0, commaIndex).trim();
+                tempDetailAddress = fullAddress.substring(commaIndex + 1).trim();
+            } else {
+                tempBaseAddress = fullAddress;
+                tempDetailAddress = '';
+            }
+
+            const validationResult = await validateAddressWithKakao(tempBaseAddress, tempDetailAddress);
+            closeConfirmationModal();
+
+            const saveAddress = (base, detail) => {
+                deliveryItems[itemIndex].baseAddress = base;
+                deliveryItems[itemIndex].detailAddress = detail;
                 deliveryItems[itemIndex].addressLocation = null;
                 saveDeliveryItemsToLocalStorage();
-                renderDeliveryCards(activeFilter); 
-                showToastMessage('주소가 성공적으로 변경되었습니다.');
+                renderDeliveryCards(activeFilter);
                 closeSmartEditModal();
+            };
+
+            if (validationResult.validated) {
+                // 검증 성공 시, 변환된 주소로 저장
+                saveAddress(validationResult.baseAddress, validationResult.detailAddress);
+                showToastMessage('주소가 검증 및 저장되었습니다.');
+            } else {
+                // 검증 실패 시, 사용자에게 물어봄
+                const message = `카카오맵에서 주소를 찾을 수 없습니다. 입력하신 '${fullAddress}' 주소 그대로 저장하시겠습니까?`;
+                openConfirmationModal(message, () => {
+                    // 사용자가 '확인'을 누르면 입력한 그대로 저장
+                    saveAddress(tempBaseAddress, tempDetailAddress);
+                    showToastMessage('입력한 주소 그대로 저장되었습니다.');
+                });
             }
         };
         
-        applyPiecesBtn.addEventListener('click', () => applyAddressEdit(piecesAddressInput.value.trim()));
-        applyDirectBtn.addEventListener('click', () => applyAddressEdit(directAddressInput.value.trim()));
+        applyPiecesBtn.addEventListener('click', async () => await applyAddressEdit(piecesAddressInput.value.trim()));
+        applyDirectBtn.addEventListener('click', async () => await applyAddressEdit(directAddressInput.value.trim()));
         
         resetPiecesBtn.addEventListener('click', () => {
             piecesAddressInput.value = '';
