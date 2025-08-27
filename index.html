@@ -7,9 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html, body { height: 100vh; overflow: hidden; margin: 0; font-family: 'Inter', sans-serif; }
-        body { display: flex; flex-direction: column; }
-        #main-content-wrapper { flex-grow: 1; overflow-y: auto; scroll-behavior: smooth !important; }
+        html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 88px; /* JS가 동적으로 변경 */ }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; padding-top: 88px; /* JS가 동적으로 변경 */ }
         .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
@@ -49,7 +48,7 @@
         .animate-slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
-        #filter-buttons-container { position: fixed; top: 0; left: 0; width: 100%; z-index: 20; }
+        #filter-buttons-container { position: fixed; top: 0; left: 0; width: 100%; will-change: transform, top; }
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
@@ -67,8 +66,8 @@
         }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div id="filter-buttons-container">
+<body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
+    <div id="filter-buttons-container" class="z-20">
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg w-full min-w-[320px] p-4">
             <div class="flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
                 <button data-filter="배송준비" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 whitespace-nowrap"><span>배송준비</span></button>
@@ -79,46 +78,46 @@
             </div>
         </div>
     </div>
-
-    <div id="main-content-wrapper" class="p-4 sm:p-6 lg:p-8">
-        <div id="data-management-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">데이터 내보내기/가져오기</h3>
-                <div class="flex space-x-2">
-                    <button id="exportDataButton" class="w-1/2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">데이터 파일로 저장</button>
-                    <label for="importDataInput" class="w-1/2 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center cursor-pointer">파일에서 불러오기</label>
-                    <input type="file" id="importDataInput" class="hidden" accept=".json"/>
-                </div>
-            </div>
-            <div>
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
-                <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
+    <div id="main-content-wrapper">
+    <div id="data-management-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">데이터 내보내기/가져오기</h3>
+            <div class="flex space-x-2">
+                <button id="exportDataButton" class="w-1/2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">데이터 파일로 저장</button>
+                <label for="importDataInput" class="w-1/2 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center cursor-pointer">파일에서 불러오기</label>
+                <input type="file" id="importDataInput" class="hidden" accept=".json"/>
             </div>
         </div>
-
-        <div id="scan-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
-            <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
-            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
-                <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
-                <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 py-2 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">사진 선택</label>
-                <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
-            </div>
-            <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
-            <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
-                <div class="spinner mx-auto mb-2"></div>
-                <p id="scan-progress-text">송장 스캔 중...</p>
-            </div>
-            <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
+            <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
         </div>
-        
-        <div id="version-info-container" class="max-w-md mx-auto mb-6 text-center hidden">
-            <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
-            <p id="version-changelog" class="text-xs text-gray-500"></p>
-        </div>
+    </div>
 
-        <div id="delivery-cards-container" class="max-w-md mx-auto"></div>
+    <div id="scan-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
+        <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
+        <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+            <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
+            <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 py-2 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">사진 선택</label>
+            <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
+        </div>
+        <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
+        <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
+            <div class="spinner mx-auto mb-2"></div>
+            <p id="scan-progress-text">송장 스캔 중...</p>
+        </div>
+        <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
     </div>
     
+    <div id="version-info-container" class="max-w-md mx-auto mb-6 text-center hidden">
+        <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
+        <p id="version-changelog" class="text-xs text-gray-500"></p>
+    </div>
+
+    <div id="delivery-cards-container" class="max-w-md mx-auto"></div>
+    
+    </div>
+
     <div id="toast-container"></div>
 
     <div id="search-bar-container" class="bottom-bar">
@@ -307,8 +306,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.1 - 2025-08-11";
-            const changelog = "키패드 밀림 방지";
+            const version = "v1.0.14-2 - 2025-08-11";
+            const changelog = "롤백212₩";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -319,7 +318,7 @@
             // 롱프레스(길게 누르기) 이벤트 처리
             deliveryCardsContainer.addEventListener('touchstart', (event) => {
                 const target = event.target.closest('button[data-action="front-door-delivery"]');
-                if (!target) return;
+                if (!target) return; // '문앞배송' 버튼이 아니면 무시
 
                 isLongPress = false;
                 touchTarget = target;
@@ -329,7 +328,7 @@
                     triggerHapticFeedback();
                     const itemNo = parseInt(target.dataset.no, 10);
                     openCompletionOptionsModal(itemNo);
-                }, 300); // 0.3초로 수정
+                }, 300); // 0.3초
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchmove', () => {
@@ -615,11 +614,14 @@
                 if (data.documents && data.documents.length > 0) {
                     const doc = data.documents[0];
                     const kakaoBaseAddress = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
+                    // 검증 성공 상태와 함께 반환
                     return { baseAddress: kakaoBaseAddress, detailAddress: detailAddress || '', validated: true };
                 }
+                // 주소를 찾지 못한 경우, 검증 실패 상태와 함께 원본 반환
                 return { baseAddress, detailAddress: detailAddress || '', validated: false };
             } catch (error) {
                 console.error('Error validating address with Kakao API:', error);
+                // 에러 발생 시, 검증 실패 상태와 함께 원본 반환
                 return { baseAddress, detailAddress: detailAddress || '', validated: false };
             }
         };
@@ -706,7 +708,6 @@
         const completionOptionsTitle = document.getElementById('completion-options-title');
         const completionOptionsList = document.getElementById('completion-options-list');
         const completionOptionsCancelBtn = document.getElementById('completion-options-cancel');
-        const mainContentWrapper = document.getElementById('main-content-wrapper');
 
         // --- Modal & Core Logic Functions ---
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
@@ -975,11 +976,14 @@
             };
 
             if (validationResult.validated) {
+                // 검증 성공 시, 변환된 주소로 저장
                 saveAddress(validationResult.baseAddress, validationResult.detailAddress);
                 showToastMessage('주소가 검증 및 저장되었습니다.');
             } else {
+                // 검증 실패 시, 사용자에게 물어봄
                 const message = `카카오맵에서 주소를 찾을 수 없습니다. 입력하신 '${fullAddress}' 주소 그대로 저장하시겠습니까?`;
                 openConfirmationModal(message, () => {
+                    // 사용자가 '확인'을 누르면 입력한 그대로 저장
                     saveAddress(tempBaseAddress, tempDetailAddress);
                     showToastMessage('입력한 주소 그대로 저장되었습니다.');
                 });
@@ -1261,11 +1265,8 @@
     const updateStickyHeaderPositions = () => {
         requestAnimationFrame(() => {
             const topOffset = filterButtonsContainer.offsetHeight;
-            const bottomOffset = searchBarContainer.offsetHeight;
-            
-            mainContentWrapper.style.paddingTop = `${topOffset}px`;
-            mainContentWrapper.style.scrollPaddingTop = `${topOffset}px`;
-            mainContentWrapper.style.paddingBottom = `${bottomOffset}px`;
+            document.body.style.paddingTop = `${topOffset}px`;
+            document.documentElement.style.scrollPaddingTop = `${topOffset}px`;
 
             const isScanVisible = activeFilter === '배송준비';
             scanSectionContainer.classList.toggle('hidden', !isScanVisible);
@@ -1411,7 +1412,7 @@
             invoiceNumberInput.value = '';
         }
 
-        filterScrollPositions[activeFilter] = mainContentWrapper.scrollTop;
+        filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
 
         if (['전체', '배송전', '완료'].includes(newFilter)) {
@@ -1432,7 +1433,7 @@
         updateStickyHeaderPositions();
         const button = filterButtonsContainer.querySelector(`button[data-filter="${activeFilter}"]`);
         if (button) button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-        setTimeout(() => mainContentWrapper.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
+        setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
     };
 
     filterButtonsContainer.addEventListener('click', (event) => {
@@ -1447,19 +1448,9 @@
         changeFilter(newFilter, animation);
     });
 
-    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); mainContentWrapper.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
-    resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = mainContentWrapper.scrollTop; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => mainContentWrapper.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
-    invoiceNumberInput.addEventListener('input', (event) => {
-        searchTerm = event.target.value.trim();
-        renderDeliveryCards(activeFilter);
-
-        const firstCard = deliveryCardsContainer.querySelector('div[data-no]');
-        if (firstCard) {
-            firstCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-            mainContentWrapper.scrollTo({ top: 0, behavior: 'auto' });
-        }
-    });
+    searchButton.addEventListener('click', () => { searchTerm = invoiceNumberInput.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
+    resetButton.addEventListener('click', () => { filterScrollPositions[activeFilter] = window.scrollY; searchTerm = ''; invoiceNumberInput.value = ''; renderDeliveryCards(activeFilter); setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0); });
+    invoiceNumberInput.addEventListener('input', (event) => { searchTerm = event.target.value.trim(); renderDeliveryCards(activeFilter); window.scrollTo({ top: 0, behavior: 'auto' }); filterScrollPositions[activeFilter] = 0; });
 
     deliverySheetImageInput.addEventListener('change', (event) => {
         currentFileToScan = event.target.files;
@@ -1724,22 +1715,6 @@
             setVersionInfo();
             setupDelegatedEventListeners();
 
-            // --- Visual Viewport API를 사용하여 키패드에 대응 ---
-            const setupVisualViewportListener = () => {
-                if (!window.visualViewport) {
-                    return; // 지원하지 않는 브라우저에서는 실행 안 함
-                }
-
-                const resizeHandler = () => {
-                    // 보이는 화면의 높이만큼 body의 높이를 강제로 설정
-                    document.body.style.height = visualViewport.height + 'px';
-                };
-
-                window.visualViewport.addEventListener('resize', resizeHandler);
-                resizeHandler(); // 초기 높이 설정
-            };
-            setupVisualViewportListener();
-
             // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
             invoiceNumberInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
@@ -1772,7 +1747,7 @@
             // ------------------------------------
 
             document.body.addEventListener('touchmove', (event) => {
-                if (mainContentWrapper.scrollTop === 0 && touchStartY < event.touches[0].clientY && activeFilter !== '배송준비') {
+                if (window.scrollY === 0 && touchStartY < event.touches[0].clientY && activeFilter !== '배송준비') {
                     event.preventDefault();
                 }
             }, { passive: false });
@@ -1926,8 +1901,9 @@
                 numberJumpModal.style.display = 'none';
             });
 
-            mainContentWrapper.addEventListener('scroll', () => {
-                const currentScrollY = mainContentWrapper.scrollTop;
+            // 스크롤 이벤트
+            window.addEventListener('scroll', () => {
+                const currentScrollY = window.scrollY;
                 if (currentScrollY > lastScrollY) { // Scrolling down
                     searchBarContainer.classList.add('hidden');
                     actionBarContainer.classList.add('hidden');
