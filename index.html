@@ -305,9 +305,27 @@
 
         // --- Helper functions ---
 
+        const isValidMobileNumber = (phoneNumber) => {
+            if (typeof phoneNumber !== 'string' || !phoneNumber) return true; // 번호가 없으면 유효한 것으로 간주
+            let cleaned = phoneNumber.replace(/\D/g, '');
+            
+            // 다양한 국가번호 포맷을 010으로 정규화
+            if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
+            else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
+            else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
+
+            // 010으로 시작하는 번호는 반드시 11자리여야 함
+            if (cleaned.startsWith('010')) {
+                return cleaned.length === 11;
+            }
+            
+            return true; // 010이 아닌 번호(지역번호, 070 등)는 검사 대상에서 제외
+        };
+
         const setVersionInfo = () => {
-            const version = "v1.0.16";
-            const changelog = "거리순정렬고정2";
+            const version = "v1.0.17";
+            const changelog = "전화번호수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -351,7 +369,8 @@
                     return;
                 }
                 
-                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"]');
+                // ▼▼▼▼▼ [수정된 부분] 'span[data-action="edit-phone"]' 추가 ▼▼▼▼▼
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"]');
                 if (!target) return;
 
                 const action = target.dataset.action;
@@ -408,6 +427,11 @@
                             }
                         }
                         break;
+                    // ▼▼▼▼▼ [추가된 부분] ▼▼▼▼▼
+                    case 'edit-phone':
+                        openPhoneEditModal(itemNo);
+                        break;
+                    // ▲▲▲▲▲ [추가된 부분] ▲▲▲▲▲
                     case 'open-smart-edit':
                         openSmartEditModal(itemNo);
                         break;
@@ -710,6 +734,49 @@
         const completionOptionsCancelBtn = document.getElementById('completion-options-cancel');
 
         // --- Modal & Core Logic Functions ---
+        const openPhoneEditModal = (itemNo) => {
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) return;
+
+            confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
+            
+            // 모달 바디에 input 필드와 안내 문구 추가
+            confirmationModalBody.innerHTML = `
+                <p class="text-sm text-gray-600 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
+                <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="${getCleanPhoneNumber(item.receiverTelephoneNo)}" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+            `;
+            
+            confirmOkButton.textContent = '수정 완료';
+            confirmCancelButton.textContent = '취소';
+            confirmCancelButton.style.display = '';
+            confirmationModalButtons.style.display = 'flex';
+
+            const phoneInput = document.getElementById('phone-edit-input');
+            
+            // 입력 시 자동으로 하이픈을 추가하는 함수
+            const autoHyphenOnInput = (target) => {
+                target.value = target.value
+                    .replace(/[^0-9]/g, '') // 숫자가 아닌 문자 제거
+                    .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3") // 010-XXXX-XXXX 형식 적용
+                    .replace(/(\-{1,2})$/g, ""); // 마지막에 붙는 하이픈 제거
+            }
+            phoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
+            
+            // '수정 완료' 버튼 클릭 시 실행될 콜백 함수
+            onConfirmCallback = () => {
+                const newPhoneNumber = phoneInput.value;
+                const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
+                if (itemIndex > -1) {
+                    deliveryItems[itemIndex].receiverTelephoneNo = newPhoneNumber;
+                    saveDeliveryItemsToLocalStorage();
+                    renderDeliveryCards(activeFilter);
+                    showToastMessage(`${item.no}번 전화번호가 수정되었습니다.`);
+                }
+            };
+
+            confirmationModal.style.display = 'flex';
+            phoneInput.focus(); // 모달이 열리면 바로 입력 필드에 포커스
+        };
         const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
         const closeSignatureModal = () => { signatureModal.style.display = 'none'; currentSignatureItemNo = null; };
         
@@ -1136,6 +1203,10 @@
             }
 
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
+                // ▼▼▼▼▼ [수정된 부분] isMobileInvalid 변수 추가 ▼▼▼▼▼
+                const isMobileInvalid = !isValidMobileNumber(data.receiverTelephoneNo);
+                // ▲▲▲▲▲ [수정된 부분] isMobileInvalid 변수 추가 ▲▲▲▲▲
+
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
                 const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전'].includes(currentFilter);
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
@@ -1185,7 +1256,14 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <span class="text-base text-blue-600 font-semibold">${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}</span>
+                            <!-- ▼▼▼▼▼ [수정된 부분] 전화번호 span 태그 ▼▼▼▼▼ -->
+                            <span 
+                                class="text-base font-semibold ${isMobileInvalid ? 'text-red-500 cursor-pointer underline' : 'text-blue-600'}"
+                                ${isMobileInvalid ? `data-action="edit-phone" data-no="${data.no}"` : ''}
+                            >
+                                ${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}
+                            </span>
+                            <!-- ▲▲▲▲▲ [수정된 부분] 전화번호 span 태그 ▲▲▲▲▲ -->
                             <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a>
                             <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a>
                         </div>
