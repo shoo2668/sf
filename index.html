@@ -324,8 +324,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.0.21";
-            const changelog = "필터 정렬 버튼개선2";
+            const version = "v1.0.22";
+            const changelog = "필터 정렬 버튼개선3";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1426,11 +1426,14 @@
             const inactiveClass = 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50';
             
             inProgressSortButtons.forEach(btn => {
-                btn.classList.remove(activeClass, inactiveClass);
+                // 먼저 모든 관련 클래스를 제거합니다.
+                btn.classList.remove(...activeClass.split(' '), ...inactiveClass.split(' '));
+                
+                // 조건에 맞는 클래스들을 올바른 방식으로 추가합니다.
                 if (btn.dataset.sortType === deliveryInProgressSortOrder) {
-                    btn.classList.add(activeClass); // [수정] 클래스 추가
+                    btn.classList.add(...activeClass.split(' '));
                 } else {
-                    btn.classList.add(inactiveClass); // [수정] 클래스 추가
+                    btn.classList.add(...inactiveClass.split(' '));
                 }
             });
         }
@@ -1442,11 +1445,14 @@
             const inactiveClass = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100';
 
             completedSortButtons.forEach(btn => {
-                btn.classList.remove(activeClass, inactiveClass);
+                // 먼저 모든 관련 클래스를 제거합니다.
+                btn.classList.remove(...activeClass.split(' '), ...inactiveClass.split(' '));
+
+                // 조건에 맞는 클래스들을 올바른 방식으로 추가합니다.
                 if (btn.dataset.sortType === completedSortOrder) {
-                    btn.classList.add(activeClass); // [수정] 클래스 추가
+                    btn.classList.add(...activeClass.split(' '));
                 } else {
-                    btn.classList.add(inactiveClass); // [수정] 클래스 추가
+                    btn.classList.add(...inactiveClass.split(' '));
                 }
             });
         }
