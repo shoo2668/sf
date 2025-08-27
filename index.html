@@ -324,8 +324,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.0.20";
-            const changelog = "필터 정렬 버튼개선";
+            const version = "v1.0.21";
+            const changelog = "필터 정렬 버튼개선2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1428,9 +1428,9 @@
             inProgressSortButtons.forEach(btn => {
                 btn.classList.remove(activeClass, inactiveClass);
                 if (btn.dataset.sortType === deliveryInProgressSortOrder) {
-                    btn.classList.add(activeClass);
+                    btn.classList.add(activeClass); // [수정] 클래스 추가
                 } else {
-                    btn.classList.add(inactiveClass);
+                    btn.classList.add(inactiveClass); // [수정] 클래스 추가
                 }
             });
         }
@@ -1444,9 +1444,9 @@
             completedSortButtons.forEach(btn => {
                 btn.classList.remove(activeClass, inactiveClass);
                 if (btn.dataset.sortType === completedSortOrder) {
-                    btn.classList.add(activeClass);
+                    btn.classList.add(activeClass); // [수정] 클래스 추가
                 } else {
-                    btn.classList.add(inactiveClass);
+                    btn.classList.add(inactiveClass); // [수정] 클래스 추가
                 }
             });
         }
@@ -1511,9 +1511,7 @@
             deliveryInProgressSortOrder = 'distance';
             currentSortOrder = 'distance';
             
-            // ▼▼▼▼▼ [수정된 부분] ▼▼▼▼▼
             if (silent) {
-                // silent 모드일 때, 정렬이 끝나면 현재 필터가 '배송중'일 경우에만 화면을 다시 그림
                 if (activeFilter === '배송중') {
                     renderDeliveryCards(activeFilter);
                 }
@@ -1522,8 +1520,6 @@
                 closeConfirmationModal();
                 showToastMessage('가까운 거리순으로 정렬되었습니다.');
             }
-            // ▲▲▲▲▲ [수정된 부분] ▲▲▲▲▲
-
         } catch (error) {
             if (!silent) {
                 closeConfirmationModal();
@@ -1531,9 +1527,9 @@
             }
             console.error("위치 갱신 실패:", error.message);
         } finally {
-            if (!silent) {
-                updateSortButtonsUI();
-            }
+            // ▼▼▼▼▼ [수정] finally 블록은 silent 여부와 관계없이 항상 실행되도록 수정 ▼▼▼▼▼
+            updateSortButtonsUI();
+            // ▲▲▲▲▲ [수정] ▲▲▲▲▲
         }
     };
 
