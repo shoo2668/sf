@@ -306,8 +306,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.14-2 - 2025-08-11";
-            const changelog = "롤백212₩";
+            const version = "v1.0.15 - 2025-08-11";
+            const changelog = "거리순정렬고정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1370,8 +1370,10 @@
         }
     };
 
-    const sortItemsByDistance = async () => {
-        showLoadingMessage('현재 위치 확인 중...');
+    const sortItemsByDistance = async (silent = false) => {
+        if (!silent) {
+            showLoadingMessage('현재 위치 확인 중...');
+        }
         try {
             const myLocation = await getCurrentLocation();
             const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
@@ -1379,7 +1381,7 @@
             const itemsWithCoords = inProgressItems.filter(item => item.addressLocation);
             const itemsWithoutCoords = inProgressItems.filter(item => !item.addressLocation);
             
-            if (itemsWithoutCoords.length > 0) {
+            if (!silent && itemsWithoutCoords.length > 0) {
                 showToastMessage(`${itemsWithoutCoords.length}개의 카드에 좌표 정보가 없어 정렬에서 제외됩니다.`);
             }
             
@@ -1392,19 +1394,25 @@
             deliveryInProgressSortOrder = 'distance';
             currentSortOrder = 'distance';
             
-            renderDeliveryCards(activeFilter);
-            closeConfirmationModal();
-            showToastMessage('가까운 거리순으로 정렬되었습니다.');
+            if (!silent) {
+                renderDeliveryCards(activeFilter);
+                closeConfirmationModal();
+                showToastMessage('가까운 거리순으로 정렬되었습니다.');
+            }
         } catch (error) {
-            closeConfirmationModal();
-            showToastMessage('GPS 신호 없음. 마지막 정렬 순서를 유지합니다.', 2500);
+            if (!silent) {
+                closeConfirmationModal();
+                showToastMessage('GPS 신호 없음. 마지막 정렬 순서를 유지합니다.', 2500);
+            }
             console.error("위치 갱신 실패:", error.message);
         } finally {
-            updateSortButtonsUI();
+            if (!silent) {
+                updateSortButtonsUI();
+            }
         }
     };
 
-    const changeFilter = (newFilter, animationClass = '', isInitialLoad = false) => {
+    const changeFilter = async (newFilter, animationClass = '', isInitialLoad = false) => {
         if (newFilter === activeFilter && !isInitialLoad) return;
 
         if (!isInitialLoad) {
@@ -1415,9 +1423,18 @@
         filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
 
-        if (['전체', '배송전', '완료'].includes(newFilter)) {
+        // ▼▼▼▼▼ [수정된 부분] 정렬 로직 시작 ▼▼▼▼▼
+        if (newFilter === '배송중') {
+            // '배송중' 탭으로 돌아왔을 때, 저장된 정렬 순서가 '거리순'이면 자동으로 거리순 정렬을 다시 실행
+            if (deliveryInProgressSortOrder === 'distance') {
+                await sortItemsByDistance(true); // silent 옵션으로 로딩창 없이 실행
+            } else {
+                deliveryItems.sort((a, b) => a.no - b.no);
+            }
+        } else if (['전체', '배송전', '완료'].includes(newFilter)) {
             deliveryItems.sort((a, b) => a.no - b.no);
         }
+        // ▲▲▲▲▲ [수정된 부분] 정렬 로직 끝 ▲▲▲▲▲
 
         filterButtonsContainer.querySelectorAll('button[data-filter]').forEach(btn => {
             const isActive = btn.dataset.filter === activeFilter;
