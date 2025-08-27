@@ -307,7 +307,7 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.1.0 - 2025-08-11";
+            const version = "v1.1.1 - 2025-08-11";
             const changelog = "키패드 밀림 방지";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1723,6 +1723,22 @@
         try {
             setVersionInfo();
             setupDelegatedEventListeners();
+
+            // --- Visual Viewport API를 사용하여 키패드에 대응 ---
+            const setupVisualViewportListener = () => {
+                if (!window.visualViewport) {
+                    return; // 지원하지 않는 브라우저에서는 실행 안 함
+                }
+
+                const resizeHandler = () => {
+                    // 보이는 화면의 높이만큼 body의 높이를 강제로 설정
+                    document.body.style.height = visualViewport.height + 'px';
+                };
+
+                window.visualViewport.addEventListener('resize', resizeHandler);
+                resizeHandler(); // 초기 높이 설정
+            };
+            setupVisualViewportListener();
 
             // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
             invoiceNumberInput.addEventListener('keydown', (event) => {
