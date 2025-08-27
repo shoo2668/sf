@@ -324,8 +324,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.0.19";
-            const changelog = "필터 정렬 순서 개선";
+            const version = "v1.0.20";
+            const changelog = "필터 정렬 버튼개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1359,58 +1359,96 @@
             actionBarContainer.style.display = isActionVisible ? 'block' : 'none';
 
             if (isActionVisible) {
-                actionButtons.innerHTML = ''; // Clear previous buttons
+                actionButtons.innerHTML = ''; // 이전 버튼들 초기화
                 const menuItems = [];
-                let buttonClass = '';
-
+                
                 if (activeFilter === '배송중') {
-                    buttonClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 border border-blue-700 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50';
-                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, text: '거리', action: 'sort-distance' });
-                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, text: '순번', action: 'sort-no' });
-                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, text: '선택', action: 'jump-no' });
+                    // ▼▼▼▼▼ [수정된 부분] 버튼 순서 및 속성 변경 ▼▼▼▼▼
+                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
+                    
+                    menuItems.push({ 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
+                        text: '순번', action: 'sort-no', sortGroup: 'in-progress', sortType: 'no' 
+                    });
+                    menuItems.push({ 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, 
+                        text: '거리', action: 'sort-distance', sortGroup: 'in-progress', sortType: 'distance' 
+                    });
+                    menuItems.push({ 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, 
+                        text: '선택', action: 'jump-no' 
+                    });
                     
                     menuItems.forEach(item => {
                         const button = document.createElement('button');
-                        button.className = buttonClass;
+                        button.className = `${baseClass} focus:ring-blue-500`;
                         button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
                         button.dataset.action = item.action;
+                        if (item.sortGroup) button.dataset.sortGroup = item.sortGroup;
+                        if (item.sortType) button.dataset.sortType = item.sortType;
                         actionButtons.appendChild(button);
                     });
-                    updateSortButtonsUI();
+                    // ▲▲▲▲▲ [수정된 부분] ▲▲▲▲▲
                 } else if (activeFilter === '완료') {
-                    buttonClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gray-200 text-black border border-black rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50';
-                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, text: '순번', action: 'sort-no-completed' });
-                    menuItems.push({ icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, text: '완료시간', action: 'sort-time' });
+                    // ▼▼▼▼▼ [수정된 부분] 버튼 속성 변경 ▼▼▼▼▼
+                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
+
+                    menuItems.push({ 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
+                        text: '순번', action: 'sort-no-completed', sortGroup: 'completed', sortType: 'no' 
+                    });
+                    menuItems.push({ 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, 
+                        text: '완료시간', action: 'sort-time', sortGroup: 'completed', sortType: 'time' 
+                    });
                     
                     menuItems.forEach(item => {
                         const button = document.createElement('button');
-                        button.className = buttonClass;
+                        button.className = `${baseClass} focus:ring-gray-500`;
                         button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
                         button.dataset.action = item.action;
+                        if (item.sortGroup) button.dataset.sortGroup = item.sortGroup;
+                        if (item.sortType) button.dataset.sortType = item.sortType;
                         actionButtons.appendChild(button);
                     });
+                    // ▲▲▲▲▲ [수정된 부분] ▲▲▲▲▲
                 }
+                updateSortButtonsUI(); // 버튼 생성 후 UI 업데이트 함수 호출
             }
         });
     };
     
     const updateSortButtonsUI = () => {
-        const distanceBtn = actionBarContainer.querySelector('button[data-action="sort-distance"]');
-        const numberBtn = actionBarContainer.querySelector('button[data-action="sort-no"]');
-        if (!distanceBtn || !numberBtn) return;
+        // '배송중' 필터 버튼 UI 업데이트
+        const inProgressSortButtons = actionBarContainer.querySelectorAll('button[data-sort-group="in-progress"]');
+        if (inProgressSortButtons.length > 0) {
+            const activeClass = 'bg-blue-600 text-white border-blue-700 shadow-md';
+            const inactiveClass = 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50';
+            
+            inProgressSortButtons.forEach(btn => {
+                btn.classList.remove(activeClass, inactiveClass);
+                if (btn.dataset.sortType === deliveryInProgressSortOrder) {
+                    btn.classList.add(activeClass);
+                } else {
+                    btn.classList.add(inactiveClass);
+                }
+            });
+        }
 
-        const defaultClass = 'bg-blue-100 text-blue-700 border-blue-700 hover:bg-blue-200';
-        const activeClass = 'bg-blue-600 text-white border-blue-800 shadow-md';
+        // '완료' 필터 버튼 UI 업데이트
+        const completedSortButtons = actionBarContainer.querySelectorAll('button[data-sort-group="completed"]');
+        if (completedSortButtons.length > 0) {
+            const activeClass = 'bg-gray-700 text-white border-gray-800 shadow-md';
+            const inactiveClass = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100';
 
-        distanceBtn.classList.remove(defaultClass, activeClass);
-        numberBtn.classList.remove(defaultClass, activeClass);
-
-        if (deliveryInProgressSortOrder === 'distance') {
-            distanceBtn.classList.add(activeClass);
-            numberBtn.classList.add(defaultClass);
-        } else {
-            distanceBtn.classList.add(defaultClass);
-            numberBtn.classList.add(activeClass);
+            completedSortButtons.forEach(btn => {
+                btn.classList.remove(activeClass, inactiveClass);
+                if (btn.dataset.sortType === completedSortOrder) {
+                    btn.classList.add(activeClass);
+                } else {
+                    btn.classList.add(inactiveClass);
+                }
+            });
         }
     };
 
@@ -1963,23 +2001,25 @@
 
                 switch (action) {
                     case 'sort-distance':
-                        sortItemsByDistance(); // 이 함수 안에서 deliveryInProgressSortOrder = 'distance'로 설정됨
+                        await sortItemsByDistance(); // await로 정렬 완료까지 기다림
                         break;
                     case 'sort-no':
-                        deliveryInProgressSortOrder = 'no'; // 상태 변수 업데이트
+                        deliveryInProgressSortOrder = 'no';
                         sortItemsByNumber();
                         showToastMessage('순번순으로 정렬되었습니다.');
                         break;
                     case 'sort-no-completed':
-                        completedSortOrder = 'no'; // 상태 변수 업데이트
+                        completedSortOrder = 'no';
                         currentSortOrder = 'no';
                         deliveryItems.sort((a, b) => a.no - b.no);
                         renderDeliveryCards(activeFilter);
                         showToastMessage('순번순으로 정렬되었습니다.');
                         break;
-                    // ... (jump-no 생략) ...
+                    case 'jump-no':
+                        // ... (jump-no 로직은 그대로) ...
+                        break;
                     case 'sort-time':
-                        completedSortOrder = 'time'; // 상태 변수 업데이트
+                        completedSortOrder = 'time';
                         currentSortOrder = 'time';
                         const completedItems = deliveryItems.filter(item => item.status === '완료');
                         const otherItems = deliveryItems.filter(item => item.status !== '완료');
@@ -1993,6 +2033,13 @@
                         showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
                         break;
                 }
+                
+                // ▼▼▼▼▼ [추가된 부분] ▼▼▼▼▼
+                // 정렬 액션이 아닌 '선택' 버튼은 UI를 업데이트할 필요 없음
+                if (action !== 'jump-no') {
+                    updateSortButtonsUI();
+                }
+                // ▲▲▲▲▲ [추가된 부분] ▲▲▲▲▲
             });
             numberJumpClose.addEventListener('click', () => {
                 numberJumpModal.style.display = 'none';
