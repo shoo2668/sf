@@ -306,8 +306,8 @@
         // --- Helper functions ---
 
         const setVersionInfo = () => {
-            const version = "v1.0.15 - 2025-08-11";
-            const changelog = "거리순정렬고정";
+            const version = "v1.0.16";
+            const changelog = "거리순정렬고정2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1394,11 +1394,19 @@
             deliveryInProgressSortOrder = 'distance';
             currentSortOrder = 'distance';
             
-            if (!silent) {
+            // ▼▼▼▼▼ [수정된 부분] ▼▼▼▼▼
+            if (silent) {
+                // silent 모드일 때, 정렬이 끝나면 현재 필터가 '배송중'일 경우에만 화면을 다시 그림
+                if (activeFilter === '배송중') {
+                    renderDeliveryCards(activeFilter);
+                }
+            } else {
                 renderDeliveryCards(activeFilter);
                 closeConfirmationModal();
                 showToastMessage('가까운 거리순으로 정렬되었습니다.');
             }
+            // ▲▲▲▲▲ [수정된 부분] ▲▲▲▲▲
+
         } catch (error) {
             if (!silent) {
                 closeConfirmationModal();
@@ -1412,7 +1420,7 @@
         }
     };
 
-    const changeFilter = async (newFilter, animationClass = '', isInitialLoad = false) => {
+    const changeFilter = (newFilter, animationClass = '', isInitialLoad = false) => { // async 제거
         if (newFilter === activeFilter && !isInitialLoad) return;
 
         if (!isInitialLoad) {
@@ -1423,18 +1431,19 @@
         filterScrollPositions[activeFilter] = window.scrollY;
         activeFilter = newFilter;
 
-        // ▼▼▼▼▼ [수정된 부분] 정렬 로직 시작 ▼▼▼▼▼
+        // ▼▼▼▼▼ [수정된 부분] ▼▼▼▼▼
         if (newFilter === '배송중') {
-            // '배송중' 탭으로 돌아왔을 때, 저장된 정렬 순서가 '거리순'이면 자동으로 거리순 정렬을 다시 실행
             if (deliveryInProgressSortOrder === 'distance') {
-                await sortItemsByDistance(true); // silent 옵션으로 로딩창 없이 실행
+                // await를 제거하여 백그라운드에서 실행. 화면 전환을 막지 않음.
+                sortItemsByDistance(true); 
+                // 일단 현재 순서대로 화면을 그리고, 나중에 sortItemsByDistance가 끝나면 화면을 다시 그림
             } else {
                 deliveryItems.sort((a, b) => a.no - b.no);
             }
         } else if (['전체', '배송전', '완료'].includes(newFilter)) {
             deliveryItems.sort((a, b) => a.no - b.no);
         }
-        // ▲▲▲▲▲ [수정된 부분] 정렬 로직 끝 ▲▲▲▲▲
+        // ▲▲▲▲▲ [수정된 부분] ▲▲▲▲▲
 
         filterButtonsContainer.querySelectorAll('button[data-filter]').forEach(btn => {
             const isActive = btn.dataset.filter === activeFilter;
@@ -1446,7 +1455,7 @@
             }
         });
         
-        renderDeliveryCards(activeFilter, animationClass);
+        renderDeliveryCards(activeFilter, animationClass); // 일단 화면을 즉시 그림
         updateStickyHeaderPositions();
         const button = filterButtonsContainer.querySelector(`button[data-filter="${activeFilter}"]`);
         if (button) button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
