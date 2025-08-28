@@ -324,8 +324,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.0.23";
-            const changelog = "필터 정렬 버튼개선4";
+            const version = "v1.0.3";
+            const changelog = "지도보기개선, 주소수정개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1204,12 +1204,13 @@
             }
 
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
-                // ▼▼▼▼▼ [수정된 부분] isMobileInvalid 변수 추가 ▼▼▼▼▼
                 const isMobileInvalid = !isValidMobileNumber(data.receiverTelephoneNo);
-                // ▲▲▲▲▲ [수정된 부분] isMobileInvalid 변수 추가 ▲▲▲▲▲
-
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
-                const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전'].includes(currentFilter);
+                
+                // ▼▼▼▼▼ [수정 1] 지도 보기 버튼 활성화 조건 변경 ▼▼▼▼▼
+                const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전', '배송중'].includes(currentFilter);
+                // ▲▲▲▲▲ [수정 1] ▲▲▲▲▲
+
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
@@ -1230,7 +1231,12 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                         </button>
                         <div>
-                            <p class="text-base text-blue-600 font-semibold cursor-pointer" data-action="open-smart-edit" data-no="${data.no}">${fullAddress}</p>
+                            <!-- ▼▼▼▼▼ [수정 2] 주소 클릭(수정) 조건부 비활성화 ▼▼▼▼▼ -->
+                            <p class="text-base text-blue-600 font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''}" 
+                               ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
+                                ${fullAddress}
+                            </p>
+                            <!-- ▲▲▲▲▲ [수정 2] ▲▲▲▲▲ -->
                             ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
                         </div>
                     </div>
@@ -1257,14 +1263,12 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <!-- ▼▼▼▼▼ [수정된 부분] 전화번호 span 태그 ▼▼▼▼▼ -->
                             <span 
                                 class="text-base font-semibold ${isMobileInvalid ? 'text-red-500 cursor-pointer underline' : 'text-blue-600'}"
                                 ${isMobileInvalid ? `data-action="edit-phone" data-no="${data.no}"` : ''}
                             >
                                 ${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}
                             </span>
-                            <!-- ▲▲▲▲▲ [수정된 부분] 전화번호 span 태그 ▲▲▲▲▲ -->
                             <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a>
                             <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a>
                         </div>
@@ -1282,7 +1286,7 @@
                     return `
                         <div class="bg-gray-200 rounded-lg shadow-lg p-4 mb-4 border border-gray-200" data-no="${data.no}" data-status="완료">
                             <div class="flex justify-between items-center">
-                                <div class="text-xl font-semibold text-gray-700 text-left ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
+                                <div class="text-xl font-semibold text-gray-700 text-left ${data.isStruckThrough ? 'completed-striksthrough' : ''}">
                                     <span class="text-red-500 text-2xl mr-4">${data.no}</span>
                                     ${completionDisplayHtml}
                                     <span class="ml-2">${formatCompletionTime(data.deliveryCompletionTime)}</span>
