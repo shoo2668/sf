@@ -48,8 +48,19 @@
         .animate-slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
-        #filter-buttons-container { position: fixed; top: 0; left: 0; width: 100%; will-change: transform, top; }
+        #filter-buttons-container { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            will-change: transform; /* top 제거 */
+            transition: transform 0.3s ease-out; /* 애니메이션 추가 */
+        }
+        #filter-buttons-container.hidden {
+            transform: translateY(-100%); /* 숨김 상태 스타일 추가 */
+        }
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
         #number-jump-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; overflow-y: auto; padding: 0.5rem; margin: -0.5rem; max-height: 60vh; }
@@ -67,8 +78,8 @@
     </style>
 </head>
 <body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
-    <div id="filter-buttons-container" class="z-20">
-        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg w-full min-w-[320px] p-4">
+    <div id="filter-buttons-container" class="z-20 bg-white shadow-lg">
+        <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <div class="flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
                 <button data-filter="배송준비" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 whitespace-nowrap"><span>배송준비</span></button>
                 <button data-filter="전체" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>전체</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-전체">0</span></button>
@@ -324,8 +335,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.0.3";
-            const changelog = "지도보기개선, 주소수정개선";
+            const version = "v1.0.4";
+            const changelog = "필터영역개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1983,18 +1994,30 @@
                 }
 
                 const currentFilterIndex = filterCategories.indexOf(activeFilter);
+                let filterChanged = false; // 필터 변경 여부를 추적할 변수
                 
-                if (diffX > 0) {
+                if (diffX > 0) { // Swipe Right
                     if (currentFilterIndex > 0) {
                         const prevFilter = filterCategories[currentFilterIndex - 1];
                         changeFilter(prevFilter, 'animate-slide-in-left');
+                        filterChanged = true;
                     }
-                } else {
+                } else { // Swipe Left
                     if (currentFilterIndex < filterCategories.length - 1) {
                         const nextFilter = filterCategories[currentFilterIndex + 1];
                         changeFilter(nextFilter, 'animate-slide-in-right');
+                        filterChanged = true;
                     }
                 }
+
+                // ▼▼▼▼▼ [추가된 부분] ▼▼▼▼▼
+                // 스와이프로 필터가 변경되었다면, 모든 바(bar)를 다시 표시합니다.
+                if (filterChanged) {
+                    filterButtonsContainer.classList.remove('hidden');
+                    searchBarContainer.classList.remove('hidden');
+                    actionBarContainer.classList.remove('hidden');
+                }
+                // ▲▲▲▲▲ [추가된 부분] ▲▲▲▲▲
             });
 
             actionBarContainer.addEventListener('click', async (event) => {
@@ -2081,10 +2104,13 @@
             // 스크롤 이벤트
             window.addEventListener('scroll', () => {
                 const currentScrollY = window.scrollY;
-                if (currentScrollY > lastScrollY) { // Scrolling down
+                // 스크롤이 맨 위에서 50px 이상 내려갔을 때만 숨김/표시 로직이 동작하도록 함
+                if (currentScrollY > 50 && currentScrollY > lastScrollY) { // Scrolling down
+                    filterButtonsContainer.classList.add('hidden');
                     searchBarContainer.classList.add('hidden');
                     actionBarContainer.classList.add('hidden');
-                } else { // Scrolling up
+                } else { // Scrolling up or at the top
+                    filterButtonsContainer.classList.remove('hidden');
                     searchBarContainer.classList.remove('hidden');
                     actionBarContainer.classList.remove('hidden');
                 }
