@@ -7,7 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        it-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
+        html { scroll-behavior: smooth !important; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; margin: 0; overscroll-behavior: contain; overflow-x: hidden; }
+        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
         
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
@@ -325,7 +328,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.31";
+            const version = "v1.1.32";
             const changelog = "필터영역분리2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1913,12 +1916,6 @@
             }, 0);
             // ------------------------------------
 
-            document.body.addEventListener('touchmove', (event) => {
-                if (window.scrollY === 0 && touchStartY < event.touches[0].clientY && activeFilter !== '배송준비') {
-                    event.preventDefault();
-                }
-            }, { passive: false });
-
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
                     justReturnedFromExternalApp = true;
@@ -2018,7 +2015,6 @@
                         renderDeliveryCards(activeFilter);
                         showToastMessage('순번순으로 정렬되었습니다.');
                         break;
-                    // ▼▼▼▼▼ [추가] 'jump-no' case 추가 ▼▼▼▼▼
                     case 'jump-no':
                         numberJumpList.innerHTML = '';
                         if (deliveryItems.length === 0) {
@@ -2052,7 +2048,6 @@
                         }
                         numberJumpModal.style.display = 'flex';
                         break;
-                    // ▲▲▲▲▲ [추가] ▲▲▲▲▲
                     case 'sort-time':
                         completedSortOrder = 'time';
                         currentSortOrder = 'time';
@@ -2075,19 +2070,6 @@
             });
             numberJumpClose.addEventListener('click', () => {
                 numberJumpModal.style.display = 'none';
-            });
-
-            // 스크롤 이벤트
-            window.addEventListener('scroll', () => {
-                const currentScrollY = window.scrollY;
-                if (currentScrollY > lastScrollY) { // Scrolling down
-                    searchBarContainer.classList.add('hidden');
-                    actionBarContainer.classList.add('hidden');
-                } else { // Scrolling up
-                    searchBarContainer.classList.remove('hidden');
-                    actionBarContainer.classList.remove('hidden');
-                }
-                lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
             });
 
             const storedItems = localStorage.getItem('deliveryItems');
