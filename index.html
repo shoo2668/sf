@@ -347,8 +347,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.43";
-            const changelog = "새로고침방지";
+            const version = "v1.1.5";
+            const changelog = "하단영역자동숨김";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -2107,6 +2107,21 @@
             numberJumpClose.addEventListener('click', () => {
                 numberJumpModal.style.display = 'none';
             });
+
+            // ▼▼▼▼▼ [추가] 하단 바 숨김/표시를 위한 스크롤 이벤트 리스너 ▼▼▼▼▼
+            const mainContentWrapper = document.getElementById('main-content-wrapper');
+            mainContentWrapper.addEventListener('scroll', () => {
+                const currentScrollY = mainContentWrapper.scrollTop;
+                if (currentScrollY > lastScrollY) { // Scrolling down
+                    searchBarContainer.classList.add('hidden');
+                    actionBarContainer.classList.add('hidden');
+                } else { // Scrolling up
+                    searchBarContainer.classList.remove('hidden');
+                    actionBarContainer.classList.remove('hidden');
+                }
+                lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
+            });
+            // ▲▲▲▲▲ [추가] ▲▲▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
