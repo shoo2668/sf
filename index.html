@@ -7,10 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html { scroll-behavior: smooth !important; overflow-x: hidden; }
-        body { font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; overscroll-behavior: contain; /* body 스크롤 비활성화 및 새로고침 방지 */ }
+        html { 
+            scroll-behavior: smooth !important; 
+            height: 100%; /* [추가] 높이 기준 설정 */
+            overflow: hidden; /* [추가] html 스크롤 방지 */
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            height: 100%; /* [추가] 높이 기준 설정 */
+            overflow-y: scroll; /* [수정] 항상 스크롤바 영역을 확보하여 새로고침 동작의 기준을 만듦 */
+            overscroll-behavior-y: none; /* [수정] body에서의 수직 당겨서 새로고침을 원천 차단 */
+        }
         
-        /* ▼▼▼ [수정] 모달 스타일 복구 ▼▼▼ */
         .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         
@@ -338,7 +347,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.42";
+            const version = "v1.1.43";
             const changelog = "새로고침방지";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
