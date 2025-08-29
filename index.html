@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html { scroll-behavior: smooth !important; overflow-x: hidden; }
-        body { font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; /* body 스크롤 비활성화 */ }
+        body { font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; overscroll-behavior: contain; /* body 스크롤 비활성화 및 새로고침 방지 */ }
         
         /* ▼▼▼ [수정] 모달 스타일 복구 ▼▼▼ */
         .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
@@ -338,8 +338,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.35";
-            const changelog = "필터영역분리2";
+            const version = "v1.1.4";
+            const changelog = "새로고침방지";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
