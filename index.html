@@ -124,9 +124,9 @@
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
             <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
             <div class="flex space-x-2 flex-nowrap">
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="w-1/2 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">검색</button>
-                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50">지움</button>
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="w-1/2 p-2 bg-gray-100 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-colors" inputmode="numeric" pattern="[0-9]*"/>
+                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors">검색</button>
+                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 transition-colors">지움</button>
             </div>
         </div>
     </div>
@@ -324,8 +324,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.1";
-            const changelog = "디자인개선2";
+            const version = "v1.1.2";
+            const changelog = "하단영역개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1175,7 +1175,7 @@
             return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
         };
         
-        // --- Render function ---
+                // --- Render function ---
         const renderDeliveryCards = (currentFilter, animationClass = '') => {
             if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
 
@@ -1211,15 +1211,22 @@
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
                 
-                let cardClasses = 'bg-white rounded-t-3xl rounded-bl-3xl border border-gray-600'; // 배송전 (기본)
+                // ▼▼▼▼▼ [수정] 클래스 정의 로직을 map 루프 안으로 이동 및 수정 ▼▼▼▼▼
+                let cardClasses = '';
                 let headerBorder = 'border-gray-200';
                 let actionBorder = 'border-gray-200';
 
-                if (data.status === '배송중') {
+                if (data.status === '배송전') {
+                    cardClasses = 'bg-white rounded-t-3xl rounded-bl-3xl border border-gray-600';
+                } else if (data.status === '배송중') {
                     cardClasses = 'bg-blue-50 rounded-t-3xl rounded-bl-3xl border border-blue-600';
                     headerBorder = 'border-blue-200';
                     actionBorder = 'border-blue-200';
+                } else if (data.status === '완료') {
+                    // '전체' 필터에서도 완료 카드가 이 스타일을 따르도록 여기에 정의
+                    cardClasses = 'bg-gray-100 rounded-t-3xl rounded-bl-3xl border border-gray-500';
                 }
+                // ▲▲▲▲▲ [수정] ▲▲▲▲▲
 
                 const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
                 const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
@@ -1281,7 +1288,7 @@
                             : `${data.completionType || ''}`;
 
                     return `
-                        <div class="bg-gray-50 rounded-t-3xl rounded-bl-3xl border border-gray-400 p-4 mb-4" data-no="${data.no}" data-status="완료">
+                        <div class="bg-gray-100 rounded-t-3xl rounded-bl-3xl border border-gray-500 p-4 mb-4" data-no="${data.no}" data-status="완료">
                             <div class="flex justify-between items-center">
                                 <div class="text-xl font-semibold text-gray-700 text-left ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
                                     <span class="text-red-500 text-2xl mr-4">${data.no}</span>
@@ -1429,10 +1436,8 @@
         // '배송중' 필터 버튼 UI 업데이트
         const inProgressSortButtons = actionBarContainer.querySelectorAll('button[data-sort-group="in-progress"]');
         if (inProgressSortButtons.length > 0) {
-            const activeClass = 'bg-blue-600 text-white border-blue-700 shadow-md';
-            // ▼▼▼▼▼ [수정] 비활성 버튼 스타일 변경 ▼▼▼▼▼
-            const inactiveClass = 'bg-blue-100 text-blue-700 border-blue-700 hover:bg-blue-200';
-            // ▲▲▲▲▲ [수정] ▲▲▲▲▲
+            const activeClass = 'bg-blue-600 text-white border-transparent';
+            const inactiveClass = 'bg-white text-blue-700 border-gray-300 hover:bg-gray-50';
             
             inProgressSortButtons.forEach(btn => {
                 btn.classList.remove(...activeClass.split(' '), ...inactiveClass.split(' '));
@@ -1447,10 +1452,8 @@
         // '완료' 필터 버튼 UI 업데이트
         const completedSortButtons = actionBarContainer.querySelectorAll('button[data-sort-group="completed"]');
         if (completedSortButtons.length > 0) {
-            const activeClass = 'bg-gray-700 text-white border-gray-800 shadow-md';
-            // ▼▼▼▼▼ [수정] 비활성 버튼 스타일 변경 ▼▼▼▼▼
-            const inactiveClass = 'bg-gray-200 text-black border-black hover:bg-gray-300';
-            // ▲▲▲▲▲ [수정] ▲▲▲▲▲
+            const activeClass = 'bg-gray-700 text-white border-transparent';
+            const inactiveClass = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
 
             completedSortButtons.forEach(btn => {
                 btn.classList.remove(...activeClass.split(' '), ...inactiveClass.split(' '));
