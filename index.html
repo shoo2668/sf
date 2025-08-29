@@ -338,7 +338,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.4";
+            const version = "v1.1.41";
             const changelog = "새로고침방지";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1925,6 +1925,23 @@
                 }
             }, 0);
             // ------------------------------------
+
+            const mainContent = document.getElementById('main-content-wrapper');
+            let isMainContentTouched = false;
+
+            mainContent.addEventListener('touchstart', () => {
+                isMainContentTouched = true;
+            }, { passive: true });
+
+            mainContent.addEventListener('touchend', () => {
+                isMainContentTouched = false;
+            }, { passive: true });
+            
+            window.addEventListener('touchmove', (event) => {
+                if (!isMainContentTouched) {
+                    event.preventDefault();
+                }
+            }, { passive: false });
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
