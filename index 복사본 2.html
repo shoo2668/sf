@@ -324,8 +324,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.0";
-            const changelog = "디자인개선";
+            const version = "v1.0.3";
+            const changelog = "지도보기개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1206,19 +1206,20 @@
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
                 const isMobileInvalid = !isValidMobileNumber(data.receiverTelephoneNo);
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
+                
+                // ▼▼▼▼▼ [수정 1] 지도 보기 버튼 활성화 조건 변경 ▼▼▼▼▼
                 const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전', '배송중'].includes(currentFilter);
+                // ▲▲▲▲▲ [수정 1] ▲▲▲▲▲
+
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
                     ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
                 
-                let cardClasses = 'bg-white rounded-t-3xl rounded-bl-3xl border border-gray-300'; // 배송전 (기본)
-                let headerBorder = 'border-gray-200';
-                let actionBorder = 'border-gray-200';
-
+                let cardBg = 'bg-white';
                 if (data.status === '배송중') {
-                    cardClasses = 'bg-blue-50 rounded-t-3xl rounded-bl-3xl border border-blue-300';
-                    headerBorder = 'border-blue-200';
-                    actionBorder = 'border-blue-200';
+                    cardBg = 'bg-blue-100';
+                } else if (data.status === '완료') {
+                    cardBg = 'bg-gray-200';
                 }
 
                 const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
@@ -1230,10 +1231,12 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                         </button>
                         <div>
+                            <!-- ▼▼▼▼▼ [수정 2] 주소 클릭(수정) 조건부 비활성화 ▼▼▼▼▼ -->
                             <p class="text-base text-blue-600 font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''}" 
                                ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
                                 ${fullAddress}
                             </p>
+                            <!-- ▲▲▲▲▲ [수정 2] ▲▲▲▲▲ -->
                             ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
                         </div>
                     </div>
@@ -1281,9 +1284,9 @@
                             : `${data.completionType || ''}`;
 
                     return `
-                        <div class="bg-gray-100 rounded-t-3xl rounded-bl-3xl border border-gray-300 p-4 mb-4" data-no="${data.no}" data-status="완료">
+                        <div class="bg-gray-200 rounded-lg shadow-lg p-4 mb-4 border border-gray-200" data-no="${data.no}" data-status="완료">
                             <div class="flex justify-between items-center">
-                                <div class="text-xl font-semibold text-gray-700 text-left ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
+                                <div class="text-xl font-semibold text-gray-700 text-left ${data.isStruckThrough ? 'completed-striksthrough' : ''}">
                                     <span class="text-red-500 text-2xl mr-4">${data.no}</span>
                                     ${completionDisplayHtml}
                                     <span class="ml-2">${formatCompletionTime(data.deliveryCompletionTime)}</span>
@@ -1301,8 +1304,8 @@
                     `;
                 } else {
                     return `
-                        <div class="${cardClasses} p-6 mb-4" data-no="${data.no}">
-                            <div class="flex justify-between items-start mb-4 pb-2 border-b ${headerBorder}">
+                        <div class="${cardBg} rounded-lg shadow-lg p-6 mb-4 border border-gray-200" data-no="${data.no}">
+                            <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-200">
                                 <div class="flex justify-between items-start w-full">
                                     <div class="flex items-start space-x-4">
                                         <div>
@@ -1321,13 +1324,7 @@
                             <div class="space-y-3" data-details-container="${data.no}">
                                 ${detailsHtml}
                             </div>
-                            ${showInProgressButtons ? `
-                                <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
-                                    <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인확인</button>
-                                    <button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">문앞배송</button>
-                                    <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">서명</button>
-                                </div>
-                            ` : ''}
+                            ${showInProgressButtons ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-between space-x-2 w-full"><button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium">본인확인</button><button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-purple-600 text-white text-sm font-medium">문앞배송</button><button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium">서명</button></div>` : ''}
                         </div>
                     `;
                 }
