@@ -1302,7 +1302,7 @@
 
                 if (showCompletedCard) {
                     const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
-                        ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>`
+                        ? `<span class="text-lg font-semibold text-gray-800 p-1 border-2 border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>`
                         : data.completionType === '본인확인'
                             ? `<span class="text-lg font-semibold text-gray-800">${data.receiverNameKorean || ''}</span>`
                             : `${data.completionType || ''}`;
