@@ -7,10 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html { scroll-behavior: smooth !important; overflow-x: hidden; scroll-padding-top: 88px; /* JS가 동적으로 변경 */ }
-        body { font-family: 'Inter', sans-serif; margin: 0; padding-bottom: 80px; overscroll-behavior: contain; overflow-x: hidden; padding-top: 88px; /* JS가 동적으로 변경 */ }
-        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
-        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
+        it-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
         
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
@@ -48,7 +45,6 @@
         .animate-slide-in-right { animation: slideInRight 0.3s ease-out forwards; }
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
-        #filter-buttons-container { position: fixed; top: 0; left: 0; width: 100%; will-change: transform, top; }
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
         .toast-message.show { opacity: 1; transform: translateY(0); }
@@ -66,56 +62,61 @@
         }
     </style>
 </head>
-<body class="min-h-screen bg-white p-4 sm:p-6 lg:p-8 font-sans">
-    <div id="filter-buttons-container" class="z-20">
-        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg w-full min-w-[320px] p-4">
-            <div class="flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
-                <button data-filter="배송준비" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 whitespace-nowrap"><span>배송준비</span></button>
-                <button data-filter="전체" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>전체</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-전체">0</span></button>
-                <button data-filter="배송전" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송전</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송전">0</span></button>
-                <button data-filter="배송중" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송중</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송중">0</span></button>
-                <button data-filter="완료" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>완료</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-완료">0</span></button>
+<body class="bg-white font-sans">
+    <div id="app-container" class="h-screen flex flex-col">
+
+        <div id="filter-buttons-container" class="z-20 flex-shrink-0 bg-white shadow-md">
+            <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
+                <div class="flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
+                    <button data-filter="배송준비" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 whitespace-nowrap"><span>배송준비</span></button>
+                    <button data-filter="전체" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>전체</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-전체">0</span></button>
+                    <button data-filter="배송전" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송전</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송전">0</span></button>
+                    <button data-filter="배송중" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송중</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송중">0</span></button>
+                    <button data-filter="완료" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>완료</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-완료">0</span></button>
+                </div>
             </div>
         </div>
-    </div>
-    <div id="main-content-wrapper">
-    <div id="data-management-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
-        <div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">데이터 내보내기/가져오기</h3>
-            <div class="flex space-x-2">
-                <button id="exportDataButton" class="w-1/2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">데이터 파일로 저장</button>
-                <label for="importDataInput" class="w-1/2 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center cursor-pointer">파일에서 불러오기</label>
-                <input type="file" id="importDataInput" class="hidden" accept=".json"/>
+
+        <div id="main-content-wrapper" class="flex-1 overflow-y-auto">
+            <div class="max-w-md mx-auto p-4 sm:p-6 lg:p-8">
+                <div id="data-management-container" class="mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">데이터 내보내기/가져오기</h3>
+                        <div class="flex space-x-2">
+                            <button id="exportDataButton" class="w-1/2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">데이터 파일로 저장</button>
+                            <label for="importDataInput" class="w-1/2 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center cursor-pointer">파일에서 불러오기</label>
+                            <input type="file" id="importDataInput" class="hidden" accept=".json"/>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
+                        <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
+                    </div>
+                </div>
+
+                <div id="scan-section-container" class="mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
+                    <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                        <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
+                        <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 py-2 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">사진 선택</label>
+                        <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
+                    </div>
+                    <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
+                    <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
+                        <div class="spinner mx-auto mb-2"></div>
+                        <p id="scan-progress-text">송장 스캔 중...</p>
+                    </div>
+                    <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
+                </div>
+                
+                <div id="version-info-container" class="mb-6 text-center hidden">
+                    <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
+                    <p id="version-changelog" class="text-xs text-gray-500"></p>
+                </div>
+
+                <div id="delivery-cards-container"></div>
             </div>
         </div>
-        <div>
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
-            <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
-        </div>
-    </div>
-
-    <div id="scan-section-container" class="max-w-md mx-auto mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
-        <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
-        <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
-            <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
-            <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 py-2 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">사진 선택</label>
-            <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
-        </div>
-        <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
-        <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
-            <div class="spinner mx-auto mb-2"></div>
-            <p id="scan-progress-text">송장 스캔 중...</p>
-        </div>
-        <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
-    </div>
-    
-    <div id="version-info-container" class="max-w-md mx-auto mb-6 text-center hidden">
-        <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
-        <p id="version-changelog" class="text-xs text-gray-500"></p>
-    </div>
-
-    <div id="delivery-cards-container" class="max-w-md mx-auto"></div>
-    
     </div>
 
     <div id="toast-container"></div>
@@ -324,8 +325,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.2";
-            const changelog = "하단영역개선";
+            const version = "v1.1.3";
+            const changelog = "필터영역분리";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1357,10 +1358,6 @@
     
     const updateStickyHeaderPositions = () => {
         requestAnimationFrame(() => {
-            const topOffset = filterButtonsContainer.offsetHeight;
-            document.body.style.paddingTop = `${topOffset}px`;
-            document.documentElement.style.scrollPaddingTop = `${topOffset}px`;
-
             const isScanVisible = activeFilter === '배송준비';
             scanSectionContainer.classList.toggle('hidden', !isScanVisible);
             dataManagementContainer.classList.toggle('hidden', !isScanVisible);
@@ -1377,8 +1374,7 @@
                 const menuItems = [];
                 
                 if (activeFilter === '배송중') {
-                    // ▼▼▼▼▼ [수정된 부분] 버튼 순서 및 속성 변경 ▼▼▼▼▼
-                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
+                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
                     
                     menuItems.push({ 
                         icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
@@ -1402,10 +1398,8 @@
                         if (item.sortType) button.dataset.sortType = item.sortType;
                         actionButtons.appendChild(button);
                     });
-                    // ▲▲▲▲▲ [수정된 부분] ▲▲▲▲▲
                 } else if (activeFilter === '완료') {
-                    // ▼▼▼▼▼ [수정된 부분] 버튼 속성 변경 ▼▼▼▼▼
-                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
+                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
 
                     menuItems.push({ 
                         icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
@@ -1425,7 +1419,6 @@
                         if (item.sortType) button.dataset.sortType = item.sortType;
                         actionButtons.appendChild(button);
                     });
-                    // ▲▲▲▲▲ [수정된 부분] ▲▲▲▲▲
                 }
                 updateSortButtonsUI(); // 버튼 생성 후 UI 업데이트 함수 호출
             }
