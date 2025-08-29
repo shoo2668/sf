@@ -347,8 +347,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.5";
-            const changelog = "하단영역자동숨김";
+            const version = "v1.1.6";
+            const changelog = "카드수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1302,13 +1302,13 @@
 
                 if (showCompletedCard) {
                     const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
-                        ? `<span class="text-lg font-semibold text-gray-800 p-1 border-2 border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>`
+                        ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>`
                         : data.completionType === '본인확인'
                             ? `<span class="text-lg font-semibold text-gray-800">${data.receiverNameKorean || ''}</span>`
                             : `${data.completionType || ''}`;
 
                     return `
-                        <div class="bg-gray-100 rounded-t-3xl rounded-bl-3xl border border-gray-500 p-4 mb-4" data-no="${data.no}" data-status="완료">
+                        <div class="${cardClasses} p-4 mb-4" data-no="${data.no}" data-status="완료">
                             <div class="flex justify-between items-center">
                                 <div class="text-xl font-semibold text-gray-700 text-left ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
                                     <span class="text-red-500 text-2xl mr-4">${data.no}</span>
