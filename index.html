@@ -423,7 +423,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.97";
+            const version = "v1.2.98";
             const changelog = "버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1489,12 +1489,12 @@
         fabOptions.innerHTML = '';
         fabMainButton.innerHTML = '';
 
-        let menuItems = [];
+        let allItems = [];
         let currentSortType = '';
         let activeColorClass = '';
 
         if (activeFilter === '배송중') {
-            menuItems = [
+            allItems = [
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, action: 'jump-no' },
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, action: 'sort-no', sortType: 'no' },
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, action: 'sort-distance', sortType: 'distance' }
@@ -1502,7 +1502,7 @@
             currentSortType = deliveryInProgressSortOrder;
             activeColorClass = 'bg-blue-600 text-white';
         } else if (activeFilter === '완료') {
-            menuItems = [
+            allItems = [
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, action: 'sort-no-completed', sortType: 'no' },
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, action: 'sort-time', sortType: 'time' }
             ];
@@ -1510,22 +1510,33 @@
             activeColorClass = 'bg-gray-800 text-white';
         }
 
-        const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems.find(item => item.sortType);
-        fabMainButton.innerHTML = activeItem.icon;
+        // ▼▼▼ [수정] 메인 버튼과 옵션 버튼을 명확히 분리하는 로직 ▼▼▼
+
+        // 1. 정렬 기능이 있는 버튼들만 필터링
+        const sortOptions = allItems.filter(item => item.sortType);
+        // 2. 정렬 기능이 없는 버튼들 (예: jump-no)
+        const actionOptions = allItems.filter(item => !item.sortType);
+
+        // 3. 현재 활성화된 정렬 아이템 찾기
+        const activeSortItem = sortOptions.find(item => item.sortType === currentSortType) || sortOptions[0];
+        
+        // 4. 메인 버튼 설정
+        fabMainButton.innerHTML = activeSortItem.icon;
         fabMainButton.className = `w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
         fabMainButton.dataset.action = 'toggle-fab';
+        fabMainButton.classList.toggle('ml-1', fabOptions.classList.contains('expanded'));
 
-        const optionsContainer = document.createElement('div');
-        optionsContainer.className = 'flex items-center space-x-1';
+        // 5. 옵션 버튼 리스트 생성 (활성화된 정렬 버튼 제외)
+        const optionItems = [...actionOptions, ...sortOptions.filter(item => item.sortType !== currentSortType)];
 
-        menuItems.forEach(item => {
+        optionItems.forEach(item => {
             const button = document.createElement('button');
             button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
             button.innerHTML = item.icon;
             button.dataset.action = item.action;
-            optionsContainer.appendChild(button);
+            fabOptions.appendChild(button);
         });
-        fabOptions.appendChild(optionsContainer);
+        // ▲▲▲ [수정] ▲▲▲
     };
 
     actionBarContainer.addEventListener('click', async (event) => {
