@@ -413,7 +413,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.65";
+            const version = "v1.2.66";
             const changelog = "정렬버튼 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1613,7 +1613,7 @@
         currentSortOrder = 'no';
         deliveryItems.sort((a, b) => a.no - b.no);
         renderDeliveryCards(activeFilter);
-        updateSortButtonsUI();
+        setupFab(); // updateSortButtonsUI() 대신 setupFab() 호출
     };
 
     const sortItemsByDistanceSilent = async () => {
@@ -1683,9 +1683,7 @@
             }
             console.error("위치 갱신 실패:", error.message);
         } finally {
-            // ▼▼▼▼▼ [수정] finally 블록은 silent 여부와 관계없이 항상 실행되도록 수정 ▼▼▼▼▼
-            updateSortButtonsUI();
-            // ▲▲▲▲▲ [수정] ▲▲▲▲▲
+            setupFab(); // updateSortButtonsUI() 대신 setupFab() 호출
         }
     };
 
