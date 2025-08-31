@@ -100,29 +100,12 @@
             text-decoration: line-through;
             color: #6b7280; /* gray-500 */
         }
-        #fab-options {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem; /* space-x-1 */
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s linear;
-            transform-origin: right; /* 변형 기준점을 오른쪽으로 설정 */
-            
-            /* 기본 상태 (숨김) */
-            transform: scaleX(0);
-            opacity: 0;
-            pointer-events: none;
-        }
-        #fab-options.expanded {
-            /* 확장 상태 */
-            transform: scaleX(1);
-            opacity: 1;
-            pointer-events: auto;
+        #fab-panel.expanded #fab-options {
+            /* '배송중'은 버튼 3개 = 120px + 간격 8px = 128px. 넉넉하게 w-36 (144px) */
+            width: 9rem; 
         }
         #fab-options button {
-            /* 버튼 자체는 항상 고정된 크기를 가짐 */
-            width: 2.5rem; /* w-10 */
-            height: 2.5rem; /* h-10 */
-            flex-shrink: 0; /* 버튼이 찌그러지지 않도록 함 */
+            transition: opacity 0.2s ease-in-out;
         }
         #search-fab-panel.expanded #invoiceNumber {
             width: 12rem; /* w-48 */
@@ -236,10 +219,13 @@
 
     <div id="action-bar-container" class="fixed bottom-0 left-0 w-full z-40 pointer-events-none">
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4 flex justify-end">
-            <div id="fab-panel" class="flex items-center p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 pointer-events-auto">
-                <div id="fab-options" class="flex items-center"></div>
-                <button id="fab-main-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200">
-                    <!-- ... -->
+            <div id="fab-panel" class="flex items-center justify-end p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 pointer-events-auto transition-all duration-300 ease-in-out">
+                <!-- 옵션 버튼들이 여기에 동적으로 추가됩니다 (숨김 상태) -->
+                <div id="fab-options" class="flex items-center w-0 overflow-hidden transition-all duration-300 ease-in-out">
+                </div>
+                <!-- 메인 버튼이 항상 여기에 위치합니다 -->
+                <button id="fab-main-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ml-1">
+                    <!-- 메인 아이콘은 JS가 여기에 동적으로 추가합니다. -->
                 </button>
             </div>
         </div>
@@ -437,7 +423,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.96";
+            const version = "v1.2.97";
             const changelog = "버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1529,19 +1515,17 @@
         fabMainButton.className = `w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
         fabMainButton.dataset.action = 'toggle-fab';
 
-        // ▼▼▼ [수정] 메인 버튼의 간격은 expanded 상태에 따라 제어 ▼▼▼
-        fabMainButton.classList.toggle('ml-1', fabOptions.classList.contains('expanded'));
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'flex items-center space-x-1';
 
         menuItems.forEach(item => {
-            if (item.sortType === currentSortType) return;
-
             const button = document.createElement('button');
-            // 버튼 클래스는 이제 CSS에서 제어하므로 단순화
-            button.className = 'flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
+            button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
             button.innerHTML = item.icon;
             button.dataset.action = item.action;
-            fabOptions.appendChild(button);
+            optionsContainer.appendChild(button);
         });
+        fabOptions.appendChild(optionsContainer);
     };
 
     actionBarContainer.addEventListener('click', async (event) => {
@@ -1551,23 +1535,21 @@
         const action = button.dataset.action;
         if (!action) return;
 
-        const fabOptions = document.getElementById('fab-options');
-        const fabMainButton = document.getElementById('fab-main-button');
+        const fabPanel = document.getElementById('fab-panel');
 
         if (action === 'toggle-fab') {
-            fabOptions.classList.toggle('expanded');
-            fabMainButton.classList.toggle('ml-1', fabOptions.classList.contains('expanded'));
+            fabPanel.classList.toggle('expanded');
             return;
         }
 
-        if (button.parentNode.id === 'fab-options') {
+        if (button.parentNode.parentNode.id === 'fab-options') {
             if (action === 'sort-distance') deliveryInProgressSortOrder = 'distance';
             else if (action === 'sort-no') deliveryInProgressSortOrder = 'no';
             else if (action === 'sort-time') completedSortOrder = 'time';
             else if (action === 'sort-no-completed') completedSortOrder = 'no';
             
-            fabOptions.classList.remove('expanded');
-            setupFab();
+            fabPanel.classList.remove('expanded');
+            setTimeout(setupFab, 300); // 애니메이션 시간 후 UI 갱신
         }
 
         switch (action) {
