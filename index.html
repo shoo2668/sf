@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.84";
+            const version = "v1.2.85";
             const changelog = "검색창 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1705,7 +1705,8 @@
     const changeFilter = (newFilter, animationClass = '', isInitialLoad = false) => {
         if (newFilter === activeFilter && !isInitialLoad) return;
 
-        collapseSearch(); // [추가] 필터 변경 시 검색 바 축소
+        collapseSearch();
+        document.getElementById('fab-options').classList.remove('expanded'); // [추가] 정렬 버튼 접기
 
         if (!isInitialLoad) {
             searchTerm = '';
@@ -1841,9 +1842,16 @@
 
     document.addEventListener('click', (event) => {
         const clickedElement = event.target;
+        const fabPanel = document.getElementById('fab-panel');
+
         // 클릭된 요소가 검색 패널의 자식이 아니고, 입력창이 비어있을 경우 검색창을 닫음
         if (!searchFabPanel.contains(clickedElement) && invoiceNumberInput.value.trim() === '') {
             collapseSearch();
+        }
+
+        // 클릭된 요소가 정렬 버튼 패널의 자식이 아닐 경우 정렬 버튼을 닫음
+        if (!fabPanel.contains(clickedElement)) {
+            document.getElementById('fab-options').classList.remove('expanded');
         }
     });
 
