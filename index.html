@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.8";
+            const version = "v1.2.81";
             const changelog = "검색창 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1789,11 +1789,15 @@
     });
 
     const searchFabPanel = document.getElementById('search-fab-panel');
-    
+    let searchInteraction = false; // 검색/지움 버튼 클릭 여부 추적
+
     const expandSearch = () => {
         if (searchFabPanel.classList.contains('expanded')) return;
         searchFabPanel.classList.add('expanded');
-        invoiceNumberInput.focus();
+        // 애니메이션(0.3초)이 끝난 후 포커스하여 키패드 호출
+        setTimeout(() => {
+            invoiceNumberInput.focus();
+        }, 300);
     };
 
     const collapseSearch = () => {
@@ -1803,23 +1807,32 @@
     };
 
     searchButton.addEventListener('click', () => {
+        searchInteraction = true;
         if (searchFabPanel.classList.contains('expanded')) {
-            // 이미 확장된 상태면 검색 실행
-            searchTerm = invoiceNumberInput.value.trim();
-            renderDeliveryCards(activeFilter);
-            document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
-            filterScrollPositions[activeFilter] = 0;
+            // 확장된 상태에서 내용이 없으면 접기
+            if (invoiceNumberInput.value.trim() === '') {
+                collapseSearch();
+            } else {
+                // 내용이 있으면 검색 실행
+                searchTerm = invoiceNumberInput.value.trim();
+                renderDeliveryCards(activeFilter);
+                document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
+                filterScrollPositions[activeFilter] = 0;
+            }
         } else {
             // 축소된 상태면 확장
             expandSearch();
         }
+        setTimeout(() => { searchInteraction = false; }, 100);
     });
 
     resetButton.addEventListener('click', () => {
+        searchInteraction = true;
         searchTerm = '';
         invoiceNumberInput.value = '';
         renderDeliveryCards(activeFilter);
-        invoiceNumberInput.focus(); // 입력창 초기화 후 다시 포커스
+        invoiceNumberInput.focus();
+        setTimeout(() => { searchInteraction = false; }, 100);
     });
 
     invoiceNumberInput.addEventListener('input', (event) => {
@@ -1827,6 +1840,14 @@
         renderDeliveryCards(activeFilter);
         document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
         filterScrollPositions[activeFilter] = 0;
+    });
+
+    // 입력창에서 포커스가 사라졌을 때 (키패드 내릴 때)
+    invoiceNumberInput.addEventListener('blur', () => {
+        // 검색/지움 버튼을 눌러서 포커스가 사라진 게 아니라면 접기
+        if (!searchInteraction) {
+            collapseSearch();
+        }
     });
 
     deliverySheetImageInput.addEventListener('change', (event) => {
