@@ -191,9 +191,9 @@
         </div>
     </div>
 
-    <div id="action-bar-container" class="bottom-bar">
-        <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
-            <div id="action-buttons" class="flex space-x-2 flex-nowrap">
+    <div id="action-bar-container" class="bottom-bar !bg-transparent !border-transparent pointer-events-none">
+        <div class="max-w-md mx-auto w-full min-w-[320px] p-4 flex justify-end">
+            <div id="action-buttons" class="flex items-center space-x-1 p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 pointer-events-auto">
                 <!-- 액션 버튼들이 여기에 동적으로 추가됩니다. -->
             </div>
         </div>
@@ -391,8 +391,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.3";
-            const changelog = "필터메뉴 테마";
+            const version = "v1.2.4";
+            const changelog = "하단바 변경";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1448,53 +1448,53 @@
                 const menuItems = [];
                 
                 if (activeFilter === '배송중') {
-                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
+                    const baseClass = 'w-10 h-10 flex items-center justify-center rounded-full transition-colors duration-200';
                     
                     menuItems.push({ 
-                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
-                        text: '순번', action: 'sort-no', sortGroup: 'in-progress', sortType: 'no' 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
+                        action: 'sort-no', sortGroup: 'in-progress', sortType: 'no' 
                     });
                     menuItems.push({ 
-                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, 
-                        text: '거리', action: 'sort-distance', sortGroup: 'in-progress', sortType: 'distance' 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, 
+                        action: 'sort-distance', sortGroup: 'in-progress', sortType: 'distance' 
                     });
                     menuItems.push({ 
-                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, 
-                        text: '선택', action: 'jump-no' 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>`, 
+                        action: 'jump-no' 
                     });
                     
                     menuItems.forEach(item => {
                         const button = document.createElement('button');
-                        button.className = `${baseClass} focus:ring-blue-500`;
-                        button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
+                        button.className = baseClass;
+                        button.innerHTML = item.icon;
                         button.dataset.action = item.action;
                         if (item.sortGroup) button.dataset.sortGroup = item.sortGroup;
                         if (item.sortType) button.dataset.sortType = item.sortType;
                         actionButtons.appendChild(button);
                     });
                 } else if (activeFilter === '완료') {
-                    const baseClass = 'flex-1 flex items-center justify-center space-x-2 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-colors duration-200';
+                    const baseClass = 'w-10 h-10 flex items-center justify-center rounded-full transition-colors duration-200';
 
                     menuItems.push({ 
-                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
-                        text: '순번', action: 'sort-no-completed', sortGroup: 'completed', sortType: 'no' 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, 
+                        action: 'sort-no-completed', sortGroup: 'completed', sortType: 'no' 
                     });
                     menuItems.push({ 
-                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, 
-                        text: '완료시간', action: 'sort-time', sortGroup: 'completed', sortType: 'time' 
+                        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, 
+                        action: 'sort-time', sortGroup: 'completed', sortType: 'time' 
                     });
                     
                     menuItems.forEach(item => {
                         const button = document.createElement('button');
-                        button.className = `${baseClass} focus:ring-gray-500`;
-                        button.innerHTML = `${item.icon}<span class="font-semibold">${item.text}</span>`;
+                        button.className = baseClass;
+                        button.innerHTML = item.icon;
                         button.dataset.action = item.action;
                         if (item.sortGroup) button.dataset.sortGroup = item.sortGroup;
                         if (item.sortType) button.dataset.sortType = item.sortType;
                         actionButtons.appendChild(button);
                     });
                 }
-                updateSortButtonsUI(); // 버튼 생성 후 UI 업데이트 함수 호출
+                updateSortButtonsUI();
             }
         });
     };
@@ -1503,8 +1503,8 @@
         // '배송중' 필터 버튼 UI 업데이트
         const inProgressSortButtons = actionBarContainer.querySelectorAll('button[data-sort-group="in-progress"]');
         if (inProgressSortButtons.length > 0) {
-            const activeClass = 'bg-blue-600 text-white border-transparent';
-            const inactiveClass = 'bg-white text-blue-700 border-gray-300 hover:bg-gray-50';
+            const activeClass = 'bg-blue-600 text-white';
+            const inactiveClass = 'bg-gray-100 text-gray-600 hover:bg-gray-200';
             
             inProgressSortButtons.forEach(btn => {
                 btn.classList.remove(...activeClass.split(' '), ...inactiveClass.split(' '));
@@ -1519,8 +1519,8 @@
         // '완료' 필터 버튼 UI 업데이트
         const completedSortButtons = actionBarContainer.querySelectorAll('button[data-sort-group="completed"]');
         if (completedSortButtons.length > 0) {
-            const activeClass = 'bg-gray-700 text-white border-transparent';
-            const inactiveClass = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
+            const activeClass = 'bg-gray-800 text-white';
+            const inactiveClass = 'bg-gray-100 text-gray-600 hover:bg-gray-200';
 
             completedSortButtons.forEach(btn => {
                 btn.classList.remove(...activeClass.split(' '), ...inactiveClass.split(' '));
