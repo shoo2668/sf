@@ -101,18 +101,28 @@
             color: #6b7280; /* gray-500 */
         }
         #fab-options {
-            display: flex; /* 항상 flex 상태 유지 */
+            display: flex;
             align-items: center;
             gap: 0.25rem; /* space-x-1 */
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transition: all 0.3s ease-in-out;
+            
+            /* 기본 상태 (숨김) */
+            width: 0;
             opacity: 0;
-            transform: translateX(10px); /* 약간 오른쪽에서 나타나는 효과 */
-            pointer-events: none; /* 숨겨졌을 때 클릭 방지 */
+            transform: translateX(20px);
+            pointer-events: none;
         }
         #fab-options.expanded {
+            /* 확장 상태 */
+            width: auto; /* 내용물에 맞게 너비 자동 조절 */
             opacity: 1;
             transform: translateX(0);
-            pointer-events: auto; /* 보일 때 클릭 활성화 */
+            pointer-events: auto;
+        }
+        #fab-options button {
+            /* 버튼 자체는 항상 보이도록 설정 */
+            width: 2.5rem; /* w-10 */
+            height: 2.5rem; /* h-10 */
         }
         #search-fab-panel.expanded #invoiceNumber {
             width: 12rem; /* w-48 */
@@ -427,7 +437,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.93";
+            const version = "v1.2.94";
             const changelog = "버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1519,14 +1529,15 @@
         fabMainButton.className = `w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
         fabMainButton.dataset.action = 'toggle-fab';
 
-        // ▼▼▼ [수정] 간격 제어 로직 단순화 ▼▼▼
+        // ▼▼▼ [수정] 메인 버튼의 간격은 expanded 상태에 따라 제어 ▼▼▼
         fabMainButton.classList.toggle('ml-1', fabOptions.classList.contains('expanded'));
 
         menuItems.forEach(item => {
             if (item.sortType === currentSortType) return;
 
             const button = document.createElement('button');
-            button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
+            // 버튼 클래스는 이제 CSS에서 제어하므로 단순화
+            button.className = 'flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
             button.innerHTML = item.icon;
             button.dataset.action = item.action;
             fabOptions.appendChild(button);
