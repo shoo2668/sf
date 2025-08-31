@@ -101,12 +101,18 @@
             color: #6b7280; /* gray-500 */
         }
         #fab-options {
-            display: none; /* 기본적으로 숨김 */
+            display: flex; /* 항상 flex 상태 유지 */
             align-items: center;
             gap: 0.25rem; /* space-x-1 */
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            opacity: 0;
+            transform: translateX(10px); /* 약간 오른쪽에서 나타나는 효과 */
+            pointer-events: none; /* 숨겨졌을 때 클릭 방지 */
         }
         #fab-options.expanded {
-            display: flex; /* expanded 클래스가 붙으면 보이도록 함 */
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto; /* 보일 때 클릭 활성화 */
         }
         #search-fab-panel.expanded #invoiceNumber {
             width: 12rem; /* w-48 */
@@ -421,7 +427,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.92";
+            const version = "v1.2.93";
             const changelog = "버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1513,8 +1519,8 @@
         fabMainButton.className = `w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
         fabMainButton.dataset.action = 'toggle-fab';
 
-        // 메인 버튼과 옵션 버튼 사이에 간격을 주기 위해 메인 버튼에 마진 추가
-        fabMainButton.classList.add('ml-1');
+        // ▼▼▼ [수정] 간격 제어 로직 단순화 ▼▼▼
+        fabMainButton.classList.toggle('ml-1', fabOptions.classList.contains('expanded'));
 
         menuItems.forEach(item => {
             if (item.sortType === currentSortType) return;
@@ -1538,13 +1544,8 @@
         const fabMainButton = document.getElementById('fab-main-button');
 
         if (action === 'toggle-fab') {
-            const isExpanded = fabOptions.classList.contains('expanded');
-            if (isExpanded) {
-                fabMainButton.classList.remove('ml-1');
-            } else {
-                fabMainButton.classList.add('ml-1');
-            }
             fabOptions.classList.toggle('expanded');
+            fabMainButton.classList.toggle('ml-1', fabOptions.classList.contains('expanded'));
             return;
         }
 
@@ -1555,10 +1556,7 @@
             else if (action === 'sort-no-completed') completedSortOrder = 'no';
             
             fabOptions.classList.remove('expanded');
-            fabMainButton.classList.remove('ml-1');
-            
-            // 아이콘 즉시 변경을 위해 setupFab 호출
-            setupFab(); 
+            setupFab();
         }
 
         switch (action) {
