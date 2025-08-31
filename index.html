@@ -51,6 +51,31 @@
             opacity: 1;
             transform: translateX(-50%) scale(1) translateY(-8px);
         }
+        .filter-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 9999px;
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            transition: transform 0.2s, opacity 0.2s;
+            transform: scale(1);
+            opacity: 1;
+        }
+        .filter-badge.hidden {
+            transform: scale(0.5);
+            opacity: 0;
+            pointer-events: none;
+        }
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color 0.2s; }
 
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
@@ -81,13 +106,32 @@
     <div id="app-container" class="h-screen flex flex-col">
 
         <div id="filter-buttons-container" class="z-20 flex-shrink-0 bg-white shadow-md">
-            <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
-                <div class="flex justify-around space-x-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
-                    <button data-filter="배송준비" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 whitespace-nowrap"><span>배송준비</span></button>
-                    <button data-filter="전체" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>전체</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-전체">0</span></button>
-                    <button data-filter="배송전" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송전</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송전">0</span></button>
-                    <button data-filter="배송중" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>배송중</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-배송중">0</span></button>
-                    <button data-filter="완료" class="flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1 bg-transparent text-gray-700 border border-gray-300 hover:bg-gray-100 whitespace-nowrap"><span>완료</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700" id="count-완료">0</span></button>
+            <div class="max-w-md mx-auto w-full min-w-[320px] p-2">
+                <div class="flex justify-around">
+                    <!-- 배송준비 버튼 -->
+                    <button data-filter="배송준비" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    </button>
+                    <!-- 전체 버튼 -->
+                    <button data-filter="전체" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>
+                        <span id="count-전체" class="filter-badge">0</span>
+                    </button>
+                    <!-- 배송전 버튼 -->
+                    <button data-filter="배송전" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/></svg>
+                        <span id="count-배송전" class="filter-badge">0</span>
+                    </button>
+                    <!-- 배송중 버튼 -->
+                    <button data-filter="배송중" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+                        <span id="count-배송중" class="filter-badge">0</span>
+                    </button>
+                    <!-- 완료 버튼 -->
+                    <button data-filter="완료" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+                        <span id="count-완료" class="filter-badge">0</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -347,8 +391,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.1.6";
-            const changelog = "카드수정";
+            const version = "v1.2.0";
+            const changelog = "필터메뉴 아이콘으로 변경";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1369,10 +1413,21 @@
 
     // --- UI Update & Event Listener Setup ---
     const updateFilterCounts = () => {
-        document.getElementById('count-전체').textContent = deliveryItems.length;
-        document.getElementById('count-배송전').textContent = deliveryItems.filter(item => item.status === '배송전').length;
-        document.getElementById('count-배송중').textContent = deliveryItems.filter(item => item.status === '배송중').length;
-        document.getElementById('count-완료').textContent = deliveryItems.filter(item => item.status === '완료').length;
+        const counts = {
+            '전체': deliveryItems.length,
+            '배송전': deliveryItems.filter(item => item.status === '배송전').length,
+            '배송중': deliveryItems.filter(item => item.status === '배송중').length,
+            '완료': deliveryItems.filter(item => item.status === '완료').length
+        };
+
+        for (const filter in counts) {
+            const countElement = document.getElementById(`count-${filter}`);
+            if (countElement) {
+                const count = counts[filter];
+                countElement.textContent = count > 99 ? '99+' : count;
+                countElement.classList.toggle('hidden', count === 0);
+            }
+        }
     };
     
     const updateStickyHeaderPositions = () => {
@@ -1567,22 +1622,20 @@
             invoiceNumberInput.value = '';
         }
 
-        filterScrollPositions[activeFilter] = window.scrollY;
+        const mainContentWrapper = document.getElementById('main-content-wrapper');
+        filterScrollPositions[activeFilter] = mainContentWrapper.scrollTop;
         activeFilter = newFilter;
 
-        // ▼▼▼▼▼ [수정된 부분] 정렬 로직 시작 ▼▼▼▼▼
         if (newFilter === '배송중') {
             currentSortOrder = deliveryInProgressSortOrder;
             if (deliveryInProgressSortOrder === 'distance') {
-                // 이전에 계산된 거리(distanceFromMe) 기준으로 즉시 정렬
                 const itemsWithDistance = deliveryItems.filter(item => item.distanceFromMe !== undefined);
                 const itemsWithoutDistance = deliveryItems.filter(item => item.distanceFromMe === undefined);
                 itemsWithDistance.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
                 deliveryItems = [...itemsWithDistance, ...itemsWithoutDistance];
                 
-                // 백그라운드에서 최신 거리 정보로 업데이트
                 sortItemsByDistance(true);
-            } else { // 'no'
+            } else { 
                 deliveryItems.sort((a, b) => a.no - b.no);
             }
         } else if (newFilter === '완료') {
@@ -1596,22 +1649,27 @@
                     return a.deliveryCompletionTime.localeCompare(b.deliveryCompletionTime);
                 });
                 deliveryItems = [...completedItems, ...otherItems];
-            } else { // 'no'
+            } else { 
                 deliveryItems.sort((a, b) => a.no - b.no);
             }
-        } else { // '전체', '배송전', '배송준비'
+        } else { 
             currentSortOrder = 'no';
             deliveryItems.sort((a, b) => a.no - b.no);
         }
-        // ▲▲▲▲▲ [수정된 부분] 정렬 로직 끝 ▲▲▲▲▲
 
         filterButtonsContainer.querySelectorAll('button[data-filter]').forEach(btn => {
+            const svg = btn.querySelector('svg');
             const isActive = btn.dataset.filter === activeFilter;
-            btn.classList.remove('bg-blue-500', 'text-white', 'shadow', 'bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+            
+            btn.classList.remove('bg-blue-100', 'text-blue-600', 'bg-transparent', 'text-gray-500', 'hover:bg-gray-200');
+            svg.classList.remove('text-blue-600', 'text-gray-500');
+
             if (isActive) {
-                btn.classList.add('bg-blue-500', 'text-white', 'shadow');
+                btn.classList.add('bg-blue-100');
+                svg.classList.add('text-blue-600');
             } else {
-                btn.classList.add('bg-transparent', 'text-gray-700', 'border', 'border-gray-300', 'hover:bg-gray-100');
+                btn.classList.add('bg-transparent', 'text-gray-500', 'hover:bg-gray-200');
+                svg.classList.add('text-gray-500');
             }
         });
         
@@ -1619,7 +1677,10 @@
         updateStickyHeaderPositions();
         const button = filterButtonsContainer.querySelector(`button[data-filter="${activeFilter}"]`);
         if (button) button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-        setTimeout(() => window.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' }), 0);
+        
+        setTimeout(() => {
+            mainContentWrapper.scrollTo({ top: filterScrollPositions[activeFilter] || 0, behavior: 'auto' });
+        }, 0);
     };
 
     filterButtonsContainer.addEventListener('click', (event) => {
