@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.9";
+            const version = "v1.2.91";
             const changelog = "버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1515,16 +1515,18 @@
 
         const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems.find(item => item.sortType);
         fabMainButton.innerHTML = activeItem.icon;
-        // ▼▼▼ [수정] 메인 버튼에 ml-1 추가 ▼▼▼
+        // ▼▼▼ [수정] 메인 버튼에 항상 ml-1을 추가하여 간격을 고정 ▼▼▼
         fabMainButton.className = `w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ml-1 ${activeColorClass}`;
         fabMainButton.dataset.action = 'toggle-fab';
 
+        // ▼▼▼ [수정] 옵션 버튼들의 부모에 space-x-1을 주어 내부 간격 제어 ▼▼▼
+        fabOptions.className = "flex items-center space-x-1";
         menuItems.forEach(item => {
             if (item.sortType === currentSortType) return;
 
             const button = document.createElement('button');
-            // ▼▼▼ [수정] 옵션 버튼에 ml-1 추가 ▼▼▼
-            button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md ml-1';
+            // 옵션 버튼 자체에는 마진을 주지 않음
+            button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
             button.innerHTML = item.icon;
             button.dataset.action = item.action;
             fabOptions.appendChild(button);
