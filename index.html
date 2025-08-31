@@ -100,9 +100,9 @@
             text-decoration: line-through;
             color: #6b7280; /* gray-500 */
         }
-        #fab-options.expanded {
+        #fab-options-panel.expanded {
             opacity: 1;
-            transform: translateX(-70px); /* 메인 버튼 너비만큼 왼쪽으로 이동 */
+            transform: scale(1);
         }
     </style>
 </head>
@@ -203,18 +203,18 @@
 
     <div id="action-bar-container" class="fixed bottom-0 left-0 w-full z-40 pointer-events-none">
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4 flex justify-end">
-            <!-- ▼▼▼ [수정] 확장형 FAB를 위한 새로운 구조 ▼▼▼ -->
             <div id="fab-wrapper" class="relative flex items-center justify-end pointer-events-auto">
-                <!-- 확장될 때 나타나는 옵션 버튼들을 감싸는 컨테이너 -->
-                <div id="fab-options" class="absolute right-0 flex items-center space-x-2 transition-all duration-300 ease-in-out opacity-0 -translate-x-4">
-                    <!-- 옵션 버튼들은 JS가 여기에 동적으로 추가합니다. -->
+                <!-- ▼▼▼ [수정] 옵션 버튼들을 감싸는 패널 구조로 변경 ▼▼▼ -->
+                <div id="fab-options-panel" class="absolute right-16 flex items-center p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 transition-all duration-300 ease-in-out opacity-0 scale-90">
+                    <div id="fab-options" class="flex items-center space-x-1">
+                        <!-- 옵션 버튼들은 JS가 여기에 동적으로 추가합니다. -->
+                    </div>
                 </div>
-                <!-- 항상 보이는 메인 버튼 -->
+                <!-- ▲▲▲ [수정] ▲▲▲ -->
                 <button id="fab-main-button" class="relative w-14 h-14 flex-shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg z-10">
                     <!-- 메인 아이콘은 JS가 여기에 동적으로 추가합니다. -->
                 </button>
             </div>
-            <!-- ▲▲▲ [수정] ▲▲▲ -->
         </div>
     </div>
 
@@ -410,7 +410,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.6";
+            const version = "v1.2.61";
             const changelog = "정렬버튼 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1470,9 +1470,10 @@
     
     const setupFab = () => {
         const fabMainButton = document.getElementById('fab-main-button');
+        const fabOptionsPanel = document.getElementById('fab-options-panel');
         const fabOptions = document.getElementById('fab-options');
-        fabOptions.innerHTML = ''; // 옵션 초기화
-        fabMainButton.innerHTML = ''; // 메인 버튼 아이콘 초기화
+        fabOptions.innerHTML = '';
+        fabMainButton.innerHTML = '';
 
         let menuItems = [];
         let currentSortType = '';
@@ -1480,9 +1481,9 @@
 
         if (activeFilter === '배송중') {
             menuItems = [
+                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, action: 'jump-no' },
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, action: 'sort-no', sortType: 'no' },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, action: 'sort-distance', sortType: 'distance' },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, action: 'jump-no' }
+                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, action: 'sort-distance', sortType: 'distance' }
             ];
             currentSortType = deliveryInProgressSortOrder;
             activeColorClass = 'bg-blue-600';
@@ -1495,42 +1496,105 @@
             activeColorClass = 'bg-gray-800';
         }
 
-        const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems[0];
+        const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems.find(item => item.sortType);
         fabMainButton.innerHTML = activeItem.icon;
         fabMainButton.className = `relative w-14 h-14 flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-lg z-10 transition-colors ${activeColorClass}`;
 
         menuItems.forEach(item => {
-            const isMainButtonAction = (item.action === 'jump-no' || item.sortType === currentSortType);
-            if (isMainButtonAction && item.action !== 'jump-no') return;
+            if (item.sortType === currentSortType) return;
 
             const button = document.createElement('button');
-            const buttonContainer = (item.action === 'jump-no') ? fabMainButton.parentNode : fabOptions;
-            
-            if (item.action === 'jump-no') {
-                button.className = 'absolute -top-16 w-12 h-12 flex items-center justify-center rounded-full bg-yellow-500 text-white hover:bg-yellow-600 shadow-md';
-            } else {
-                button.className = 'w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-md';
-            }
-            
+            button.className = 'w-10 h-10 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
             button.innerHTML = item.icon;
             button.dataset.action = item.action;
-            button.onclick = () => {
-                fabOptions.classList.remove('expanded');
-            };
-            buttonContainer.appendChild(button);
+            fabOptions.appendChild(button);
         });
 
         const newFabMainButton = fabMainButton.cloneNode(true);
         fabMainButton.parentNode.replaceChild(newFabMainButton, fabMainButton);
-        newFabMainButton.addEventListener('click', (e) => {
-            const clickedButtonAction = e.target.closest('button')?.dataset.action;
-            if (clickedButtonAction === 'jump-no') {
-                return;
-            }
-            fabOptions.classList.toggle('expanded');
+        newFabMainButton.addEventListener('click', () => {
+            fabOptionsPanel.classList.toggle('expanded');
         });
     };
 
+    actionBarContainer.addEventListener('click', async (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+
+        const action = button.dataset.action;
+        if (!action || action === fabMainButton.dataset.action) return;
+
+        const fabOptionsPanel = document.getElementById('fab-options-panel');
+
+        switch (action) {
+            case 'sort-distance':
+                await sortItemsByDistance();
+                break;
+            case 'sort-no':
+                deliveryInProgressSortOrder = 'no';
+                sortItemsByNumber();
+                showToastMessage('순번순으로 정렬되었습니다.');
+                break;
+            case 'sort-no-completed':
+                completedSortOrder = 'no';
+                currentSortOrder = 'no';
+                deliveryItems.sort((a, b) => a.no - b.no);
+                renderDeliveryCards(activeFilter);
+                showToastMessage('순번순으로 정렬되었습니다.');
+                break;
+            case 'jump-no':
+                numberJumpList.innerHTML = '';
+                if (deliveryItems.length === 0) {
+                    numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
+                } else {
+                    const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
+                    const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
+                    for (let i = 1; i <= maxNo; i++) {
+                        const status = itemsMap.get(i);
+                        const btn = document.createElement('div');
+                        btn.textContent = i;
+                        if (status === '배송중') {
+                            btn.className = 'number-jump-item active';
+                            btn.dataset.no = i;
+                            btn.onclick = () => {
+                                const targetCard = document.querySelector(`[data-no="${i}"]`);
+                                if (targetCard) {
+                                    targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                                numberJumpModal.style.display = 'none';
+                            };
+                        } else if (status) {
+                            btn.className = 'number-jump-item inactive';
+                        } else {
+                            btn.className = 'number-jump-item placeholder';
+                            btn.innerHTML = ' ';
+                        }
+                        numberJumpList.appendChild(btn);
+                    }
+                }
+                numberJumpModal.style.display = 'flex';
+                break;
+            case 'sort-time':
+                completedSortOrder = 'time';
+                currentSortOrder = 'time';
+                const completedItems = deliveryItems.filter(item => item.status === '완료');
+                const otherItems = deliveryItems.filter(item => item.status !== '완료');
+                completedItems.sort((a, b) => {
+                    if (!a.deliveryCompletionTime) return 1;
+                    if (!b.deliveryCompletionTime) return -1;
+                    return a.deliveryCompletionTime.localeCompare(b.deliveryCompletionTime);
+                });
+                deliveryItems = [...completedItems, ...otherItems];
+                renderDeliveryCards(activeFilter);
+                showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
+                break;
+        }
+        
+        if (button.parentNode.id === 'fab-options') {
+            fabOptionsPanel.classList.remove('expanded');
+            setTimeout(setupFab, 150); // 애니메이션 시간을 고려하여 약간의 딜레이 후 FAB 갱신
+        }
+    });
     const sortItemsByNumber = () => {
         deliveryInProgressSortOrder = 'no';
         currentSortOrder = 'no';
