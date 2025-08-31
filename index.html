@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.83";
+            const version = "v1.2.84";
             const changelog = "검색창 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1789,8 +1789,7 @@
     });
 
     const searchFabPanel = document.getElementById('search-fab-panel');
-    let searchInteraction = false; // 버튼 클릭 여부를 추적하는 플래그
-
+    
     const expandSearch = () => {
         if (searchFabPanel.classList.contains('expanded')) return;
         searchFabPanel.classList.add('expanded');
@@ -1807,15 +1806,13 @@
 
     searchButton.addEventListener('click', () => {
         if (searchFabPanel.classList.contains('expanded')) {
-            if (invoiceNumberInput.value.trim() === '') {
-                collapseSearch();
-            } else {
-                searchTerm = invoiceNumberInput.value.trim();
-                renderDeliveryCards(activeFilter);
-                document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
-                filterScrollPositions[activeFilter] = 0;
-            }
+            // 확장된 상태에서는 검색 실행 기능만 수행
+            searchTerm = invoiceNumberInput.value.trim();
+            renderDeliveryCards(activeFilter);
+            document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
+            filterScrollPositions[activeFilter] = 0;
         } else {
+            // 축소된 상태면 확장
             expandSearch();
         }
     });
@@ -1834,27 +1831,18 @@
         filterScrollPositions[activeFilter] = 0;
     });
 
-    // ▼▼▼ [수정] 키패드 닫힘과 외부 클릭 모두 감지하는 통합 로직 ▼▼▼
-
-    // 버튼을 '누르는 순간' 플래그를 설정
-    searchButton.addEventListener('mousedown', () => { searchInteraction = true; });
-    resetButton.addEventListener('mousedown', () => { searchInteraction = true; });
-
-    // 입력창에서 포커스가 사라졌을 때 (키패드 내릴 때)
+    // ▼▼▼ [수정] blur 이벤트와 외부 클릭 이벤트를 결합한 최종 로직 ▼▼▼
     invoiceNumberInput.addEventListener('blur', () => {
-        setTimeout(() => {
-            if (!searchInteraction) {
-                collapseSearch();
-            }
-            searchInteraction = false;
-        }, 50); 
+        // 입력창이 비어있을 때 포커스를 잃으면(키패드 닫힘) 검색창을 접음
+        if (invoiceNumberInput.value.trim() === '') {
+            collapseSearch();
+        }
     });
 
-    // 화면의 다른 곳을 클릭했을 때
     document.addEventListener('click', (event) => {
         const clickedElement = event.target;
-        // 클릭된 요소가 검색 패널도 아니고, 검색 패널의 자식도 아닐 경우
-        if (!searchFabPanel.contains(clickedElement)) {
+        // 클릭된 요소가 검색 패널의 자식이 아니고, 입력창이 비어있을 경우 검색창을 닫음
+        if (!searchFabPanel.contains(clickedElement) && invoiceNumberInput.value.trim() === '') {
             collapseSearch();
         }
     });
