@@ -104,17 +104,17 @@
             display: flex;
             align-items: center;
             gap: 0.25rem; /* space-x-1 */
-            transition: max-width 0.3s ease-in-out, opacity 0.2s ease-in-out;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s linear;
+            transform-origin: right; /* 변형 기준점을 오른쪽으로 설정 */
             
             /* 기본 상태 (숨김) */
-            max-width: 0px;
+            transform: scaleX(0);
             opacity: 0;
-            overflow: hidden; /* 내용물이 삐져나오지 않도록 함 */
             pointer-events: none;
         }
         #fab-options.expanded {
             /* 확장 상태 */
-            max-width: 500px; /* 내용물을 모두 포함할 수 있는 충분한 너비 */
+            transform: scaleX(1);
             opacity: 1;
             pointer-events: auto;
         }
@@ -437,7 +437,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.95";
+            const version = "v1.2.96";
             const changelog = "버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
