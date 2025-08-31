@@ -180,13 +180,19 @@
 
     <div id="toast-container"></div>
 
-    <div id="search-bar-container" class="bottom-bar">
-        <div class="max-w-md mx-auto w-full min-w-[320px] p-4">
-            <label for="invoiceNumber" class="block text-sm font-medium text-gray-700 sr-only">송장번호 검색</label>
-            <div class="flex space-x-2 flex-nowrap">
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="w-1/2 p-2 bg-gray-100 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-colors" inputmode="numeric" pattern="[0-9]*"/>
-                <button id="searchButton" class="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors">검색</button>
-                <button id="resetButton" class="flex-1 px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 transition-colors">지움</button>
+    <div id="search-bar-container" class="fixed bottom-0 left-0 w-full z-40 pointer-events-none">
+        <div class="max-w-md mx-auto w-full min-w-[320px] p-4 flex justify-end">
+            <div class="flex items-center space-x-1 p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 pointer-events-auto">
+                <!-- 검색창 -->
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-48 px-4 py-2 bg-gray-100 border border-transparent rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white outline-none transition-all" inputmode="numeric" pattern="[0-9]*"/>
+                <!-- 검색 버튼 -->
+                <button id="searchButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="m16 16-1.9-1.9"/></svg>
+                </button>
+                <!-- 지움 버튼 -->
+                <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full hover:bg-gray-300 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
+                </button>
             </div>
         </div>
     </div>
@@ -391,8 +397,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.4";
-            const changelog = "하단바 변경";
+            const version = "v1.2.5";
+            const changelog = "검색창 변경";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
