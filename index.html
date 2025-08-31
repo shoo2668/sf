@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.82";
+            const version = "v1.2.83";
             const changelog = "검색창 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1789,7 +1789,8 @@
     });
 
     const searchFabPanel = document.getElementById('search-fab-panel');
-    
+    let searchInteraction = false; // 버튼 클릭 여부를 추적하는 플래그
+
     const expandSearch = () => {
         if (searchFabPanel.classList.contains('expanded')) return;
         searchFabPanel.classList.add('expanded');
@@ -1833,10 +1834,26 @@
         filterScrollPositions[activeFilter] = 0;
     });
 
-    // ▼▼▼ [수정] 화면의 다른 곳을 클릭하면 검색창이 접히도록 하는 로직 ▼▼▼
+    // ▼▼▼ [수정] 키패드 닫힘과 외부 클릭 모두 감지하는 통합 로직 ▼▼▼
+
+    // 버튼을 '누르는 순간' 플래그를 설정
+    searchButton.addEventListener('mousedown', () => { searchInteraction = true; });
+    resetButton.addEventListener('mousedown', () => { searchInteraction = true; });
+
+    // 입력창에서 포커스가 사라졌을 때 (키패드 내릴 때)
+    invoiceNumberInput.addEventListener('blur', () => {
+        setTimeout(() => {
+            if (!searchInteraction) {
+                collapseSearch();
+            }
+            searchInteraction = false;
+        }, 50); 
+    });
+
+    // 화면의 다른 곳을 클릭했을 때
     document.addEventListener('click', (event) => {
         const clickedElement = event.target;
-        // 클릭된 요소가 검색 패널 자기 자신이거나, 그 안에 포함된 요소가 아니라면
+        // 클릭된 요소가 검색 패널도 아니고, 검색 패널의 자식도 아닐 경우
         if (!searchFabPanel.contains(clickedElement)) {
             collapseSearch();
         }
