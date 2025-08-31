@@ -100,7 +100,16 @@
             text-decoration: line-through;
             color: #6b7280; /* gray-500 */
         }
-        #fab-options-panel.expanded {
+        #fab-options button {
+            width: 0;
+            padding: 0;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.3s ease-in-out;
+        }
+        #fab-options.expanded button {
+            width: 3rem; /* w-12 */
+            padding: 0.75rem; /* p-3 와 유사 */
             opacity: 1;
             transform: scale(1);
         }
@@ -203,18 +212,16 @@
 
     <div id="action-bar-container" class="fixed bottom-0 left-0 w-full z-40 pointer-events-none">
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4 flex justify-end">
-            <div id="fab-wrapper" class="relative flex items-center justify-end pointer-events-auto">
-                <!-- ▼▼▼ [수정] 옵션 버튼들을 감싸는 패널 구조로 변경 ▼▼▼ -->
-                <div id="fab-options-panel" class="absolute right-16 flex items-center p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 transition-all duration-300 ease-in-out opacity-0 scale-90">
-                    <div id="fab-options" class="flex items-center space-x-1">
-                        <!-- 옵션 버튼들은 JS가 여기에 동적으로 추가합니다. -->
-                    </div>
-                </div>
-                <!-- ▲▲▲ [수정] ▲▲▲ -->
-                <button id="fab-main-button" class="relative w-14 h-14 flex-shrink-0 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg z-10">
+            <!-- ▼▼▼ [수정] 모든 버튼을 하나의 패널 안에 위치시키는 구조로 변경 ▼▼▼ -->
+            <div id="fab-panel" class="flex items-center space-x-1 p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 pointer-events-auto">
+                <!-- 옵션 버튼들이 여기에 동적으로 추가됩니다 (숨김 상태) -->
+                <div id="fab-options" class="flex items-center space-x-1"></div>
+                <!-- 메인 버튼이 항상 여기에 위치합니다 -->
+                <button id="fab-main-button" class="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200">
                     <!-- 메인 아이콘은 JS가 여기에 동적으로 추가합니다. -->
                 </button>
             </div>
+            <!-- ▲▲▲ [수정] ▲▲▲ -->
         </div>
     </div>
 
@@ -410,7 +417,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.61";
+            const version = "v1.2.62";
             const changelog = "정렬버튼 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1470,7 +1477,6 @@
     
     const setupFab = () => {
         const fabMainButton = document.getElementById('fab-main-button');
-        const fabOptionsPanel = document.getElementById('fab-options-panel');
         const fabOptions = document.getElementById('fab-options');
         fabOptions.innerHTML = '';
         fabMainButton.innerHTML = '';
@@ -1486,34 +1492,29 @@
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, action: 'sort-distance', sortType: 'distance' }
             ];
             currentSortType = deliveryInProgressSortOrder;
-            activeColorClass = 'bg-blue-600';
+            activeColorClass = 'bg-blue-600 text-white';
         } else if (activeFilter === '완료') {
             menuItems = [
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, action: 'sort-no-completed', sortType: 'no' },
                 { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, action: 'sort-time', sortType: 'time' }
             ];
             currentSortType = completedSortOrder;
-            activeColorClass = 'bg-gray-800';
+            activeColorClass = 'bg-gray-800 text-white';
         }
 
         const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems.find(item => item.sortType);
         fabMainButton.innerHTML = activeItem.icon;
-        fabMainButton.className = `relative w-14 h-14 flex-shrink-0 flex items-center justify-center rounded-full text-white shadow-lg z-10 transition-colors ${activeColorClass}`;
+        fabMainButton.className = `w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
+        fabMainButton.dataset.action = 'toggle-fab'; // 메인 버튼의 액션을 토글로 지정
 
         menuItems.forEach(item => {
-            if (item.sortType === currentSortType) return;
+            if (item.sortType === currentSortType) return; // 현재 활성화된 정렬 옵션은 만들지 않음
 
             const button = document.createElement('button');
-            button.className = 'w-10 h-10 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
+            button.className = 'w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
             button.innerHTML = item.icon;
             button.dataset.action = item.action;
             fabOptions.appendChild(button);
-        });
-
-        const newFabMainButton = fabMainButton.cloneNode(true);
-        fabMainButton.parentNode.replaceChild(newFabMainButton, fabMainButton);
-        newFabMainButton.addEventListener('click', () => {
-            fabOptionsPanel.classList.toggle('expanded');
         });
     };
 
@@ -1522,9 +1523,14 @@
         if (!button) return;
 
         const action = button.dataset.action;
-        if (!action || action === fabMainButton.dataset.action) return;
+        if (!action) return;
 
-        const fabOptionsPanel = document.getElementById('fab-options-panel');
+        const fabOptions = document.getElementById('fab-options');
+
+        if (action === 'toggle-fab') {
+            fabOptions.classList.toggle('expanded');
+            return;
+        }
 
         switch (action) {
             case 'sort-distance':
@@ -1591,8 +1597,8 @@
         }
         
         if (button.parentNode.id === 'fab-options') {
-            fabOptionsPanel.classList.remove('expanded');
-            setTimeout(setupFab, 150); // 애니메이션 시간을 고려하여 약간의 딜레이 후 FAB 갱신
+            fabOptions.classList.remove('expanded');
+            setTimeout(setupFab, 50); // 딜레이를 짧게 하여 즉시 바뀌는 것처럼 보이게 함
         }
     });
     const sortItemsByNumber = () => {
