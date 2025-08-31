@@ -417,7 +417,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.63";
+            const version = "v1.2.64";
             const changelog = "정렬버튼 개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1505,10 +1505,10 @@
         const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems.find(item => item.sortType);
         fabMainButton.innerHTML = activeItem.icon;
         fabMainButton.className = `w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
-        fabMainButton.dataset.action = 'toggle-fab'; // 메인 버튼의 액션을 토글로 지정
+        fabMainButton.dataset.action = 'toggle-fab';
 
         menuItems.forEach(item => {
-            if (item.sortType === currentSortType) return; // 현재 활성화된 정렬 옵션은 만들지 않음
+            if (item.sortType === currentSortType) return;
 
             const button = document.createElement('button');
             button.className = 'w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
@@ -1519,102 +1519,99 @@
     };
 
     actionBarContainer.addEventListener('click', async (event) => {
-        const button = event.target.closest('button');
-        if (!button) return;
+                const button = event.target.closest('button');
+                if (!button) return;
 
-        const action = button.dataset.action;
-        if (!action) return;
+                const action = button.dataset.action;
+                if (!action) return;
 
-        const fabOptions = document.getElementById('fab-options');
-        const fabOptionsPanel = document.getElementById('fab-options-panel');
+                const fabOptions = document.getElementById('fab-options');
 
-        if (action === 'toggle-fab') {
-            fabOptionsPanel.classList.toggle('expanded');
-            return;
-        }
-
-        // ▼▼▼ [수정] UI 반응을 먼저 처리하도록 로직 변경 ▼▼▼
-        if (button.parentNode.id === 'fab-options') {
-            fabOptionsPanel.classList.remove('expanded');
-            
-            // 먼저 정렬 상태 변수 값을 업데이트
-            if (action === 'sort-distance') {
-                deliveryInProgressSortOrder = 'distance';
-            } else if (action === 'sort-no') {
-                deliveryInProgressSortOrder = 'no';
-            } else if (action === 'sort-time') {
-                completedSortOrder = 'time';
-            } else if (action === 'sort-no-completed') {
-                completedSortOrder = 'no';
-            }
-            
-            // 즉시 setupFab을 호출하여 메인 아이콘을 변경
-            setupFab();
-        }
-        // ▲▲▲ [수정] ▲▲▲
-
-        switch (action) {
-            case 'sort-distance':
-                // await를 제거하여 백그라운드에서 실행
-                sortItemsByDistance(); 
-                break;
-            case 'sort-no':
-                sortItemsByNumber();
-                showToastMessage('순번순으로 정렬되었습니다.');
-                break;
-            case 'sort-no-completed':
-                currentSortOrder = 'no';
-                deliveryItems.sort((a, b) => a.no - b.no);
-                renderDeliveryCards(activeFilter);
-                showToastMessage('순번순으로 정렬되었습니다.');
-                break;
-            case 'jump-no':
-                numberJumpList.innerHTML = '';
-                if (deliveryItems.length === 0) {
-                    numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
-                } else {
-                    const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
-                    const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
-                    for (let i = 1; i <= maxNo; i++) {
-                        const status = itemsMap.get(i);
-                        const btn = document.createElement('div');
-                        btn.textContent = i;
-                        if (status === '배송중') {
-                            btn.className = 'number-jump-item active';
-                            btn.dataset.no = i;
-                            btn.onclick = () => {
-                                const targetCard = document.querySelector(`[data-no="${i}"]`);
-                                if (targetCard) {
-                                    targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }
-                                numberJumpModal.style.display = 'none';
-                            };
-                        } else if (status) {
-                            btn.className = 'number-jump-item inactive';
-                        } else {
-                            btn.className = 'number-jump-item placeholder';
-                            btn.innerHTML = ' ';
-                        }
-                        numberJumpList.appendChild(btn);
-                    }
+                // 메인 버튼 클릭 시 옵션 토글
+                if (action === 'toggle-fab') {
+                    fabOptions.classList.toggle('expanded');
+                    return;
                 }
-                numberJumpModal.style.display = 'flex';
-                break;
-            case 'sort-time':
-                currentSortOrder = 'time';
-                const completedItems = deliveryItems.filter(item => item.status === '완료');
-                const otherItems = deliveryItems.filter(item => item.status !== '완료');
-                completedItems.sort((a, b) => {
-                    if (!a.deliveryCompletionTime) return 1;
-                    if (!b.deliveryCompletionTime) return -1;
-                    return a.deliveryCompletionTime.localeCompare(b.deliveryCompletionTime);
-                });
-                deliveryItems = [...completedItems, ...otherItems];
-                renderDeliveryCards(activeFilter);
-                showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
-                break;
-        }
-    });
+
+                // 옵션 버튼 클릭 시의 공통 동작
+                if (button.parentNode.id === 'fab-options') {
+                    fabOptions.classList.remove('expanded');
+
+                    if (action === 'sort-distance') deliveryInProgressSortOrder = 'distance';
+                    else if (action === 'sort-no') deliveryInProgressSortOrder = 'no';
+                    else if (action === 'sort-time') completedSortOrder = 'time';
+                    else if (action === 'sort-no-completed') completedSortOrder = 'no';
+                }
+
+                // 각 액션에 따른 실제 기능 실행
+                switch (action) {
+                    case 'sort-distance':
+                        sortItemsByDistance();
+                        break;
+                    case 'sort-no':
+                        sortItemsByNumber();
+                        showToastMessage('순번순으로 정렬되었습니다.');
+                        break;
+                    case 'sort-no-completed':
+                        completedSortOrder = 'no'; // sortItemsByNumber와 유사한 기능이 없으므로 여기서 직접 처리
+                        currentSortOrder = 'no';
+                        deliveryItems.sort((a, b) => a.no - b.no);
+                        renderDeliveryCards(activeFilter);
+                        showToastMessage('순번순으로 정렬되었습니다.');
+                        break;
+                    case 'jump-no':
+                        numberJumpList.innerHTML = '';
+                        if (deliveryItems.length === 0) {
+                            numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
+                        } else {
+                            const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
+                            const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
+                            for (let i = 1; i <= maxNo; i++) {
+                                const status = itemsMap.get(i);
+                                const btn = document.createElement('div');
+                                btn.textContent = i;
+                                if (status === '배송중') {
+                                    btn.className = 'number-jump-item active';
+                                    btn.dataset.no = i;
+                                    btn.onclick = () => {
+                                        const targetCard = document.querySelector(`[data-no="${i}"]`);
+                                        if (targetCard) {
+                                            targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                        numberJumpModal.style.display = 'none';
+                                    };
+                                } else if (status) {
+                                    btn.className = 'number-jump-item inactive';
+                                } else {
+                                    btn.className = 'number-jump-item placeholder';
+                                    btn.innerHTML = ' ';
+                                }
+                                numberJumpList.appendChild(btn);
+                            }
+                        }
+                        numberJumpModal.style.display = 'flex';
+                        break;
+                    case 'sort-time':
+                        completedSortOrder = 'time'; // sortItemsByTime 함수가 없으므로 여기서 직접 처리
+                        currentSortOrder = 'time';
+                        const completedItems = deliveryItems.filter(item => item.status === '완료');
+                        const otherItems = deliveryItems.filter(item => item.status !== '완료');
+                        completedItems.sort((a, b) => {
+                            if (!a.deliveryCompletionTime) return 1;
+                            if (!b.deliveryCompletionTime) return -1;
+                            return a.deliveryCompletionTime.localeCompare(b.deliveryCompletionTime);
+                        });
+                        deliveryItems = [...completedItems, ...otherItems];
+                        renderDeliveryCards(activeFilter);
+                        showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
+                        break;
+                }
+
+                // 옵션 버튼을 클릭했을 때만 FAB UI를 즉시 갱신
+                if (button.parentNode.id === 'fab-options') {
+                    setTimeout(setupFab, 50);
+                }
+            });
     const sortItemsByNumber = () => {
         deliveryInProgressSortOrder = 'no';
         currentSortOrder = 'no';
