@@ -426,8 +426,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.85";
-            const changelog = "검색창 개선";
+            const version = "v1.2.9";
+            const changelog = "완료카드 클립보드복사";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -471,8 +471,28 @@
                     return;
                 }
                 
-                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"]');
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], div[data-status="완료"]');
                 if (!target) return;
+
+                // ▼▼▼ [수정] 완료 카드 클릭 시 복사 기능 추가 ▼▼▼
+                if (target.dataset.status === '완료' && !event.target.closest('button, a')) {
+                    const itemNo = parseInt(target.dataset.no, 10);
+                    const item = deliveryItems.find(i => i.no === itemNo);
+                    if (item) {
+                        const completionText = item.completionDetail || item.completionType || '';
+                        const timeText = formatCompletionTime(item.deliveryCompletionTime);
+                        const textToCopy = `${item.no} - ${completionText} [${timeText}]`;
+                        
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            showToastMessage(`'${textToCopy}' 복사 완료`);
+                        }).catch(err => {
+                            console.error('클립보드 복사 실패:', err);
+                            showMessage('클립보드 복사에 실패했습니다.');
+                        });
+                    }
+                    return; // 복사 후 다른 동작 방지
+                }
+                // ▲▲▲ [수정] ▲▲▲
 
                 const action = target.dataset.action;
                 const itemNo = parseInt(target.dataset.no, 10);
