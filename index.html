@@ -391,8 +391,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.0";
-            const changelog = "필터메뉴 아이콘으로 변경";
+            const version = "v1.2.1";
+            const changelog = "필터메뉴 아이콘으로 변경2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1661,14 +1661,17 @@
             const svg = btn.querySelector('svg');
             const isActive = btn.dataset.filter === activeFilter;
             
-            btn.classList.remove('bg-blue-100', 'text-blue-600', 'bg-transparent', 'text-gray-500', 'hover:bg-gray-200');
-            svg.classList.remove('text-blue-600', 'text-gray-500');
+            const baseClasses = 'relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors';
+            const activeClasses = 'bg-blue-100 text-blue-600';
+            const inactiveClasses = 'bg-transparent text-gray-500 hover:bg-gray-200';
 
             if (isActive) {
-                btn.classList.add('bg-blue-100');
+                btn.className = `${baseClasses} ${activeClasses}`;
+                svg.classList.remove('text-gray-500');
                 svg.classList.add('text-blue-600');
             } else {
-                btn.classList.add('bg-transparent', 'text-gray-500', 'hover:bg-gray-200');
+                btn.className = `${baseClasses} ${inactiveClasses}`;
+                svg.classList.remove('text-blue-600');
                 svg.classList.add('text-gray-500');
             }
         });
