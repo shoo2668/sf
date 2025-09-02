@@ -426,8 +426,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.9";
-            const changelog = "완료카드 클립보드복사";
+            const version = "v1.2.10";
+            const changelog = "거리순정렬개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -2191,10 +2191,18 @@
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
+                    // 외부 앱(네이버 지도 등)에서 바로 돌아왔을 때의 popstate 이벤트를 무시하기 위한 플래그
                     justReturnedFromExternalApp = true;
                     setTimeout(() => {
                         justReturnedFromExternalApp = false;
                     }, 500);
+
+                    // ▼▼▼ [추가] 자동 거리순 정렬 갱신 로직 ▼▼▼
+                    if (activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
+                        console.log('앱 활성화: 거리순 정렬을 갱신합니다.');
+                        sortItemsByDistance(true); // silent 옵션으로 백그라운드에서 실행
+                    }
+                    // ▲▲▲ [추가] ▲▲▲
                 }
             });
 
