@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.2";
+            const version = "v1.3.3";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1284,7 +1284,6 @@
 };
         
         const openNaverMap = async (item) => {
-    // 건물 정보나 '구' 정보가 없으면 API 호출 (On-Demand)
     if (!item.buildingName || !item.district) {
         showLoadingMessage('건물/지역 정보 확인 중...');
         try {
@@ -1293,10 +1292,10 @@
             if (itemIndex > -1) {
                 deliveryItems[itemIndex].addressLocation = coords;
                 deliveryItems[itemIndex].buildingName = buildingName;
-                deliveryItems[itemIndex].district = district; // '구' 정보 저장
+                deliveryItems[itemIndex].district = district;
                 saveDeliveryItemsToLocalStorage();
                 item.buildingName = buildingName;
-                item.district = district; // 현재 item 객체에도 반영
+                item.district = district;
             }
             closeConfirmationModal();
         } catch (error) {
@@ -1306,24 +1305,21 @@
     }
 
     let addressForMapSearch;
-    const dongMatch = item.detailAddress ? item.detailAddress.match(/(\d+)\s*동/) : null;
+    // 상세 주소의 맨 앞에서 시작하는 숫자를 동 번호로 인식하도록 규칙 변경
+    const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)/) : null; // <-- 수정된 코드
 
-    // 최우선 검색어: '구' + '건물 이름' + '동' (가장 정확함)
     if (item.district && item.buildingName && dongMatch) {
         const dongNumber = dongMatch[1];
         addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
     } 
-    // 차선책: '건물 이름' + '동'
     else if (item.buildingName && dongMatch) {
         const dongNumber = dongMatch[1];
         addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
     } 
-    // 최후의 수단: 기본 주소
     else {
         addressForMapSearch = item.baseAddress || '';
     }
 
-    // ... (클립보드 복사 및 지도 실행 로직은 동일) ...
     const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
     const textarea = document.createElement('textarea');
     textarea.value = textToCopy;
