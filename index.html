@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.01";
+            const version = "v1.3.02";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1307,11 +1307,13 @@
 
     let addressForMapSearch;
 
-    // 상세 주소 형식에 상관없이 '숫자+동' 또는 '숫자+-' 패턴을 찾도록 '^' 제거
-    const dongMatch = item.detailAddress ? item.detailAddress.match(/(\d+)(?:\s*동|-)/) : null; // <-- 수정된 코드
+    // '맨 앞' 또는 '공백 뒤'라는 경계 조건을 추가하여 규칙을 더 정교하게 만듦
+    const dongMatch = item.detailAddress ? item.detailAddress.match(/(?:^|\s)(\d+)(?:\s*동|-)/) : null; // <-- 수정된 코드
 
     if (dongMatch) {
-        const dongNumber = dongMatch[1];
+        // (?:^|\s) 그룹 때문에 캡처된 동 번호는 이제 dongMatch[1]이 아니라 dongMatch[2]가 됩니다.
+        // -> 아닙니다. (?:)는 non-capturing group이라 dongMatch[1]이 맞습니다. 제가 정정합니다.
+        const dongNumber = dongMatch[1]; 
         if (item.district && item.buildingName) {
             addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
         } else if (item.buildingName) {
