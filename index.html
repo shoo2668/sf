@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.02";
+            const version = "v1.3.03";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -719,15 +719,15 @@
     const { baseAddress, detailAddress } = item;
 
     if (detailAddress) {
-        // '동-호수' 패턴이 명확하게 있을 경우에만 그 값을 반환하고 함수 종료
-        const fullMatch = detailAddress.match(/(\d+)\s*(?:동|-)\s*(\d+)/);
+        // openNaverMap과 동일한, 가장 최신의 똑똑한 규칙으로 변경
+        const fullMatch = detailAddress.match(/(?:^|\s)(\d+)\s*(?:동|-)\s*(\d+)/);
         if (fullMatch) {
+            // fullMatch[1]은 동, fullMatch[2]는 호수가 됩니다.
             return `${fullMatch[1]}-${fullMatch[2]}`;
         }
-        // "203호" 처럼 패턴이 안 맞으면 아무것도 하지 않고 그냥 넘어감
     }
 
-    // detailAddress에서 명확한 패턴을 못 찾았을 경우, 이어서 baseAddress를 처리
+    // 위에서 명확한 '동-호수' 패턴을 찾지 못했을 경우에만 baseAddress 처리
     if (baseAddress) {
         const addressParts = baseAddress.split(' ');
         const adminNames = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
