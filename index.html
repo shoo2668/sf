@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.6";
+            const version = "v1.3.7";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1306,8 +1306,6 @@
     }
 
     let addressForMapSearch;
-    // '101-...' 또는 '101동...' 패턴에서 동 번호를 추출하도록 규칙 변경
-    const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)(?:동|-)/) : null;
 
     const apartmentKeywords = ['아파트', 'APT', '자이', '래미안', '힐스테이트', '푸르지오', 'e편한세상', '더샵', '롯데캐슬', '아이파크', 'SKVIEW', '데시앙', '파크리오', '올림픽선수촌'];
     let isApartment = false;
@@ -1315,17 +1313,32 @@
         isApartment = apartmentKeywords.some(keyword => item.buildingName.includes(keyword));
     }
 
-    if (isApartment && dongMatch) {
-        const dongNumber = dongMatch[1]; // 첫 번째 괄호 그룹(\d+)에 매칭된 숫자
-        if (item.district && item.buildingName) {
-            addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
-        } else if (item.buildingName) {
-            addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
+    // --- 여기가 핵심 로직 변경 부분 ---
+    // 1. 아파트일 경우
+    if (isApartment) {
+        // '203동...' 또는 '203-...' 패턴에서 동 번호를 추출
+        const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)(?:\s*동|-)/) : null;
+        
+        // 동 번호를 성공적으로 찾았을 때만 최적화된 검색어 사용
+        if (dongMatch) {
+            const dongNumber = dongMatch[1];
+            if (item.district && item.buildingName) {
+                addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
+            } else if (item.buildingName) {
+                addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
+            }
+        } 
+        // 같은 아파트지만 동 정보가 없는 경우(예: 단지 내 상가) 안전하게 기본 주소 사용
+        else {
+            addressForMapSearch = item.baseAddress || '';
         }
     } 
+    // 2. 아파트가 아닐 경우 (빌라, 상가 등)
     else {
+        // detailAddress는 보지도 않고 무조건 기본 주소 사용
         addressForMapSearch = item.baseAddress || '';
     }
+    // --- 핵심 로직 변경 끝 ---
 
     const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
     const textarea = document.createElement('textarea');
