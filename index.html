@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.00";
+            const version = "v1.3.1";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1281,20 +1281,45 @@
     }
 };
         
-        const openNaverMap = (item) => {
+        const openNaverMap = async (item) => { // async 키워드 추가
+    // 1. 카드에 건물 정보가 있는지 먼저 확인
+    // (buildingName이 없거나, 빈 문자열일 경우)
+    if (!item.buildingName) {
+        showLoadingMessage('건물 정보 확인 중...');
+        try {
+            // 즉시 카카오 API를 호출하여 좌표와 건물 이름을 가져옴
+            const { coords, buildingName } = await getCoordsFromAddress(item.baseAddress);
+            
+            // deliveryItems 배열에서 현재 카드를 찾아 정보 업데이트
+            const itemIndex = deliveryItems.findIndex(i => i.no === item.no);
+            if (itemIndex > -1) {
+                deliveryItems[itemIndex].addressLocation = coords;
+                deliveryItems[itemIndex].buildingName = buildingName;
+                saveDeliveryItemsToLocalStorage(); // 변경사항 저장
+                
+                // 현재 함수에서 사용하는 item 객체도 업데이트
+                item.buildingName = buildingName;
+            }
+            closeConfirmationModal();
+        } catch (error) {
+            closeConfirmationModal();
+            console.error("지도 보기 시 건물 정보 획득 오류:", error.message);
+            // 에러가 발생해도 기능이 멈추지 않도록 기본 주소로 검색하도록 처리
+        }
+    }
+
+    // 2. 최적의 검색어 생성 (이제 배송전/배송중 상태와 상관없이 동일하게 동작)
     let addressForMapSearch;
-    // 상세 주소에서 '110동' 같은 패턴을 찾음 (정규식 사용)
     const dongMatch = item.detailAddress ? item.detailAddress.match(/(\d+)\s*동/) : null;
 
-    // 카드에 건물 이름(buildingName)이 저장되어 있고, 상세 주소에서 '동' 정보를 찾았을 경우
     if (item.buildingName && dongMatch) {
-        const dongNumber = dongMatch[1]; // 숫자 부분(예: "110")을 추출
-        addressForMapSearch = `${item.buildingName} ${dongNumber}동`; // "힐스테이트e편한세상문정 110동"
+        const dongNumber = dongMatch[1];
+        addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
     } else {
-        // 위 조건이 충족되지 않으면 기존 방식대로 baseAddress를 사용
         addressForMapSearch = item.baseAddress || '';
     }
 
+    // 3. 클립보드 복사 및 지도 실행 (기존과 동일)
     const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
     const textarea = document.createElement('textarea');
     textarea.value = textToCopy;
@@ -1306,7 +1331,7 @@
     try { document.execCommand('copy'); }
     catch (err) { console.error('클립보드 복사 실패:', err); showMessage('클립보드 복사에 실패했습니다.', '복사 실패'); }
     document.body.removeChild(textarea);
-    // 새로 생성된 최적의 검색어로 네이버 지도 앱 실행
+    
     window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
 };
 
