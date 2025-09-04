@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.05";
+            const version = "v1.3.06";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1245,11 +1245,11 @@
         } else {
             showLoadingMessage('주소 좌표 확인 중...');
             try {
-                // 'district' 정보도 함께 받음
-                const { coords, buildingName, district } = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
+                // 'district' 대신 'bcodeName' 정보를 함께 받음
+                const { coords, buildingName, bcodeName } = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
                 deliveryItems[itemIndex].addressLocation = coords;
                 deliveryItems[itemIndex].buildingName = buildingName;
-                deliveryItems[itemIndex].district = district; // '구' 정보도 카드에 저장
+                deliveryItems[itemIndex].bcodeName = bcodeName; // '법정동/리' 정보 저장
                 closeConfirmationModal();
                 showToastMessage('주소 좌표 저장 완료!');
             } catch (error) {
@@ -1291,18 +1291,19 @@
 };
         
         const openNaverMap = async (item) => {
-    if (!item.buildingName || !item.district) {
+    // On-Demand API 호출 시 'bcodeName'을 확인하도록 변경
+    if (!item.buildingName || !item.bcodeName) {
         showLoadingMessage('건물/지역 정보 확인 중...');
         try {
-            const { coords, buildingName, district } = await getCoordsFromAddress(item.baseAddress);
+            const { coords, buildingName, bcodeName } = await getCoordsFromAddress(item.baseAddress);
             const itemIndex = deliveryItems.findIndex(i => i.no === item.no);
             if (itemIndex > -1) {
                 deliveryItems[itemIndex].addressLocation = coords;
                 deliveryItems[itemIndex].buildingName = buildingName;
-                deliveryItems[itemIndex].district = district;
+                deliveryItems[itemIndex].bcodeName = bcodeName; // '법정동/리' 정보 저장
                 saveDeliveryItemsToLocalStorage();
                 item.buildingName = buildingName;
-                item.district = district;
+                item.bcodeName = bcodeName; // 현재 item 객체에도 반영
             }
             closeConfirmationModal();
         } catch (error) {
@@ -1316,23 +1317,20 @@
     let dongNumber = null;
 
     if (item.detailAddress) {
-        // 1순위: '동' 글자가 포함된 패턴을 먼저 찾음
         let match = item.detailAddress.match(/(\d+)\s*동/);
-        
-        // 2순위: 1순위가 실패하면, '숫자-숫자'로만 구성된 패턴인지 확인
         if (!match) {
             match = item.detailAddress.match(/^(\d+)-(\d+)$/);
         }
-
         if (match) {
             isApartmentFormat = true;
-            dongNumber = match[1]; // 첫 번째 괄호 그룹이 항상 동 번호
+            dongNumber = match[1];
         }
     }
 
     if (isApartmentFormat) {
-        if (item.district && item.buildingName) {
-            addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
+        // '구' 정보(district) 대신 '법정동' 정보(bcodeName)를 사용하도록 변경
+        if (item.bcodeName && item.buildingName) {
+            addressForMapSearch = `${item.bcodeName} ${item.buildingName} ${dongNumber}동`;
         } else if (item.buildingName) {
             addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
         } else {
