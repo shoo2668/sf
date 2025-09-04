@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.3";
+            const version = "v1.3.4";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1305,17 +1305,28 @@
     }
 
     let addressForMapSearch;
-    // 상세 주소의 맨 앞에서 시작하는 숫자를 동 번호로 인식하도록 규칙 변경
-    const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)/) : null; // <-- 수정된 코드
+    const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)/) : null;
 
-    if (item.district && item.buildingName && dongMatch) {
+    // 1. 아파트인지 판별하기 위한 키워드 목록
+    const apartmentKeywords = ['아파트', 'APT', '자이', '래미안', '힐스테이트', '푸르지오', 'e편한세상', '더샵', '롯데캐슬', '아이파크', 'SKVIEW', '데시앙', '파크리오', '올림픽선수촌'];
+
+    // 2. 건물 이름에 키워드가 포함되어 있는지 확인하여 아파트 여부 결정
+    let isApartment = false;
+    if (item.buildingName) {
+        isApartment = apartmentKeywords.some(keyword => item.buildingName.includes(keyword));
+    }
+
+    // 3. 아파트이고, 동 번호를 찾았을 경우에만 최적화된 검색어 사용
+    if (isApartment && dongMatch) {
         const dongNumber = dongMatch[1];
-        addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
+        // '구' 정보가 있으면 더 정확한 검색어 생성
+        if (item.district && item.buildingName) {
+            addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
+        } else if (item.buildingName) {
+            addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
+        }
     } 
-    else if (item.buildingName && dongMatch) {
-        const dongNumber = dongMatch[1];
-        addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
-    } 
+    // 아파트가 아니거나, 동 번호를 못 찾았을 경우 안전하게 기본 주소 사용
     else {
         addressForMapSearch = item.baseAddress || '';
     }
