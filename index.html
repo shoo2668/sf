@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.5";
+            const version = "v1.3.6";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -719,37 +719,35 @@
     const { baseAddress, detailAddress } = item;
 
     if (detailAddress) {
-        // 규칙 1: '101-1001' 또는 '101동 1001호' 같은 전체 패턴 찾기
+        // '동-호수' 패턴이 명확하게 있을 경우에만 그 값을 반환하고 함수 종료
         const fullMatch = detailAddress.match(/(\d+)\s*(?:동|-)\s*(\d+)/);
         if (fullMatch) {
-            return `${fullMatch[1]}-${fullMatch[2]}`; // "101-1001" 형태로 통일
+            return `${fullMatch[1]}-${fullMatch[2]}`;
         }
-        // 규칙 2: 위 패턴이 없으면 그냥 상세주소 전체를 반환
-        return detailAddress;
+        // "203호" 처럼 패턴이 안 맞으면 아무것도 하지 않고 그냥 넘어감
     }
 
-            if (baseAddress) {
-    const addressParts = baseAddress.split(' ');
-    // 'specialCities' 배열을 확장하여 축약형 도 이름까지 포함하고, 이름을 'adminNames'로 변경
-    const adminNames = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
-    const adminSuffixes = ['도', '시', '구', '군'];
-    
-    while (addressParts.length > 0) {
-        const firstPart = addressParts[0];
-        // 확장된 'adminNames' 배열을 사용하여 조건을 확인
-        if (adminNames.includes(firstPart) || adminSuffixes.some(suffix => firstPart.endsWith(suffix))) {
-            addressParts.shift();
-        } else {
-            break;
+    // detailAddress에서 명확한 패턴을 못 찾았을 경우, 이어서 baseAddress를 처리
+    if (baseAddress) {
+        const addressParts = baseAddress.split(' ');
+        const adminNames = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
+        const adminSuffixes = ['도', '시', '구', '군'];
+        
+        while (addressParts.length > 0) {
+            const firstPart = addressParts[0];
+            if (adminNames.includes(firstPart) || adminSuffixes.some(suffix => firstPart.endsWith(suffix))) {
+                addressParts.shift();
+            } else {
+                break;
+            }
         }
+        
+        const resultAddress = addressParts.join(' ');
+        return resultAddress.length > 0 ? resultAddress : baseAddress;
     }
-    
-    const resultAddress = addressParts.join(' ');
-    return resultAddress.length > 0 ? resultAddress : baseAddress;
-}
 
-            return baseAddress || '';
-        };
+    return baseAddress || '';
+};
 
         const isValidAddressForMap = (address) => {
             return !!(address && address.trim().length > 0);
