@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.04";
+            const version = "v1.3.05";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -714,21 +714,26 @@
             return '';
         };
         
-        // isApartmentFormat 이라는 두 번째 인자를 받도록 변경
-const extractClipboardAddressPart = (item, isApartmentFormat = false) => {
+        const extractClipboardAddressPart = (item, isApartmentFormat = false) => {
     if (!item) return '';
     const { baseAddress, detailAddress } = item;
 
-    // isApartmentFormat이 true일 때만 상세 주소에서 동-호수를 추출 시도
+    // openNaverMap의 판단 결과를 충실히 따름
     if (isApartmentFormat && detailAddress) {
-        const fullMatch = detailAddress.match(/(?:^|\s)(\d+)\s*(?:동|-)\s*(\d+)/);
+        // '동-호수' 또는 '동'만 있는 경우 모두 처리
+        const fullMatch = detailAddress.match(/(\d+)\s*(?:동|-)\s*(\d+)/);
         if (fullMatch) {
             return `${fullMatch[1]}-${fullMatch[2]}`;
         }
+        // '101동' 처럼 호수 정보가 없는 경우
+        const dongOnlyMatch = detailAddress.match(/(\d+)\s*동/);
+        if (dongOnlyMatch) {
+            return `${dongOnlyMatch[1]}동`;
+        }
     }
 
-    // isApartmentFormat이 false이거나, 위에서 패턴을 못 찾았을 경우
-    // 안전하게 baseAddress를 처리하는 로직 실행
+    // 아파트 형식이 아니라고 판단되었거나, 위에서 패턴을 못 찾았을 경우
+    // 안전하게 baseAddress를 처리
     if (baseAddress) {
         const addressParts = baseAddress.split(' ');
         const adminNames = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
@@ -1307,11 +1312,25 @@ const extractClipboardAddressPart = (item, isApartmentFormat = false) => {
     }
 
     let addressForMapSearch;
-    // 여기서 "아파트 형식인가?"를 단 한번만 판단
-    const dongMatch = item.detailAddress ? item.detailAddress.match(/(?:^|\s)(\d+)(?:\s*동|-)/) : null;
+    let isApartmentFormat = false;
+    let dongNumber = null;
 
-    if (dongMatch) {
-        const dongNumber = dongMatch[1];
+    if (item.detailAddress) {
+        // 1순위: '동' 글자가 포함된 패턴을 먼저 찾음
+        let match = item.detailAddress.match(/(\d+)\s*동/);
+        
+        // 2순위: 1순위가 실패하면, '숫자-숫자'로만 구성된 패턴인지 확인
+        if (!match) {
+            match = item.detailAddress.match(/^(\d+)-(\d+)$/);
+        }
+
+        if (match) {
+            isApartmentFormat = true;
+            dongNumber = match[1]; // 첫 번째 괄호 그룹이 항상 동 번호
+        }
+    }
+
+    if (isApartmentFormat) {
         if (item.district && item.buildingName) {
             addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
         } else if (item.buildingName) {
@@ -1324,9 +1343,7 @@ const extractClipboardAddressPart = (item, isApartmentFormat = false) => {
         addressForMapSearch = item.baseAddress || '';
     }
 
-    // 판단 결과(dongMatch의 성공 여부)를 extractClipboardAddressPart에 전달
-    // !!dongMatch는 dongMatch가 성공하면 true, 실패(null)하면 false가 됨
-    const textToCopy = `${item.no}. ${extractClipboardAddressPart(item, !!dongMatch)}`;
+    const textToCopy = `${item.no}. ${extractClipboardAddressPart(item, isApartmentFormat)}`;
     
     const textarea = document.createElement('textarea');
     textarea.value = textToCopy;
