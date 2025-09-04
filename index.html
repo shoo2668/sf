@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.8";
+            const version = "v1.3.01";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1285,7 +1285,6 @@
 };
         
         const openNaverMap = async (item) => {
-    // On-Demand API 호출 로직은 그대로 유지 (건물 이름은 여전히 필요하므로)
     if (!item.buildingName || !item.district) {
         showLoadingMessage('건물/지역 정보 확인 중...');
         try {
@@ -1308,29 +1307,22 @@
 
     let addressForMapSearch;
 
-    // --- 여기가 제안해주신 핵심 로직 ---
-    // 1. 상세 주소가 '101동...' 또는 '101-...' 같은 아파트 형식인지 먼저 확인
-    const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)(?:\s*동|-)/) : null;
+    // 상세 주소 형식에 상관없이 '숫자+동' 또는 '숫자+-' 패턴을 찾도록 '^' 제거
+    const dongMatch = item.detailAddress ? item.detailAddress.match(/(\d+)(?:\s*동|-)/) : null; // <-- 수정된 코드
 
-    // 2. 아파트 형식이 맞을 경우 (dongMatch 성공)
     if (dongMatch) {
         const dongNumber = dongMatch[1];
-        // API로 가져온 '구'와 '건물 이름' 정보를 활용하여 최적의 검색어 생성
         if (item.district && item.buildingName) {
             addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
         } else if (item.buildingName) {
             addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
         } else {
-            // 혹시 건물 이름을 못가져왔을 경우를 대비한 안전장치
             addressForMapSearch = `${item.baseAddress} ${dongNumber}동`;
         }
     } 
-    // 3. 아파트 형식이 아닐 경우 (빌라, 상가 등)
     else {
-        // 무조건 기본 주소로 검색
         addressForMapSearch = item.baseAddress || '';
     }
-    // --- 핵심 로직 끝 ---
 
     const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
     const textarea = document.createElement('textarea');
