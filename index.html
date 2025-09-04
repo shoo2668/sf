@@ -426,8 +426,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.0";
-            const changelog = "지도검색개선(아파트)";
+            const version = "v1.3.00";
+            const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1282,7 +1282,33 @@
 };
         
         const openNaverMap = (item) => {
+    let addressForMapSearch;
+    // 상세 주소에서 '110동' 같은 패턴을 찾음 (정규식 사용)
+    const dongMatch = item.detailAddress ? item.detailAddress.match(/(\d+)\s*동/) : null;
 
+    // 카드에 건물 이름(buildingName)이 저장되어 있고, 상세 주소에서 '동' 정보를 찾았을 경우
+    if (item.buildingName && dongMatch) {
+        const dongNumber = dongMatch[1]; // 숫자 부분(예: "110")을 추출
+        addressForMapSearch = `${item.buildingName} ${dongNumber}동`; // "힐스테이트e편한세상문정 110동"
+    } else {
+        // 위 조건이 충족되지 않으면 기존 방식대로 baseAddress를 사용
+        addressForMapSearch = item.baseAddress || '';
+    }
+
+    const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
+    const textarea = document.createElement('textarea');
+    textarea.value = textToCopy;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = 0;
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try { document.execCommand('copy'); }
+    catch (err) { console.error('클립보드 복사 실패:', err); showMessage('클립보드 복사에 실패했습니다.', '복사 실패'); }
+    document.body.removeChild(textarea);
+    // 새로 생성된 최적의 검색어로 네이버 지도 앱 실행
+    window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
+};
 
         const highlightHawbNo = (hawbNo, term) => {
             if (!hawbNo) return '';
