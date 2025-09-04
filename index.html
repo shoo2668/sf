@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.4";
+            const version = "v1.3.5";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -715,15 +715,18 @@
         };
         
         const extractClipboardAddressPart = (item) => {
-            if (!item) return '';
-            const { baseAddress, detailAddress } = item;
+    if (!item) return '';
+    const { baseAddress, detailAddress } = item;
 
-            if (detailAddress) {
-                const hyphenMatch = detailAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
-                if (hyphenMatch) return hyphenMatch[1];
-                const dongHoMatch = detailAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
-                if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
-            }
+    if (detailAddress) {
+        // 규칙 1: '101-1001' 또는 '101동 1001호' 같은 전체 패턴 찾기
+        const fullMatch = detailAddress.match(/(\d+)\s*(?:동|-)\s*(\d+)/);
+        if (fullMatch) {
+            return `${fullMatch[1]}-${fullMatch[2]}`; // "101-1001" 형태로 통일
+        }
+        // 규칙 2: 위 패턴이 없으면 그냥 상세주소 전체를 반환
+        return detailAddress;
+    }
 
             if (baseAddress) {
     const addressParts = baseAddress.split(' ');
@@ -1305,28 +1308,23 @@
     }
 
     let addressForMapSearch;
-    const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)/) : null;
+    // '101-...' 또는 '101동...' 패턴에서 동 번호를 추출하도록 규칙 변경
+    const dongMatch = item.detailAddress ? item.detailAddress.match(/^(\d+)(?:동|-)/) : null;
 
-    // 1. 아파트인지 판별하기 위한 키워드 목록
     const apartmentKeywords = ['아파트', 'APT', '자이', '래미안', '힐스테이트', '푸르지오', 'e편한세상', '더샵', '롯데캐슬', '아이파크', 'SKVIEW', '데시앙', '파크리오', '올림픽선수촌'];
-
-    // 2. 건물 이름에 키워드가 포함되어 있는지 확인하여 아파트 여부 결정
     let isApartment = false;
     if (item.buildingName) {
         isApartment = apartmentKeywords.some(keyword => item.buildingName.includes(keyword));
     }
 
-    // 3. 아파트이고, 동 번호를 찾았을 경우에만 최적화된 검색어 사용
     if (isApartment && dongMatch) {
-        const dongNumber = dongMatch[1];
-        // '구' 정보가 있으면 더 정확한 검색어 생성
+        const dongNumber = dongMatch[1]; // 첫 번째 괄호 그룹(\d+)에 매칭된 숫자
         if (item.district && item.buildingName) {
             addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
         } else if (item.buildingName) {
             addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
         }
     } 
-    // 아파트가 아니거나, 동 번호를 못 찾았을 경우 안전하게 기본 주소 사용
     else {
         addressForMapSearch = item.baseAddress || '';
     }
