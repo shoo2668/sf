@@ -426,7 +426,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.1";
+            const version = "v1.3.2";
             const changelog = "즐겨찾기개선(아파트)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -614,10 +614,11 @@
     if (data.documents && data.documents.length > 0) {
         const location = data.documents[0];
         const buildingName = location.road_address ? location.road_address.building_name : null;
-        // 객체 형태로 좌표와 건물 이름을 함께 반환하도록 변경
+        const district = location.road_address ? location.road_address.region_2depth_name : null; // '구' 정보 추출
         return {
             coords: { lat: parseFloat(location.y), lng: parseFloat(location.x) },
-            buildingName: buildingName || '' // 건물 이름이 없으면(null) 빈 문자열로 처리
+            buildingName: buildingName || '',
+            district: district || '' // '구' 정보도 함께 반환
         };
     }
     throw new Error("Could not find coordinates for the address.");
@@ -1237,10 +1238,11 @@
         } else {
             showLoadingMessage('주소 좌표 확인 중...');
             try {
-                // getCoordsFromAddress로부터 좌표와 건물 이름을 모두 받음
-                const { coords, buildingName } = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
-                deliveryItems[itemIndex].addressLocation = coords; // 좌표 저장
-                deliveryItems[itemIndex].buildingName = buildingName; // 건물 이름 저장
+                // 'district' 정보도 함께 받음
+                const { coords, buildingName, district } = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
+                deliveryItems[itemIndex].addressLocation = coords;
+                deliveryItems[itemIndex].buildingName = buildingName;
+                deliveryItems[itemIndex].district = district; // '구' 정보도 카드에 저장
                 closeConfirmationModal();
                 showToastMessage('주소 좌표 저장 완료!');
             } catch (error) {
@@ -1281,45 +1283,47 @@
     }
 };
         
-        const openNaverMap = async (item) => { // async 키워드 추가
-    // 1. 카드에 건물 정보가 있는지 먼저 확인
-    // (buildingName이 없거나, 빈 문자열일 경우)
-    if (!item.buildingName) {
-        showLoadingMessage('건물 정보 확인 중...');
+        const openNaverMap = async (item) => {
+    // 건물 정보나 '구' 정보가 없으면 API 호출 (On-Demand)
+    if (!item.buildingName || !item.district) {
+        showLoadingMessage('건물/지역 정보 확인 중...');
         try {
-            // 즉시 카카오 API를 호출하여 좌표와 건물 이름을 가져옴
-            const { coords, buildingName } = await getCoordsFromAddress(item.baseAddress);
-            
-            // deliveryItems 배열에서 현재 카드를 찾아 정보 업데이트
+            const { coords, buildingName, district } = await getCoordsFromAddress(item.baseAddress);
             const itemIndex = deliveryItems.findIndex(i => i.no === item.no);
             if (itemIndex > -1) {
                 deliveryItems[itemIndex].addressLocation = coords;
                 deliveryItems[itemIndex].buildingName = buildingName;
-                saveDeliveryItemsToLocalStorage(); // 변경사항 저장
-                
-                // 현재 함수에서 사용하는 item 객체도 업데이트
+                deliveryItems[itemIndex].district = district; // '구' 정보 저장
+                saveDeliveryItemsToLocalStorage();
                 item.buildingName = buildingName;
+                item.district = district; // 현재 item 객체에도 반영
             }
             closeConfirmationModal();
         } catch (error) {
             closeConfirmationModal();
-            console.error("지도 보기 시 건물 정보 획득 오류:", error.message);
-            // 에러가 발생해도 기능이 멈추지 않도록 기본 주소로 검색하도록 처리
+            console.error("지도 보기 시 정보 획득 오류:", error.message);
         }
     }
 
-    // 2. 최적의 검색어 생성 (이제 배송전/배송중 상태와 상관없이 동일하게 동작)
     let addressForMapSearch;
     const dongMatch = item.detailAddress ? item.detailAddress.match(/(\d+)\s*동/) : null;
 
-    if (item.buildingName && dongMatch) {
+    // 최우선 검색어: '구' + '건물 이름' + '동' (가장 정확함)
+    if (item.district && item.buildingName && dongMatch) {
+        const dongNumber = dongMatch[1];
+        addressForMapSearch = `${item.district} ${item.buildingName} ${dongNumber}동`;
+    } 
+    // 차선책: '건물 이름' + '동'
+    else if (item.buildingName && dongMatch) {
         const dongNumber = dongMatch[1];
         addressForMapSearch = `${item.buildingName} ${dongNumber}동`;
-    } else {
+    } 
+    // 최후의 수단: 기본 주소
+    else {
         addressForMapSearch = item.baseAddress || '';
     }
 
-    // 3. 클립보드 복사 및 지도 실행 (기존과 동일)
+    // ... (클립보드 복사 및 지도 실행 로직은 동일) ...
     const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
     const textarea = document.createElement('textarea');
     textarea.value = textToCopy;
