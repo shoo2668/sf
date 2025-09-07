@@ -20,8 +20,27 @@
             overscroll-behavior-y: none; /* [수정] body에서의 수직 당겨서 새로고침을 원천 차단 */
         }
         
-        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
-        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); padding: 1.5rem; width: 100%; max-width: 32rem; max-height: 95vh; display: flex; flex-direction: column; }
+.signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background-color: rgba(0, 0, 0, 0.5); 
+    /* display: flex 와 align-items 제거 */
+    overflow-y: auto; /* 배경 자체를 스크롤 가능하게 변경 */
+    z-index: 50; 
+    padding: 2rem 1rem; /* 위아래 여백 추가 */
+}
+.signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { 
+    background-color: white; 
+    border-radius: 0.5rem; 
+    padding: 1.5rem; 
+    width: 90%; /* 너비를 90%로 조절 */
+    max-width: 32rem; /* 최대 너비는 유지 */
+    margin: 0 auto; /* 수평 중앙 정렬 */
+    /* max-height, display, flex-direction 제거 */
+}
         
         #smart-edit-scroll-area { flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; }
         
@@ -426,8 +445,8 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.11";
-            const changelog = "클립보드복사개선";
+            const version = "v1.2.12";
+            const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -2369,9 +2388,34 @@
                     updateSortButtonsUI();
                 }
             });
-            numberJumpClose.addEventListener('click', () => {
-                numberJumpModal.style.display = 'none';
-            });
+            // --- 번호로 이동 모달 ---
+numberJumpClose.addEventListener('click', () => {
+    numberJumpModal.style.display = 'none';
+});
+// 배경 클릭으로 닫기 추가
+numberJumpModal.addEventListener('click', (event) => {
+    if (event.target === numberJumpModal) {
+        numberJumpModal.style.display = 'none';
+    }
+});
+
+// --- 스마트 주소 편집 모달 (예시) ---
+smartEditExitBtn.addEventListener('click', closeSmartEditModal);
+// 배경 클릭으로 닫기 추가
+smartEditModal.addEventListener('click', (event) => {
+    if (event.target === smartEditModal) {
+        closeSmartEditModal();
+    }
+});
+
+// --- 서명 입력 모달 (예시) ---
+cancelSignatureBtn.addEventListener('click', closeSignatureModal);
+// 배경 클릭으로 닫기 추가
+signatureModal.addEventListener('click', (event) => {
+    if (event.target === signatureModal) {
+        closeSignatureModal();
+    }
+});
 
             // ▼▼▼▼▼ [추가] 하단 바 숨김/표시를 위한 스크롤 이벤트 리스너 ▼▼▼▼▼
             const mainContentWrapper = document.getElementById('main-content-wrapper');
