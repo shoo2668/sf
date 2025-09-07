@@ -153,16 +153,9 @@ body.modal-open {
             opacity: 1;
             transform: scale(1);
         }
-        #search-fab-panel.expanded #invoiceNumber {
-            width: 12rem; /* w-48 */
-            padding-left: 1rem;
-            padding-right: 1rem;
-            margin-right: 0.25rem; /* space-x-1 */
-        }
-        #search-fab-panel.expanded #resetButton {
-            width: 2.5rem; /* w-10 */
-            opacity: 1;
-            margin-right: 0.25rem; /* space-x-1 */
+        #search-bar {
+            /* 강화된 그림자 효과 */
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -244,22 +237,20 @@ body.modal-open {
 
     <div id="toast-container"></div>
 
-    <div id="search-bar-container" class="fixed bottom-0 left-0 w-full z-40 pointer-events-none">
-        <div class="max-w-md mx-auto w-full min-w-[320px] p-4 flex justify-end">
-            <!-- ▼▼▼ [수정] 확장형 검색 바를 위한 새로운 구조 ▼▼▼ -->
-            <div id="search-fab-panel" class="flex items-center justify-end p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 pointer-events-auto transition-all duration-300 ease-in-out">
-                <!-- 검색창 (숨김 상태) -->
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 검색" class="w-0 px-0 py-2 bg-gray-100 border border-transparent rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white outline-none transition-all duration-300 ease-in-out" inputmode="numeric" pattern="[0-9]*"/>
-                <!-- 지움 버튼 (숨김 상태) -->
-                <button id="resetButton" class="w-0 h-10 flex-shrink-0 flex items-center justify-center text-gray-600 rounded-full transition-all duration-300 ease-in-out opacity-0">
+    <div id="search-bar-container" class="fixed bottom-0 left-0 w-full z-40">
+        <div class="max-w-md mx-auto w-full min-w-[320px] p-3">
+            <div id="search-bar" class="flex items-center w-full p-2 rounded-lg bg-white/90 backdrop-blur-md border border-gray-200">
+                <!-- 검색 아이콘 -->
+                <div class="pl-2 pr-1 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+                <!-- 검색창 -->
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
+                <!-- 지움 버튼 -->
+                <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
                 </button>
-                <!-- 검색/열기 버튼 (항상 보임) -->
-                <button id="searchButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors ml-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="m16 16-1.9-1.9"/></svg>
-                </button>
             </div>
-            <!-- ▲▲▲ [수정] ▲▲▲ -->
         </div>
     </div>
 
@@ -519,8 +510,8 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.135";
-            const changelog = "오류수정";
+            const version = "v1.3.0";
+            const changelog = "송장검색창수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1785,65 +1776,35 @@ if (validationResult.validated) {
         changeFilter(newFilter, animation);
     });
 
-    const searchFabPanel = document.getElementById('search-fab-panel');
-    
-    const expandSearch = () => {
-        if (searchFabPanel.classList.contains('expanded')) return;
-        searchFabPanel.classList.add('expanded');
-        setTimeout(() => {
-            invoiceNumberInput.focus();
-        }, 300);
-    };
-
-    const collapseSearch = () => {
-        if (!searchFabPanel.classList.contains('expanded')) return;
-        searchFabPanel.classList.remove('expanded');
-        invoiceNumberInput.blur();
-    };
-
-    searchButton.addEventListener('click', () => {
-        if (searchFabPanel.classList.contains('expanded')) {
-            // 확장된 상태에서는 검색 실행 기능만 수행
-            searchTerm = invoiceNumberInput.value.trim();
-            renderDeliveryCards(activeFilter);
-            document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
-            filterScrollPositions[activeFilter] = 0;
-        } else {
-            // 축소된 상태면 확장
-            expandSearch();
-        }
-    });
-
-    resetButton.addEventListener('click', () => {
-        searchTerm = '';
-        invoiceNumberInput.value = '';
-        renderDeliveryCards(activeFilter);
-        invoiceNumberInput.focus();
-    });
-
+    // 검색창 입력 시 실시간으로 검색 결과 필터링
     invoiceNumberInput.addEventListener('input', (event) => {
         searchTerm = event.target.value.trim();
         renderDeliveryCards(activeFilter);
+        // 검색 시 스크롤을 맨 위로 이동
         document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
         filterScrollPositions[activeFilter] = 0;
     });
 
-    // ▼▼▼ [수정] blur 이벤트와 외부 클릭 이벤트를 결합한 최종 로직 ▼▼▼
-    invoiceNumberInput.addEventListener('blur', () => {
-        // 입력창이 비어있을 때 포커스를 잃으면(키패드 닫힘) 검색창을 접음
-        if (invoiceNumberInput.value.trim() === '') {
-            collapseSearch();
-        }
+    // 지움 버튼 클릭 시 검색어 초기화
+    resetButton.addEventListener('click', () => {
+        searchTerm = '';
+        invoiceNumberInput.value = '';
+        renderDeliveryCards(activeFilter);
+        invoiceNumberInput.focus(); // 입력창에 다시 포커스
     });
 
+    // 필터 변경 시 검색창 초기화 (기존 collapseSearch() 호출 부분을 대체)
+    const collapseSearch = () => {
+        // 이 함수는 이제 필터 변경 시 검색어를 초기화하는 역할만 합니다.
+        // 실제 UI를 접는 기능은 없어졌습니다.
+        searchTerm = '';
+        invoiceNumberInput.value = '';
+    };
+
+    // document.addEventListener('click', ...) 부분에서 검색창 관련 로직 제거
     document.addEventListener('click', (event) => {
         const clickedElement = event.target;
         const fabPanel = document.getElementById('fab-panel');
-
-        // 클릭된 요소가 검색 패널의 자식이 아니고, 입력창이 비어있을 경우 검색창을 닫음
-        if (!searchFabPanel.contains(clickedElement) && invoiceNumberInput.value.trim() === '') {
-            collapseSearch();
-        }
 
         // 클릭된 요소가 정렬 버튼 패널의 자식이 아닐 경우 정렬 버튼을 닫음
         if (!fabPanel.contains(clickedElement)) {
