@@ -7,52 +7,53 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html { 
-            scroll-behavior: smooth !important; 
-            height: 100%; /* [추가] 높이 기준 설정 */
-            overflow: hidden; /* [추가] html 스크롤 방지 */
-        }
-        body { 
-            font-family: 'Inter', sans-serif; 
-            margin: 0; 
-            height: 100%; /* [추가] 높이 기준 설정 */
-            overflow-y: scroll; /* [수정] 항상 스크롤바 영역을 확보하여 새로고침 동작의 기준을 만듦 */
-            overscroll-behavior-y: none; /* [수정] body에서의 수직 당겨서 새로고침을 원천 차단 */
-        }
-        
+        html {
+    scroll-behavior: smooth !important;
+    height: 100%;
+    /* ⚠️ html의 overflow: hidden을 반드시 제거하고 auto로 변경 */
+    overflow: auto; 
+}
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    height: 100%;
+    overflow-y: auto; /* body는 기본적으로 스크롤 가능하게 */
+    overscroll-behavior: contain; /* 스크롤 체이닝 방지 */
+}
+
+/* 모달이 열렸을 때 body 스크롤을 잠그기 위한 스타일 (JS로 제어) */
 body.modal-open {
     overflow: hidden;
 }
 
-.signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { 
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%; 
-    background-color: rgba(0, 0, 0, 0.5); 
-    display: flex; 
-    align-items: center; /* 수직 중앙 정렬 */
-    justify-content: center; /* 수평 중앙 정렬 */
-    z-index: 50; 
-    padding: 1rem; 
+.signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal {
+    position: fixed;
+    inset: 0; /* top, right, bottom, left를 0으로 설정 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 50;
 }
-.signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { 
-    background-color: white; 
-    border-radius: 0.5rem; 
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    padding: 1.5rem; 
-    width: 100%; 
+.signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+    padding: 1.5rem;
+    width: 100%;
     max-width: 28rem; /* 카드 가로폭과 동일하게 */
-    max-height: 90vh; /* 화면 높이의 90%를 최대 높이로 제한 */
-    display: flex; 
-    flex-direction: column; /* 내부 요소를 위에서 아래로 배치 */
-    overflow: hidden; /* 내용이 넘칠 경우를 대비해 기본적으로 숨김 */
+    max-height: calc(100vh - 3rem); /* 화면을 넘지 않도록 높이 제한 */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 내부 스크롤은 별도 영역에서 처리하도록 기본은 숨김 */
 }
 
-/* 스마트 편집 모달과 번호 이동 모달의 스크롤 영역에만 내부 스크롤 적용 */
+/* 스크롤이 필요한 영역에만 스크롤 적용 */
 #smart-edit-scroll-area, #number-jump-list {
+    flex: 1 1 auto; /* 남는 공간을 차지하고, 내용이 많으면 줄어들도록 설정 */
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
 }
         
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
@@ -456,7 +457,7 @@ body.modal-open {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.123";
+            const version = "v1.2.124";
             const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -887,155 +888,107 @@ body.modal-open {
 
         // --- Modal & Core Logic Functions ---
         const openPhoneEditModal = (itemNo) => {
-            const item = deliveryItems.find(i => i.no === itemNo);
-            if (!item) return;
+    const item = deliveryItems.find(i => i.no === itemNo);
+    if (!item) return;
 
-            confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
-            
-            // 모달 바디에 input 필드와 안내 문구 추가
-            confirmationModalBody.innerHTML = `
-                <p class="text-sm text-gray-600 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
-                <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="${getCleanPhoneNumber(item.receiverTelephoneNo)}" inputmode="numeric" pattern="[0-9]*" maxlength="13">
-            `;
-            
-            confirmOkButton.textContent = '수정 완료';
-            confirmCancelButton.textContent = '취소';
-            confirmCancelButton.style.display = '';
-            confirmationModalButtons.style.display = 'flex';
+    confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
+    
+    confirmationModalBody.innerHTML = `
+        <p class="text-sm text-gray-600 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
+        <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="${getCleanPhoneNumber(item.receiverTelephoneNo)}" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+    `;
+    
+    confirmOkButton.textContent = '수정 완료';
+    confirmCancelButton.textContent = '취소';
+    confirmCancelButton.style.display = '';
+    confirmationModalButtons.style.display = 'flex';
 
-            const phoneInput = document.getElementById('phone-edit-input');
-            
-            // 입력 시 자동으로 하이픈을 추가하는 함수
-            const autoHyphenOnInput = (target) => {
-                target.value = target.value
-                    .replace(/[^0-9]/g, '') // 숫자가 아닌 문자 제거
-                    .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3") // 010-XXXX-XXXX 형식 적용
-                    .replace(/(\-{1,2})$/g, ""); // 마지막에 붙는 하이픈 제거
-            }
-            phoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
-            
-            // '수정 완료' 버튼 클릭 시 실행될 콜백 함수
-            onConfirmCallback = () => {
-                const newPhoneNumber = phoneInput.value;
-                const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
-                if (itemIndex > -1) {
-                    deliveryItems[itemIndex].receiverTelephoneNo = newPhoneNumber;
-                    saveDeliveryItemsToLocalStorage();
-                    renderDeliveryCards(activeFilter);
-                    showToastMessage(`${item.no}번 전화번호가 수정되었습니다.`);
-                }
-            };
+    const phoneInput = document.getElementById('phone-edit-input');
+    
+    const autoHyphenOnInput = (target) => {
+        target.value = target.value
+            .replace(/[^0-9]/g, '')
+            .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3")
+            .replace(/(\-{1,2})$/g, "");
+    }
+    phoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
+    
+    onConfirmCallback = () => {
+        const newPhoneNumber = phoneInput.value;
+        const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
+        if (itemIndex > -1) {
+            deliveryItems[itemIndex].receiverTelephoneNo = newPhoneNumber;
+            saveDeliveryItemsToLocalStorage();
+            renderDeliveryCards(activeFilter);
+            showToastMessage(`${item.no}번 전화번호가 수정되었습니다.`);
+        }
+    };
 
-            confirmationModal.style.display = 'flex';
-            phoneInput.focus(); // 모달이 열리면 바로 입력 필드에 포커스
-        };
-        const openSignatureModal = (itemNo) => { currentSignatureItemNo = itemNo; signatureModal.style.display = 'flex'; signatureTextInput.value = ''; signatureTextInput.focus(); };
-        const closeSignatureModal = () => { signatureModal.style.display = 'none'; currentSignatureItemNo = null; };
-        
-        const openCompletionOptionsModal = (itemNo) => {
-            completionOptionsTitle.textContent = `${itemNo}번 완료 옵션 선택`;
-            completionOptionsList.innerHTML = '';
+    document.body.classList.add('modal-open'); // body 스크롤 잠금
+    confirmationModal.style.display = 'flex';
+    phoneInput.focus();
+};
+const openSignatureModal = (itemNo) => { 
+    currentSignatureItemNo = itemNo; 
+    document.body.classList.add('modal-open'); // body 스크롤 잠금
+    signatureModal.style.display = 'flex'; 
+    signatureTextInput.value = ''; 
+    signatureTextInput.focus(); 
+};
+const closeSignatureModal = () => { 
+    document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
+    signatureModal.style.display = 'none'; 
+    currentSignatureItemNo = null; 
+};
 
-            const options = [
-                { text: '경비실', type: '경비실', detail: '경비실 전달' },
-                { text: '택배함', type: '택배함', detail: '택배함 보관' },
-                { text: '택배보관소', type: '택배보관소', detail: '택배보관소 보관' },
-                { text: '문서수발실', type: '문서수발실', detail: '문서수발실 전달' }
-            ];
+const openCompletionOptionsModal = (itemNo) => {
+    completionOptionsTitle.textContent = `${itemNo}번 완료 옵션 선택`;
+    completionOptionsList.innerHTML = '';
 
-            options.forEach(option => {
-                const button = document.createElement('button');
-                button.className = 'w-full px-4 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-base font-semibold';
-                button.textContent = option.text;
-                button.onclick = () => {
-                    const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                    handleStatusChange(itemNo, '완료', currentTime, option.type, option.detail);
-                    sortItemsByDistanceSilent();
-                    completionOptionsModal.style.display = 'none';
-                };
-                completionOptionsList.appendChild(button);
-            });
+    const options = [
+        { text: '경비실', type: '경비실', detail: '경비실 전달' },
+        { text: '택배함', type: '택배함', detail: '택배함 보관' },
+        { text: '택배보관소', type: '택배보관소', detail: '택배보관소 보관' },
+        { text: '문서수발실', type: '문서수발실', detail: '문서수발실 전달' }
+    ];
 
-            completionOptionsModal.style.display = 'flex';
-        };
-
-        const saveSignature = () => {
-            if (currentSignatureItemNo === null) return;
-            const signatureText = signatureTextInput.value.trim();
-            if (signatureText === '') { showToastMessage('서명 내용을 입력해주세요.'); return; }
+    options.forEach(option => {
+        const button = document.createElement('button');
+        button.className = 'w-full px-4 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-base font-semibold';
+        button.textContent = option.text;
+        button.onclick = () => {
             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-            handleStatusChange(currentSignatureItemNo, '완료', currentTime, '서명', signatureText);
+            handleStatusChange(itemNo, '완료', currentTime, option.type, option.detail);
             sortItemsByDistanceSilent();
-            closeSignatureModal();
-            showToastMessage('서명이 성공적으로 저장되었습니다.');
+            document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
+            completionOptionsModal.style.display = 'none';
         };
-        
-        const openConfirmationModal = (message, onOk, okText = '확인', cancelText = '취소') => {
-            confirmationModalTitle.textContent = '확인';
-            confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6" id="confirmation-modal-message">${message}</p>`;
-            confirmOkButton.textContent = okText;
-            confirmCancelButton.textContent = cancelText;
-            confirmCancelButton.style.display = '';
-            confirmationModalButtons.style.display = 'flex';
-            onConfirmCallback = onOk;
-            confirmationModal.style.display = 'flex';
-        };
+        completionOptionsList.appendChild(button);
+    });
 
-        const closeConfirmationModal = () => { 
-            confirmationModal.style.display = 'none'; 
-            onConfirmCallback = null; 
-        };
+    document.body.classList.add('modal-open'); // body 스크롤 잠금
+    completionOptionsModal.style.display = 'flex';
+};
 
-        const showMessage = (message, title = '알림') => {
-            confirmationModalTitle.textContent = title;
-            confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6">${message}</p>`;
-            confirmCancelButton.style.display = 'none';
-            confirmOkButton.textContent = '확인';
-            confirmationModalButtons.style.display = 'flex';
-            onConfirmCallback = closeConfirmationModal;
-            confirmationModal.style.display = 'flex';
-        };
+const openConfirmationModal = (message, onOk, okText = '확인', cancelText = '취소') => {
+    confirmationModalTitle.textContent = '확인';
+    confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6" id="confirmation-modal-message">${message}</p>`;
+    confirmOkButton.textContent = okText;
+    confirmCancelButton.textContent = cancelText;
+    confirmCancelButton.style.display = '';
+    confirmationModalButtons.style.display = 'flex';
+    onConfirmCallback = onOk;
+    document.body.classList.add('modal-open'); // body 스크롤 잠금
+    confirmationModal.style.display = 'flex';
+};
 
-        const showLoadingMessage = (message) => {
-            confirmationModalTitle.textContent = '처리 중';
-            confirmationModalBody.innerHTML = `<div class="flex flex-col items-center justify-center p-4"><div class="spinner mb-4"></div><p class="text-base text-gray-700">${message}</p></div>`;
-            confirmationModalButtons.style.display = 'none';
-            confirmationModal.style.display = 'flex';
-        };
+const closeConfirmationModal = () => { 
+    document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
+    confirmationModal.style.display = 'none'; 
+    onConfirmCallback = null; 
+};
 
-        const showToastMessage = (message, duration = 1200) => {
-            const toast = document.createElement('div');
-            toast.textContent = message;
-            toast.className = 'toast-message';
-            toastContainer.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-                toast.addEventListener('transitionend', () => {
-                    if (toast.parentNode) {
-                        toast.parentNode.removeChild(toast);
-                    }
-                });
-            }, duration);
-        };
-        
-        const autoResizeTextarea = (event) => {
-            const textarea = event.target;
-            textarea.style.height = 'auto';
-            textarea.style.height = (textarea.scrollHeight) + 'px';
-        };
-        
-        const triggerHapticFeedback = () => {
-            if (navigator.vibrate) {
-                navigator.vibrate(10); // 10ms 진동
-            }
-        };
-
-        const openSmartEditModal = (itemNo) => {
+const openSmartEditModal = (itemNo) => {
     currentEditItemNo = itemNo;
     const item = deliveryItems.find(i => i.no === itemNo);
     if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
@@ -1110,7 +1063,7 @@ body.modal-open {
     history.pushState({ smartEditModalOpen: true }, "");
 };
 
-        const closeSmartEditModal = () => {
+const closeSmartEditModal = () => {
     if (history.state && history.state.smartEditModalOpen) {
         history.back();
     }
