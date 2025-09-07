@@ -516,7 +516,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.13";
+            const version = "v1.2.131";
             const changelog = "오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1608,81 +1608,6 @@ const closeSmartEditModal = () => {
         });
     };
 
-    actionBarContainer.addEventListener('click', async (event) => {
-                const button = event.target.closest('button');
-                if (!button) return;
-
-                const action = button.dataset.action;
-
-                switch (action) {
-                    case 'sort-distance':
-                        await sortItemsByDistance();
-                        break;
-                    case 'sort-no':
-                        deliveryInProgressSortOrder = 'no';
-                        sortItemsByNumber();
-                        showToastMessage('순번순으로 정렬되었습니다.');
-                        break;
-                    case 'sort-no-completed':
-                        completedSortOrder = 'no';
-                        currentSortOrder = 'no';
-                        deliveryItems.sort((a, b) => a.no - b.no);
-                        renderDeliveryCards(activeFilter);
-                        showToastMessage('순번순으로 정렬되었습니다.');
-                        break;
-                    case 'jump-no':
-                        numberJumpList.innerHTML = '';
-                        if (deliveryItems.length === 0) {
-                            numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
-                            numberJumpModal.style.display = 'flex';
-                            return;
-                        }
-                        const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
-                        const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
-                        for (let i = 1; i <= maxNo; i++) {
-                            const status = itemsMap.get(i);
-                            const btn = document.createElement('div');
-                            btn.textContent = i;
-                            if (status === '배송중') {
-                                btn.className = 'number-jump-item active';
-                                btn.dataset.no = i;
-                                btn.onclick = () => {
-                                    const targetCard = document.querySelector(`[data-no="${i}"]`);
-                                    if (targetCard) {
-                                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    }
-                                    numberJumpModal.style.display = 'none';
-                                };
-                            } else if (status) {
-                                btn.className = 'number-jump-item inactive';
-                            } else {
-                                btn.className = 'number-jump-item placeholder';
-                                btn.innerHTML = ' ';
-                            }
-                            numberJumpList.appendChild(btn);
-                        }
-                        numberJumpModal.style.display = 'flex';
-                        break;
-                    case 'sort-time':
-                        completedSortOrder = 'time';
-                        currentSortOrder = 'time';
-                        const completedItems = deliveryItems.filter(item => item.status === '완료');
-                        const otherItems = deliveryItems.filter(item => item.status !== '완료');
-                        completedItems.sort((a, b) => {
-                            if (!a.deliveryCompletionTime) return 1;
-                            if (!b.deliveryCompletionTime) return -1;
-                            return a.deliveryCompletionTime.localeCompare(b.deliveryCompletionTime);
-                        });
-                        deliveryItems = [...completedItems, ...otherItems];
-                        renderDeliveryCards(activeFilter);
-                        showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
-                        break;
-                }
-                
-                if (action !== 'jump-no') {
-                    setupFab(); // <--- 이 부분을 수정합니다.
-                }
-            });
     const sortItemsByNumber = () => {
         deliveryInProgressSortOrder = 'no';
         currentSortOrder = 'no';
