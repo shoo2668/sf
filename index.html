@@ -463,7 +463,7 @@ body.modal-open {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.129";
+            const version = "v1.2.1210";
             const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1040,56 +1040,55 @@ const openSmartEditModal = (itemNo) => {
 
     // **직접 클릭 핸들러 추가** — 이벤트 위임이 먹지 않을 때도 동작하도록 보완
     button.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        triggerHapticFeedback();
+            e.preventDefault();
+            e.stopPropagation();
+            // triggerHapticFeedback(); // 이 라인을 주석 처리하거나 삭제합니다.
 
-        // piecesAddressInput은 openSmartEditModal 안에서 이미 선언/참조 가능한 변수여야 합니다.
-        const input = piecesAddressInput;
-        let currentValue = input ? input.value : '';
+            // piecesAddressInput은 openSmartEditModal 안에서 이미 선언/참조 가능한 변수여야 합니다.
+            const input = piecesAddressInput;
+            let currentValue = input ? input.value : '';
 
-        const act = button.dataset.action;
-        const val = button.dataset.value;
+            const act = button.dataset.action;
+            const val = button.dataset.value;
 
-        switch (act) {
-            case 'add':
-                input.value = currentValue + val;
-                break;
-            case 'add-space':
-                input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + val;
-                break;
-            case 'add-unit':
-                input.value = currentValue + val + ' ';
-                break;
-            case 'add-comma':
-                input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
-                break;
-            case 'add-hyphen':
-                input.value = currentValue + '-';
-                break;
-            case 'backspace-char':
-                input.value = currentValue.slice(0, -1);
-                break;
-            case 'backspace-word':
-                const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
-                if (lastSpaceIndex > -1) {
-                    input.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
-                } else {
-                    input.value = '';
-                }
-                break;
-            default:
-                // 숫자키 등 기본 추가 동작
-                input.value = currentValue + (val !== undefined ? val : act);
-                break;
-        }
+            switch (act) {
+                case 'add':
+                    input.value = currentValue + val;
+                    break;
+                case 'add-space':
+                    input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + val;
+                    break;
+                case 'add-unit':
+                    input.value = currentValue + val + ' ';
+                    break;
+                case 'add-comma':
+                    input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
+                    break;
+                case 'add-hyphen':
+                    input.value = currentValue + '-';
+                    break;
+                case 'backspace-char':
+                    input.value = currentValue.slice(0, -1);
+                    break;
+                case 'backspace-word':
+                    const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
+                    if (lastSpaceIndex > -1) {
+                        input.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
+                    } else {
+                        input.value = '';
+                    }
+                    break;
+                default:
+                    // 숫자키 등 기본 추가 동작
+                    input.value = currentValue + (val !== undefined ? val : act);
+                    break;
+            }
 
-        // textarea 자동 사이즈 조정 (함수는 이미 정의되어야 함)
-        try { autoResizeTextarea({ target: input }); } catch (err) { /* 무시 */ }
-    });
-
-    return button;
-};
+            // textarea 자동 사이즈 조정 (함수는 이미 정의되어야 함)
+            try { autoResizeTextarea({ target: input }); } catch (err) { /* 무시 */ }
+        });
+        return button;
+    };
 
     const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
     basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
@@ -1137,21 +1136,6 @@ const closeSmartEditModal = () => {
     currentEditItemNo = null;
 };
         
-        smartEditModal.addEventListener('click', (event) => {
-            // 1. 클릭된 대상이 주소 조각/키패드 버튼인지 확인
-            const button = event.target.closest('.key-button, #reset-pieces-btn, #apply-pieces-btn, #revert-direct-btn, #apply-direct-btn, #smart-edit-exit');
-            
-            if (button) {
-                // 버튼이 클릭된 것이므로, 배경 클릭 로직은 실행하지 않음
-                // 각 버튼의 원래 기능은 개별 이벤트 리스너에서 처리되므로 여기서는 아무것도 안 함.
-                return;
-            }
-
-            // 2. 버튼이 아니라면, 배경이 클릭되었는지 확인
-            if (event.target === smartEditModal) {
-                closeSmartEditModal();
-            }
-        });
 
         const applyAddressEdit = async (fullAddress) => {
             if (currentEditItemNo === null) return;
@@ -2419,10 +2403,17 @@ numberJumpModal.addEventListener('click', (event) => {
     }
 });
 
-// --- 스마트 주소 편집 모달 (예시) ---
+// --- 스마트 주소 편집 모달 ---
 smartEditExitBtn.addEventListener('click', closeSmartEditModal);
-// 배경 클릭으로 닫기 추가
+
+// 모달의 배경(회색 영역)을 클릭했을 때 닫히도록 이벤트 리스너 추가
 smartEditModal.addEventListener('click', (event) => {
+    // event.target은 사용자가 '정확히' 클릭한 요소를 가리킵니다.
+    // 만약 사용자가 모달의 회색 배경 부분을 직접 클릭했다면,
+    // event.target은 smartEditModal 요소 자체가 됩니다.
+    // 하지만 모달 내부의 하얀 컨텐츠 영역이나 버튼을 클릭하면
+    // event.target은 그 컨텐츠나 버튼이 되므로, 아래 조건문은 false가 되어
+    // 모달이 닫히지 않습니다.
     if (event.target === smartEditModal) {
         closeSmartEditModal();
     }
