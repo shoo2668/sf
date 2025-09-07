@@ -463,7 +463,7 @@ body.modal-open {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.128";
+            const version = "v1.2.129";
             const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1023,22 +1023,73 @@ const openSmartEditModal = (itemNo) => {
     [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
     
     const createKeyButton = (text, colorClass, value, action = 'add') => {
-        const button = document.createElement('button');
-        button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
-        button.dataset.value = value !== undefined ? value : text;
-        button.dataset.action = action;
-        
-        const buttonText = document.createElement('span');
-        buttonText.textContent = text;
-        button.appendChild(buttonText);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
+    button.dataset.value = value !== undefined ? value : text;
+    button.dataset.action = action;
+    
+    const buttonText = document.createElement('span');
+    buttonText.textContent = text;
+    button.appendChild(buttonText);
 
-        const keyPop = document.createElement('span');
-        keyPop.className = 'key-pop';
-        keyPop.textContent = text;
-        button.appendChild(keyPop);
+    const keyPop = document.createElement('span');
+    keyPop.className = 'key-pop';
+    keyPop.textContent = text;
+    button.appendChild(keyPop);
 
-        return button;
-    };
+    // **직접 클릭 핸들러 추가** — 이벤트 위임이 먹지 않을 때도 동작하도록 보완
+    button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerHapticFeedback();
+
+        // piecesAddressInput은 openSmartEditModal 안에서 이미 선언/참조 가능한 변수여야 합니다.
+        const input = piecesAddressInput;
+        let currentValue = input ? input.value : '';
+
+        const act = button.dataset.action;
+        const val = button.dataset.value;
+
+        switch (act) {
+            case 'add':
+                input.value = currentValue + val;
+                break;
+            case 'add-space':
+                input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + val;
+                break;
+            case 'add-unit':
+                input.value = currentValue + val + ' ';
+                break;
+            case 'add-comma':
+                input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
+                break;
+            case 'add-hyphen':
+                input.value = currentValue + '-';
+                break;
+            case 'backspace-char':
+                input.value = currentValue.slice(0, -1);
+                break;
+            case 'backspace-word':
+                const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
+                if (lastSpaceIndex > -1) {
+                    input.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
+                } else {
+                    input.value = '';
+                }
+                break;
+            default:
+                // 숫자키 등 기본 추가 동작
+                input.value = currentValue + (val !== undefined ? val : act);
+                break;
+        }
+
+        // textarea 자동 사이즈 조정 (함수는 이미 정의되어야 함)
+        try { autoResizeTextarea({ target: input }); } catch (err) { /* 무시 */ }
+    });
+
+    return button;
+};
 
     const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
     basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
