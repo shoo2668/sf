@@ -437,6 +437,20 @@ body.modal-open {
 
         // --- Helper functions ---
 
+        const showLoadingMessage = (message) => {
+    confirmationModalTitle.textContent = '처리 중...';
+    confirmationModalBody.innerHTML = `
+        <div class="flex flex-col items-center justify-center p-4">
+            <div class="spinner mb-4"></div>
+            <p class="text-base text-gray-700">${message}</p>
+        </div>
+    `;
+    // 확인/취소 버튼 숨기기
+    confirmationModalButtons.style.display = 'none';
+    document.body.classList.add('modal-open');
+    confirmationModal.style.display = 'flex';
+};
+
         const resizeAppContainer = () => {
             const appContainer = document.getElementById('app-container');
             if (appContainer) {
@@ -463,7 +477,7 @@ body.modal-open {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.1210";
+            const version = "v1.2.1211";
             const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1128,12 +1142,16 @@ const openSmartEditModal = (itemNo) => {
 };
 
 const closeSmartEditModal = () => {
+    // history 상태가 있을 경우, history.back()을 호출하여 popstate 이벤트를 트리거합니다.
+    // popstate 리스너가 모달을 닫는 실제 동작을 처리할 것입니다.
     if (history.state && history.state.smartEditModalOpen) {
         history.back();
+    } else {
+        // 만약 history 상태가 없는 예외적인 경우, 직접 모달을 닫습니다.
+        document.body.classList.remove('modal-open');
+        smartEditModal.style.display = 'none';
+        currentEditItemNo = null;
     }
-    document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
-    smartEditModal.style.display = 'none';
-    currentEditItemNo = null;
 };
         
 
@@ -2233,29 +2251,38 @@ const closeSmartEditModal = () => {
 
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', (event) => {
-                if (smartEditModal.style.display === 'flex') {
-                    smartEditModal.style.display = 'none';
-                    currentEditItemNo = null;
-                    return;
-                }
+    // 스마트 편집 모달이 열려있는 상태에서 popstate가 발생하면 모달을 닫습니다.
+    if (smartEditModal.style.display === 'flex') {
+        document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
+        smartEditModal.style.display = 'none';
+        currentEditItemNo = null;
+        // 모달을 닫는 동작을 수행했으므로, 앱 종료 로직으로 넘어가지 않도록 여기서 함수를 종료합니다.
+        return;
+    }
 
-                if (justReturnedFromExternalApp) {
-                    return;
-                }
+    if (justReturnedFromExternalApp) {
+        justReturnedFromExternalApp = false; // 사용 후 플래그 초기화
+        history.pushState(null, '', location.href); // history 상태 복원
+        return;
+    }
 
-                if (backButtonPressedOnce) {
-                    history.back();
-                    return;
-                }
+    if (backButtonPressedOnce) {
+        // 실제 앱 종료 의도. history.back()을 호출하여 앱을 닫거나 이전 페이지로 이동.
+        // 이 부분은 그대로 둡니다.
+        history.back(); 
+        return;
+    }
 
-                backButtonPressedOnce = true;
-                showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
-                setTimeout(() => {
-                    backButtonPressedOnce = false;
-                }, 2000);
+    backButtonPressedOnce = true;
+    showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
+    setTimeout(() => {
+        backButtonPressedOnce = false;
+    }, 2000);
 
-                history.pushState(null, '', location.href);
-            });
+    // 사용자가 뒤로가기를 눌렀지만 앱을 종료하지 않았으므로,
+    // pop된 history를 다시 push하여 현재 페이지에 머무르도록 합니다.
+    history.pushState(null, '', location.href);
+});
 
             document.body.addEventListener('touchstart', (event) => {
                 const touch = event.touches[0];
