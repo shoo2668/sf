@@ -457,7 +457,7 @@ body.modal-open {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.124";
+            const version = "v1.2.125";
             const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -887,6 +887,13 @@ body.modal-open {
         const completionOptionsCancelBtn = document.getElementById('completion-options-cancel');
 
         // --- Modal & Core Logic Functions ---
+
+        const autoResizeTextarea = (event) => {
+            const textarea = event.target;
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        };
+
         const openPhoneEditModal = (itemNo) => {
     const item = deliveryItems.find(i => i.no === itemNo);
     if (!item) return;
