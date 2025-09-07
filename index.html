@@ -36,6 +36,9 @@ body.modal-open {
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 50;
 }
+
+.confirmation-modal { z-index: 51; }
+
 .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content {
     background-color: white;
     border-radius: 0.5rem;
@@ -516,7 +519,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.133";
+            const version = "v1.2.134";
             const changelog = "오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
