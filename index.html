@@ -516,7 +516,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.132";
+            const version = "v1.2.133";
             const changelog = "오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1220,25 +1220,26 @@ const closeSmartEditModal = () => {
             const validationResult = await validateAddressWithKakao(tempBaseAddress, tempDetailAddress);
             closeConfirmationModal();
 
-            const saveAddress = (base, detail) => {
-                deliveryItems[itemIndex].baseAddress = base;
-                deliveryItems[itemIndex].detailAddress = detail;
-                deliveryItems[itemIndex].addressLocation = null;
-                saveDeliveryItemsToLocalStorage();
-                renderDeliveryCards(activeFilter);
-                closeSmartEditModal();
-            };
+            const saveAddress = (base, detail, isValidated) => { // <-- isValidated 파라미터 추가
+    deliveryItems[itemIndex].baseAddress = base;
+    deliveryItems[itemIndex].detailAddress = detail;
+    deliveryItems[itemIndex].addressLocation = null;
+    deliveryItems[itemIndex].isAddressValidated = isValidated; // <-- 검증 상태 업데이트
+    saveDeliveryItemsToLocalStorage();
+    renderDeliveryCards(activeFilter);
+    closeSmartEditModal();
+};
 
-            if (validationResult.validated) {
-                saveAddress(validationResult.baseAddress, validationResult.detailAddress);
-                showToastMessage('주소가 검증 및 저장되었습니다.');
-            } else {
-                const message = `카카오맵에서 주소를 찾을 수 없습니다. 입력하신 '${fullAddress}' 주소 그대로 저장하시겠습니까?`;
-                openConfirmationModal(message, () => {
-                    saveAddress(tempBaseAddress, tempDetailAddress);
-                    showToastMessage('입력한 주소 그대로 저장되었습니다.');
-                });
-            }
+if (validationResult.validated) {
+    saveAddress(validationResult.baseAddress, validationResult.detailAddress, true); // <-- true 전달
+    showToastMessage('주소가 검증 및 저장되었습니다.');
+} else {
+    const message = `카카오맵에서 주소를 찾을 수 없습니다. 입력하신 '${fullAddress}' 주소 그대로 저장하시겠습니까?`;
+    openConfirmationModal(message, () => {
+        saveAddress(tempBaseAddress, tempDetailAddress, false); // <-- false 전달
+        showToastMessage('입력한 주소 그대로 저장되었습니다.');
+    });
+}
         };
         
         applyPiecesBtn.addEventListener('click', async () => await applyAddressEdit(piecesAddressInput.value.trim()));
@@ -1417,12 +1418,12 @@ const closeSmartEditModal = () => {
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                         </button>
                         <div>
-                            <p class="text-base text-blue-600 font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''}" 
-                               ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
-                                ${fullAddress}
-                            </p>
-                            ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
-                        </div>
+    <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500' : 'text-blue-600'}" 
+       ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
+        ${fullAddress}
+    </p>
+    ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
+</div>
                     </div>
                     <div class="flex items-start space-x-2.5">
                         <div class="flex-shrink-0 pt-1 text-gray-600">
@@ -1925,11 +1926,12 @@ const closeSmartEditModal = () => {
                             const no = parseInt(geminiItem.no || '0', 10);
                             if (no === 0) continue;
                             
-                            const { baseAddress, detailAddress } = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-                            geminiItem.baseAddressKorean = baseAddress;
-                            geminiItem.detailAddressKorean = detailAddress;
+                            const validationResult = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+geminiItem.baseAddressKorean = validationResult.baseAddress;
+geminiItem.detailAddressKorean = validationResult.detailAddress;
+geminiItem.isAddressValidated = validationResult.validated; // <-- 검증 상태 저장
 
-                            tempMergedResults.set(no, geminiItem);
+tempMergedResults.set(no, geminiItem);
                         }
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
@@ -1963,7 +1965,8 @@ const closeSmartEditModal = () => {
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
                 addressLocation: null,
-                isStruckThrough: false
+                isStruckThrough: false,
+                isAddressValidated: item.isAddressValidated
             }));
             
             finalItems.forEach(newItem => {
@@ -2432,17 +2435,21 @@ signatureModal.addEventListener('click', (event) => {
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
-                let parsedItems = JSON.parse(storedItems);
-                deliveryItems = parsedItems.map(item => {
-                    if (typeof item.addressLocation === 'undefined') {
-                        item.addressLocation = null;
-                    }
-                    if (typeof item.isStruckThrough === 'undefined') {
-                        item.isStruckThrough = false;
-                    }
-                    return item;
-                }).sort((a, b) => a.no - b.no);
-            }
+    let parsedItems = JSON.parse(storedItems);
+    deliveryItems = parsedItems.map(item => {
+        if (typeof item.addressLocation === 'undefined') {
+            item.addressLocation = null;
+        }
+        if (typeof item.isStruckThrough === 'undefined') {
+            item.isStruckThrough = false;
+        }
+        // isAddressValidated 속성이 없으면 기본값 true로 설정 (기존 데이터 호환)
+        if (typeof item.isAddressValidated === 'undefined') {
+            item.isAddressValidated = true;
+        }
+        return item;
+    }).sort((a, b) => a.no - b.no);
+}
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
