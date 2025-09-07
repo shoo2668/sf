@@ -510,7 +510,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.3.1";
+            const version = "v1.3.02";
             const changelog = "송장검색창수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1790,7 +1790,6 @@ if (validationResult.validated) {
         searchTerm = '';
         invoiceNumberInput.value = '';
         renderDeliveryCards(activeFilter);
-        invoiceNumberInput.focus(); // 입력창에 다시 포커스
     });
 
     // 필터 변경 시 검색창 초기화 (기존 collapseSearch() 호출 부분을 대체)
