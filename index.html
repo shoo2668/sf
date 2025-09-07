@@ -516,7 +516,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.131";
+            const version = "v1.2.132";
             const changelog = "오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2289,13 +2289,32 @@ const closeSmartEditModal = () => {
                 if (!button) return;
 
                 const action = button.dataset.action;
+                if (!action) return;
 
+                const fabOptions = document.getElementById('fab-options');
+
+                // 메인 버튼 클릭 시 옵션 토글
+                if (action === 'toggle-fab') {
+                    fabOptions.classList.toggle('expanded');
+                    return;
+                }
+
+                // 옵션 버튼 클릭 시의 공통 동작
+                if (button.parentNode.id === 'fab-options') {
+                    fabOptions.classList.remove('expanded');
+
+                    if (action === 'sort-distance') deliveryInProgressSortOrder = 'distance';
+                    else if (action === 'sort-no') deliveryInProgressSortOrder = 'no';
+                    else if (action === 'sort-time') completedSortOrder = 'time';
+                    else if (action === 'sort-no-completed') completedSortOrder = 'no';
+                }
+
+                // 각 액션에 따른 실제 기능 실행
                 switch (action) {
                     case 'sort-distance':
-                        await sortItemsByDistance();
+                        sortItemsByDistance();
                         break;
                     case 'sort-no':
-                        deliveryInProgressSortOrder = 'no';
                         sortItemsByNumber();
                         showToastMessage('순번순으로 정렬되었습니다.');
                         break;
@@ -2310,32 +2329,31 @@ const closeSmartEditModal = () => {
                         numberJumpList.innerHTML = '';
                         if (deliveryItems.length === 0) {
                             numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
-                            numberJumpModal.style.display = 'flex';
-                            return;
-                        }
-                        const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
-                        const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
-                        for (let i = 1; i <= maxNo; i++) {
-                            const status = itemsMap.get(i);
-                            const btn = document.createElement('div');
-                            btn.textContent = i;
-                            if (status === '배송중') {
-                                btn.className = 'number-jump-item active';
-                                btn.dataset.no = i;
-                                btn.onclick = () => {
-                                    const targetCard = document.querySelector(`[data-no="${i}"]`);
-                                    if (targetCard) {
-                                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    }
-                                    numberJumpModal.style.display = 'none';
-                                };
-                            } else if (status) {
-                                btn.className = 'number-jump-item inactive';
-                            } else {
-                                btn.className = 'number-jump-item placeholder';
-                                btn.innerHTML = ' ';
+                        } else {
+                            const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
+                            const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
+                            for (let i = 1; i <= maxNo; i++) {
+                                const status = itemsMap.get(i);
+                                const btn = document.createElement('div');
+                                btn.textContent = i;
+                                if (status === '배송중') {
+                                    btn.className = 'number-jump-item active';
+                                    btn.dataset.no = i;
+                                    btn.onclick = () => {
+                                        const targetCard = document.querySelector(`[data-no="${i}"]`);
+                                        if (targetCard) {
+                                            targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                        numberJumpModal.style.display = 'none';
+                                    };
+                                } else if (status) {
+                                    btn.className = 'number-jump-item inactive';
+                                } else {
+                                    btn.className = 'number-jump-item placeholder';
+                                    btn.innerHTML = ' ';
+                                }
+                                numberJumpList.appendChild(btn);
                             }
-                            numberJumpList.appendChild(btn);
                         }
                         numberJumpModal.style.display = 'flex';
                         break;
@@ -2354,11 +2372,13 @@ const closeSmartEditModal = () => {
                         showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
                         break;
                 }
-                
-                if (action !== 'jump-no') {
-                    updateSortButtonsUI();
+
+                // 옵션 버튼을 클릭했을 때만 FAB UI를 즉시 갱신
+                if (button.parentNode.id === 'fab-options') {
+                    setTimeout(setupFab, 50);
                 }
             });
+
             // --- 번호로 이동 모달 ---
 numberJumpClose.addEventListener('click', () => {
     numberJumpModal.style.display = 'none';
