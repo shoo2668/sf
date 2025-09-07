@@ -519,7 +519,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.134";
+            const version = "v1.2.135";
             const changelog = "오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -538,7 +538,7 @@ const showMessage = (message, title = '알림') => {
                 
                 longPressTimer = setTimeout(() => {
                     isLongPress = true;
-                    triggerHapticFeedback();
+                    // triggerHapticFeedback(); // <--- 이 라인을 삭제 또는 주석 처리합니다.
                     const itemNo = parseInt(target.dataset.no, 10);
                     openCompletionOptionsModal(itemNo);
                 }, 300); // 0.3초
@@ -550,17 +550,24 @@ const showMessage = (message, title = '알림') => {
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchend', (event) => {
+                // 타이머를 먼저 클리어합니다.
                 clearTimeout(longPressTimer);
+                
+                // 만약 롱프레스가 발동되었다면,
                 if (isLongPress) {
+                    // 뒤따라올 'click' 이벤트를 막기 위해 preventDefault()를 호출합니다.
                     event.preventDefault();
+                    // 플래그를 리셋합니다.
                     isLongPress = false;
                 }
             });
 
             // 일반 클릭 이벤트 처리
             deliveryCardsContainer.addEventListener('click', (event) => {
+                // 롱프레스였다면 touchend에서 이미 preventDefault로 막혔겠지만,
+                // 만약을 대비한 방어 코드입니다.
                 if (isLongPress) {
-                    isLongPress = false;
+                    isLongPress = false; // 플래그 리셋
                     return;
                 }
                 
