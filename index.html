@@ -50,6 +50,12 @@ body.modal-open {
 }
 
 /* 스크롤이 필요한 영역에만 스크롤 적용 */
+
+/* 모바일에서 모달 내부 스크롤을 부드럽게 하고 스크롤 체이닝을 방지 */
+#smart-edit-scroll-area, #number-jump-list {
+    -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
+    overscroll-behavior: contain; /* 스크롤 체이닝(배경으로 넘어가는 스크롤) 방지 */
+}
 #smart-edit-scroll-area, #number-jump-list {
     flex: 1 1 auto; /* 남는 공간을 차지하고, 내용이 많으면 줄어들도록 설정 */
     overflow-y: auto;
@@ -457,7 +463,7 @@ body.modal-open {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.125";
+            const version = "v1.2.126";
             const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -888,11 +894,12 @@ body.modal-open {
 
         // --- Modal & Core Logic Functions ---
 
-        const autoResizeTextarea = (event) => {
-            const textarea = event.target;
+        function autoResizeTextarea(event) {
+const textarea = event.target;
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
-        };
+}
+
 
         const openPhoneEditModal = (itemNo) => {
     const item = deliveryItems.find(i => i.no === itemNo);
@@ -2179,6 +2186,24 @@ const closeSmartEditModal = () => {
             
             window.addEventListener('touchmove', (event) => {
                 if (!isMainContentTouched) {
+                    // allow touch scrolling when a modal with its own scroll is open
+                    try {
+                        const modalOpen = (smartEditModal && smartEditModal.style.display === 'flex') ||
+                                          (numberJumpModal && numberJumpModal.style.display === 'flex') ||
+                                          (signatureModal && signatureModal.style.display === 'flex') ||
+                                          (confirmationModal && confirmationModal.style.display === 'flex');
+                        const withinScrollableModal = event.target && event.target.closest && (
+                            event.target.closest('#smart-edit-scroll-area') ||
+                            event.target.closest('#number-jump-list') ||
+                            event.target.closest('.smart-edit-modal-content') ||
+                            event.target.closest('.number-jump-modal-content')
+                        );
+                        if (modalOpen || withinScrollableModal) {
+                            return; // allow normal scroll inside modal
+                        }
+                    } catch (e) {
+                        // if any error, fall back to preventing default (safer)
+                    }
                     event.preventDefault();
                 }
             }, { passive: false });
