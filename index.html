@@ -20,6 +20,10 @@
             overscroll-behavior-y: none; /* [수정] body에서의 수직 당겨서 새로고침을 원천 차단 */
         }
         
+body.modal-open {
+    overflow: hidden;
+}
+
 .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal { 
     position: fixed; 
     top: 0; 
@@ -27,32 +31,28 @@
     width: 100%; 
     height: 100%; 
     background-color: rgba(0, 0, 0, 0.5); 
-    /* display: flex 제거하여 스크롤 문제 해결 */
-    overflow-y: auto; /* 배경 자체를 스크롤 가능하게 함 */
+    display: flex; 
+    align-items: center; /* 수직 중앙 정렬 */
+    justify-content: center; /* 수평 중앙 정렬 */
     z-index: 50; 
-    padding: 2rem 1rem; /* 위아래 여백을 만들어 배경 클릭 영역 확보 */
+    padding: 1rem; 
 }
 .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content { 
     background-color: white; 
     border-radius: 0.5rem; 
     box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     padding: 1.5rem; 
-    width: 100%; /* 너비를 100%로 하되, max-width로 제어 */
-    max-width: 28rem; /* 카드 가로폭(max-w-md)과 동일하게 28rem으로 변경 */
-    margin: 0 auto; /* 수평 중앙 정렬만 수행 */
+    width: 100%; 
+    max-width: 28rem; /* 카드 가로폭과 동일하게 */
+    max-height: 90vh; /* 화면 높이의 90%를 최대 높이로 제한 */
+    display: flex; 
+    flex-direction: column; /* 내부 요소를 위에서 아래로 배치 */
+    overflow: hidden; /* 내용이 넘칠 경우를 대비해 기본적으로 숨김 */
 }
 
-/* 스마트 편집 모달의 튀어나감 문제를 해결하기 위한 내부 flex 구조는 그대로 유지 */
-.smart-edit-modal-content {
-    display: flex;
-    flex-direction: column;
-}
-
-/* 스마트 편집 모달의 내부 스크롤 영역에 대한 기존 규칙 (변경 없음) */
-#smart-edit-scroll-area { 
-    flex-grow: 1; 
-    overflow-y: auto; 
-    margin-bottom: 1rem; 
+/* 스마트 편집 모달과 번호 이동 모달의 스크롤 영역에만 내부 스크롤 적용 */
+#smart-edit-scroll-area, #number-jump-list {
+    overflow-y: auto;
 }
         
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
@@ -456,7 +456,7 @@
         };
 
         const setVersionInfo = () => {
-            const version = "v1.2.122";
+            const version = "v1.2.123";
             const changelog = "모달수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1036,86 +1036,88 @@
         };
 
         const openSmartEditModal = (itemNo) => {
-            currentEditItemNo = itemNo;
-            const item = deliveryItems.find(i => i.no === itemNo);
-            if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
-            
-            const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
-            
-            originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            piecesAddressInput.value = '';
-            directAddressInput.value = originalFullAddress;
-            setTimeout(() => {
-                autoResizeTextarea({target: piecesAddressInput});
-                autoResizeTextarea({target: directAddressInput});
-            }, 0);
+    currentEditItemNo = itemNo;
+    const item = deliveryItems.find(i => i.no === itemNo);
+    if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
+    
+    const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+    
+    originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
+    piecesAddressInput.value = '';
+    directAddressInput.value = originalFullAddress;
+    setTimeout(() => {
+        autoResizeTextarea({target: piecesAddressInput});
+        autoResizeTextarea({target: directAddressInput});
+    }, 0);
 
-            const addressPiecesContainer = document.getElementById('address-pieces-container');
-            const numberKeypad = document.getElementById('number-keypad');
-            const unitKeypad = document.getElementById('unit-keypad');
-            [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
-            
-            const createKeyButton = (text, colorClass, value, action = 'add') => {
-                const button = document.createElement('button');
-                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
-                button.dataset.value = value !== undefined ? value : text;
-                button.dataset.action = action;
-                
-                const buttonText = document.createElement('span');
-                buttonText.textContent = text;
-                button.appendChild(buttonText);
+    const addressPiecesContainer = document.getElementById('address-pieces-container');
+    const numberKeypad = document.getElementById('number-keypad');
+    const unitKeypad = document.getElementById('unit-keypad');
+    [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
+    
+    const createKeyButton = (text, colorClass, value, action = 'add') => {
+        const button = document.createElement('button');
+        button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
+        button.dataset.value = value !== undefined ? value : text;
+        button.dataset.action = action;
+        
+        const buttonText = document.createElement('span');
+        buttonText.textContent = text;
+        button.appendChild(buttonText);
 
-                const keyPop = document.createElement('span');
-                keyPop.className = 'key-pop';
-                keyPop.textContent = text;
-                button.appendChild(keyPop);
+        const keyPop = document.createElement('span');
+        keyPop.className = 'key-pop';
+        keyPop.textContent = text;
+        button.appendChild(keyPop);
 
-                return button;
-            };
+        return button;
+    };
 
-            const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
-            basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
+    const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
+    basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
 
-            if (item.detailAddress) {
-                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 !py-1.5 rounded-full', undefined, 'add-comma'));
-                const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
-                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
-            }
+    if (item.detailAddress) {
+        addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 !py-1.5 rounded-full', undefined, 'add-comma'));
+        const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
+        detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
+    }
 
-            // Number Keypad
-            ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
-                let action = 'add';
-                let colorClass = 'bg-gray-200 hover:bg-gray-300';
-                if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
-                    colorClass = 'bg-green-100 text-green-800 hover:bg-green-200';
-                }
-                if (key === ',') action = 'add-comma';
-                if (key === '-') action = 'add-hyphen';
-                numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
-            });
+    // Number Keypad
+    ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
+        let action = 'add';
+        let colorClass = 'bg-gray-200 hover:bg-gray-300';
+        if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
+            colorClass = 'bg-green-100 text-green-800 hover:bg-green-200';
+        }
+        if (key === ',') action = 'add-comma';
+        if (key === '-') action = 'add-hyphen';
+        numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
+    });
 
-            // Unit Keypad
-            unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-unit'));
-            unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-unit'));
-            unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-unit'));
-            unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-unit'));
-            unitKeypad.appendChild(createKeyButton('\u00A0', 'bg-gray-200 hover:bg-gray-300', ' ', 'add')); // 공백
-            unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
-            const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
-            backspaceWordBtn.classList.add('col-span-2');
-            unitKeypad.appendChild(backspaceWordBtn);
+    // Unit Keypad
+    unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-unit'));
+    unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-unit'));
+    unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-unit'));
+    unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-unit'));
+    unitKeypad.appendChild(createKeyButton('\u00A0', 'bg-gray-200 hover:bg-gray-300', ' ', 'add')); // 공백
+    unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
+    const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
+    backspaceWordBtn.classList.add('col-span-2');
+    unitKeypad.appendChild(backspaceWordBtn);
 
-            smartEditModal.style.display = 'flex';
-            history.pushState({ smartEditModalOpen: true }, "");
-        };
+    document.body.classList.add('modal-open'); // body 스크롤 잠금
+    smartEditModal.style.display = 'flex';
+    history.pushState({ smartEditModalOpen: true }, "");
+};
 
         const closeSmartEditModal = () => {
-            if (history.state && history.state.smartEditModalOpen) {
-                history.back();
-            }
-            smartEditModal.style.display = 'none';
-            currentEditItemNo = null;
-        };
+    if (history.state && history.state.smartEditModalOpen) {
+        history.back();
+    }
+    document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
+    smartEditModal.style.display = 'none';
+    currentEditItemNo = null;
+};
         
         smartEditModal.addEventListener('click', (event) => {
             const button = event.target.closest('.key-button');
