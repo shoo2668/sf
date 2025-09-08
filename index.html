@@ -607,7 +607,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.2";
+            const version = "v1.4.21";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1998,6 +1998,16 @@ if (validationResult.validated) {
                             const no = parseInt(geminiItem.no || '0', 10);
                             if (no === 0) continue;
                             
+                            // ▼▼▼ [추가] AI가 생성한 주소에서 불필요한 쉼표를 제거하는 후처리 로직 ▼▼▼
+                            if (geminiItem.baseAddressKorean) {
+                                // 예: "양재대로71길, 2-19" -> "양재대로71길 2-19" 로 변경
+                                geminiItem.baseAddressKorean = geminiItem.baseAddressKorean.replace(/([가-힣]),\s*/g, '$1 ');
+                            }
+                            if (geminiItem.detailAddressKorean) {
+                                geminiItem.detailAddressKorean = geminiItem.detailAddressKorean.replace(/([가-힣]),\s*/g, '$1 ');
+                            }
+                            // ▲▲▲ [추가] 여기까지 ▲▲▲
+
                             const validationResult = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
 geminiItem.baseAddressKorean = validationResult.baseAddress;
 geminiItem.detailAddressKorean = validationResult.detailAddress;
