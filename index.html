@@ -1100,75 +1100,10 @@ const openSignatureModal = (itemNo) => {
     signatureTextInput.focus(); 
 };
 const closeSignatureModal = () => { 
-        document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
-            signatureModal.style.display = 'none'; 
-                currentSignatureItemNo = null; 
+    document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
+    signatureModal.style.display = 'none'; 
+    currentSignatureItemNo = null; 
 };
-
-const saveSignature = () => {
-        const itemNo = currentSignatureItemNo;
-            if (itemNo === null) {
-                        console.error("서명을 저장할 항목 번호가 없습니다.");
-                                return;
-            }
-
-                const signatureText = signatureTextInput.value.trim();
-                    if (!signatureText) {
-                                showMessage('서명 내용을 입력해주세요.');
-                                        return; // 서명 내용이 없으면 저장하지 않음
-                    }
-
-                        const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-
-                            // 기존 상태 변경 함수를 재사용하여 데이터를 업데이트합니다.
-                                handleStatusChange(itemNo, '완료', currentTime, '서명', signatureText);
-
-                                    // 완료 처리 후 거리순 정렬을 다시 수행합니다.
-                                        sortItemsByDistanceSilent();
-
-                                            // 모달을 닫습니다.
-                                                closeSignatureModal();
-
-                                                    // 사용자에게 완료되었음을 알립니다.
-                                                        showToastMessage(`${itemNo}번 항목이 서명으로 완료 처리되었습니다.`);
-                };
-
-                const openCompletionOptionsModal = (itemNo) => {}
-                    }
-            }
-}
-}
-
-const saveSignature = () => {
-        const itemNo = currentSignatureItemNo;
-            if (itemNo === null) {
-                        console.error("서명을 저장할 항목 번호가 없습니다.");
-                                return;
-            }
-
-                const signatureText = signatureTextInput.value.trim();
-                    if (!signatureText) {
-                                showMessage('서명 내용을 입력해주세요.');
-                                        return; // 서명 내용이 없으면 저장하지 않음
-                    }
-
-                        const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-
-                            // 기존 상태 변경 함수를 재사용하여 데이터를 업데이트합니다.
-                                handleStatusChange(itemNo, '완료', currentTime, '서명', signatureText);
-
-                                    // 완료 처리 후 거리순 정렬을 다시 수행합니다.
-                                        sortItemsByDistanceSilent();
-
-                                            // 모달을 닫습니다.
-                                                closeSignatureModal();
-
-                                                    // 사용자에게 완료되었음을 알립니다.
-                                                        showToastMessage(`${itemNo}번 항목이 서명으로 완료 처리되었습니다.`);
-                };
-                    }
-            }
-}
 
 const openCompletionOptionsModal = (itemNo) => {
     completionOptionsTitle.textContent = `${itemNo}번 완료 옵션 선택`;
