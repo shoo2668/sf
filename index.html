@@ -2148,7 +2148,7 @@ tempMergedResults.set(no, geminiItem);
                         updateStickyHeaderPositions();
                         renderDeliveryCards(activeFilter);
                         showMessage(`'${file.name}' 파일에서 ${deliveryItems.length}개의 항목을 불러왔습니다.`);
-                    } catch (error) => {
+                    } catch (error) {
                         showMessage(`파일을 불러오는 중 오류가 발생했습니다: ${error.message}`, "오류");
                     } finally {
                         importDataInput.value = '';
