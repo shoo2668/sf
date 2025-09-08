@@ -250,7 +250,7 @@ body.modal-open {
             <div id="search-bar" class="flex items-center w-full p-1.5 rounded-2xl bg-white/90 backdrop-blur-md border border-gray-200">
                 <!-- 검색 아이콘 -->
                 <div class="pl-2 pr-1 text-gray-400">
-                    <svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
                 <!-- 검색창 -->
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
@@ -606,7 +606,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.13";
+            const version = "v1.4.14";
             const changelog = "오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1147,6 +1147,18 @@ const openCompletionOptionsModal = (itemNo) => {
 
     document.body.classList.add('modal-open'); // body 스크롤 잠금
     completionOptionsModal.style.display = 'flex';
+};
+
+const openConfirmationModal = (message, onOk, okText = '확인', cancelText = '취소') => {
+    confirmationModalTitle.textContent = '확인';
+    confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6" id="confirmation-modal-message">${message}</p>`;
+    confirmOkButton.textContent = okText;
+    confirmCancelButton.textContent = cancelText;
+    confirmCancelButton.style.display = '';
+    confirmationModalButtons.style.display = 'flex';
+    onConfirmCallback = onOk;
+    document.body.classList.add('modal-open'); // body 스크롤 잠금
+    confirmationModal.style.display = 'flex';
 };
 
 const closeConfirmationModal = () => { 
@@ -2206,7 +2218,7 @@ tempMergedResults.set(no, geminiItem);
                 if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                     changeFilter(filterFromUrl, '', initialLoad);
                 } else {
-                    changeFilter('배송준비', '', initialLoad);
+                    changeFilter('배송준비', '', true);
                 }
             }, 0);
             // ------------------------------------
