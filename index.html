@@ -606,7 +606,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.11";
+            const version = "v1.4.12";
             const changelog = "오류수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2160,20 +2160,26 @@ tempMergedResults.set(no, geminiItem);
         );
     });
 
-    clearAllCardsButton.addEventListener('click', () => {
-        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
-            deliveryItems = [];
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            showToastMessage("모든 카드가 삭제되었습니다.");
-        });
-    });
-
     document.addEventListener('DOMContentLoaded', () => {
         try {
             resizeAppContainer();
             window.addEventListener('resize', resizeAppContainer);
+
+            setVersionInfo();
+            setupDelegatedEventListeners();
+
+            clearAllCardsButton.addEventListener('click', () => {
+                openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
+                    deliveryItems = [];
+                    saveDeliveryItemsToLocalStorage();
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                    showToastMessage("모든 카드가 삭제되었습니다.");
+                });
+            });
+
+            // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
+            invoiceNumberInput.addEventListener('keydown', (event) => {
 
             setVersionInfo();
             setupDelegatedEventListeners();
