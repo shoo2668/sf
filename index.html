@@ -464,6 +464,7 @@ body.modal-open {
 4.  **TRANSLATE AND SEPARATE ADDRESS:**
     *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
     *   Translate "receiverAddress" to a standard Korean address format.
+    *   **IMPORTANT RULE: When reformatting to a Korean address, use ONLY a single space between the street name (e.g., '양재대로71길') and the building number (e.g., '2-19'). NEVER use a comma.**
     *   **Separate the translated Korean address into "baseAddressKorean" and "detailAddressKorean".**
         *   "baseAddressKorean" should contain the main, searchable part of the address (e.g., "서울 송파구 양재대로 1300").
         *   "detailAddressKorean" should contain the rest (e.g., "올림픽파크포레온 319동 307호"). Omit if not present.
@@ -606,8 +607,8 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.151";
-            const changelog = "오류수정";
+            const version = "v1.4.2";
+            const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
