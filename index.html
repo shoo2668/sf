@@ -606,8 +606,8 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.11";
-            const changelog = "버그수정";
+            const version = "v1.4.1";
+            const changelog = "스캔품질향상";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1910,6 +1910,26 @@ if (validationResult.validated) {
         }
     });
 
+    deliverySheetImageInput.addEventListener('change', (event) => {
+        currentFileToScan = event.target.files;
+        selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
+    });
+    
+    clearAllCardsButton.addEventListener('click', () => {
+        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
+            deliveryItems = [];
+            saveDeliveryItemsToLocalStorage();
+            renderDeliveryCards(activeFilter);
+            updateFilterCounts();
+            showToastMessage("모든 카드가 삭제되었습니다.");
+        });
+    });
+
+    async function performScan(filesToScan) {
+        const CONCURRENT_LIMIT = 4;
+        const totalFiles = filesToScan.length;
+        let completedCount = 0;
+
         scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
         const resizePromises = filesToScan.map((file, index) => 
             resizeImage(file).then(resizedObject => {
@@ -2148,16 +2168,6 @@ tempMergedResults.set(no, geminiItem);
                 reader.readAsText(file);
             }
         );
-    });
-
-clearAllCardsButton.addEventListener('click', () => {
-        openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
-            deliveryItems = [];
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-            showToastMessage("모든 카드가 삭제되었습니다.");
-        });
     });
 
     document.addEventListener('DOMContentLoaded', () => {
