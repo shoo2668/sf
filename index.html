@@ -610,7 +610,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.24";
+            const version = "v1.4.25";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1683,6 +1683,11 @@ if (validationResult.validated) {
     };
     
     const setupFab = () => {
+
+if (activeFilter !== '배송중' && activeFilter !== '완료') {
+            return; 
+        }
+
         const fabMainButton = document.getElementById('fab-main-button');
         const fabOptions = document.getElementById('fab-options');
         fabOptions.innerHTML = '';
