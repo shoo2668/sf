@@ -465,7 +465,8 @@ body.modal-open {
     *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
     *   **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
         *   Translate every component EXACTLY as it appears.
-        *   DO NOT reorder, correct, or omit any characters (e.g., 'GAGIL' MUST become '가길').
+        *   **Word Joining Rule:** If a single word is broken across multiple lines (e.g., 'OLYMPI' on one line and 'CRO' on the next), you MUST join them into a single word without a space (e.g., 'OLYMPICRO').
+        *   DO NOT reorder, correct, or omit any other characters (e.g., 'GAGIL' MUST become '가길').
         *   If the original is already in Korean, just copy it.
         *   Let's call this result the "Translated Full Address".
     *   **STEP 2: From the "Translated Full Address" you just created, separate it into "baseAddressKorean" and "detailAddressKorean".**
@@ -610,7 +611,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.25";
+            const version = "v1.4.26";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
