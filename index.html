@@ -471,7 +471,8 @@ body.modal-open {
         *   Let's call this result the "Translated Full Address".
     *   **STEP 2: From the "Translated Full Address" you just created, separate it into "baseAddressKorean" and "detailAddressKorean".**
         *   "baseAddressKorean" should contain the main, searchable part of the address (e.g., "서울 송파구 중대로 127").
-        *   "detailAddressKorean" should contain the rest (e.g., "한화오벨리스크 1115호"). Omit if not present.
+        *   "detailAddressKorean" should contain the rest (e.g., "한화오벨리스크 1115호").
+        *   **Address Hierarchy Rule:** If both a street address (e.g., '풍성로14길 19') and an administrative dong (e.g., '풍납2동') are present, the street address is the primary component for "baseAddressKorean". The administrative dong should be considered redundant information and **MUST be omitted** from the final output unless it is part of a building name.
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
@@ -611,7 +612,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.27";
+            const version = "v1.4.28";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
