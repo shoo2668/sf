@@ -611,7 +611,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.26";
+            const version = "v1.4.27";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2007,12 +2007,13 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
                             const no = parseInt(geminiItem.no || '0', 10);
                             if (no === 0) continue;
                             
-                            // ▼▼▼ [재도입] AI가 생성한 주소에서 불필요한 쉼표를 제거하는 후처리 로직 ▼▼▼
-                            if (geminiItem.baseAddressKorean) {
-                                // 예: "양재대로71길, 2-19" -> "양재대로71길 2-19" 로 강제 수정
-                                geminiItem.baseAddressKorean = geminiItem.baseAddressKorean.replace(/([가-힣길]),\s*(\d)/g, '$1 $2');
+                            // ▼▼▼ [추가] AI가 생성한 주소의 불필요한 쉼표를 정리하는 후처리 로직 ▼▼▼
+                            if (geminiItem.baseAddressKorean && geminiItem.detailAddressKorean) {
+                                // 상세 주소 안에 있는 쉼표는 모두 띄어쓰기로 변경
+                                // 예: "신천동 더샵스타파크 512호, B동 10" -> "신천동 더샵스타파크 512호 B동 10"
+                                geminiItem.detailAddressKorean = geminiItem.detailAddressKorean.replace(/,/g, ' ');
                             }
-                            // ▲▲▲ [재도입] 여기까지 ▲▲▲
+                            // ▲▲▲ [추가] 여기까지 ▲▲▲
 
                             const validationResult = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
 geminiItem.baseAddressKorean = validationResult.baseAddress;
