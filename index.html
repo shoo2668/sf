@@ -631,7 +631,7 @@ const showMessage = (message, title = '알림') => {
                 
                 longPressTimer = setTimeout(() => {
                     isLongPress = true;
-                    // triggerHapticFeedback(); // <--- 이 라인을 삭제 또는 주석 처리합니다.
+                
                     const itemNo = parseInt(target.dataset.no, 10);
                     openCompletionOptionsModal(itemNo);
                 }, 300); // 0.3초
@@ -976,7 +976,6 @@ const showMessage = (message, title = '알림') => {
         let onConfirmCallback = null;
         let currentEditItemNo = null; 
         let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
-        let lastScrollY = 0; // For scroll direction detection
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
@@ -1213,7 +1212,6 @@ const openSmartEditModal = (itemNo) => {
     button.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            // triggerHapticFeedback(); // 이 라인을 주석 처리하거나 삭제합니다.
 
             // piecesAddressInput은 openSmartEditModal 안에서 이미 선언/참조 가능한 변수여야 합니다.
             const input = piecesAddressInput;
@@ -2519,21 +2517,6 @@ signatureModal.addEventListener('click', (event) => {
         closeSignatureModal();
     }
 });
-
-            // ▼▼▼▼▼ [추가] 하단 바 숨김/표시를 위한 스크롤 이벤트 리스너 ▼▼▼▼▼
-            const mainContentWrapper = document.getElementById('main-content-wrapper');
-            mainContentWrapper.addEventListener('scroll', () => {
-                const currentScrollY = mainContentWrapper.scrollTop;
-                if (currentScrollY > lastScrollY) { // Scrolling down
-                    searchBarContainer.classList.add('hidden');
-                    actionBarContainer.classList.add('hidden');
-                } else { // Scrolling up
-                    searchBarContainer.classList.remove('hidden');
-                    actionBarContainer.classList.remove('hidden');
-                }
-                lastScrollY = currentScrollY <= 0 ? 0 : currentScrollY;
-            });
-            // ▲▲▲▲▲ [추가] ▲▲▲▲▲
 
 // --- 로그 뷰어 관련 요소 및 이벤트 리스너 ---
             const viewLogsButton = document.getElementById('viewLogsButton');
