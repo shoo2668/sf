@@ -469,11 +469,15 @@ body.modal-open {
         *   DO NOT reorder, correct, or omit any other characters (e.g., 'GAGIL' MUST become '가길').
         *   If the original is already in Korean, just copy it.
         *   Let's call this result the "Translated Full Address".
-    *   **STEP 2: From the "Translated Full Address" you just created, separate it into "baseAddressKorean" and "detailAddressKorean".**
-        *   "baseAddressKorean" should contain the main, searchable part of the address up to and including the building number.
-        *   **Building Number Rule (VERY IMPORTANT):** A number that immediately follows a street name (like '로' or '길') is the building number. This number, and any hyphenated numbers attached to it (e.g., 42, 102-408), MUST be included in "baseAddressKorean".
-        *   "detailAddressKorean" should contain everything else, such as apartment building/unit numbers (동, 호), floor numbers (층), or building names.
-        *   **Example:** For "서울 송파구 올림픽로35다길 42, 12층", "baseAddressKorean" MUST be "서울 송파구 올림픽로35다길 42" and "detailAddressKorean" MUST be "12층".
+    *   **STEP 2: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
+        *   **Rule A (Primary): Find the Address Anchor.** First, search for a Korean road name anchor ('로', '길') or a legal address anchor ('동', '리'). Prioritize road name anchors.
+        *   **Rule B (If Anchor Found): Extract the Base Address.** The base address consists of everything from the start of the address up to and including the number block that appears IMMEDIATELY BEFORE the anchor. This number is the building number or lot number.
+            *   Example 1: For "서울 송파구 1218 양재대로 245-501", the anchor is '대로'. The number block immediately before it is '1218'. So, "baseAddressKorean" is "서울 송파구 양재대로 1218".
+            *   Example 2: For "경기 성남시 분당구 판교역로 235", the anchor is '로'. The number block before it is '235'. So, "baseAddressKorean" is "경기 성남시 분당구 판교역로 235".
+        *   **Rule C (If Anchor Found): Extract the Detail Address.** "detailAddressKorean" is everything that remains after the base address has been extracted.
+            *   From Example 1, "detailAddressKorean" would be "245-501".
+            *   From Example 2, if there's nothing left, "detailAddressKorean" is empty.
+        *   **Rule D (If No Anchor Found): Use Best Judgment.** If no clear anchor ('로', '길', '동', '리') can be identified (due to OCR errors or unusual formatting), analyze the structure and make a best-effort guess to separate the base and detail addresses as you did before.
         *   **Address Hierarchy Rule:** If both a street address (e.g., '풍성로14길 19') and an administrative dong (e.g., '풍납2동') are present, the street address is the primary component for "baseAddressKorean". The administrative dong should be considered redundant information and **MUST be omitted** from the final output unless it is part of a building name.
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
@@ -488,9 +492,9 @@ body.modal-open {
     "receiverName": "Richard Kim",
     "receiverNameKorean": "김리차드",
     "receiverPhone": "24080670",
-    "receiverAddress": "No.601, 422-dong, yangjae-daero 1300",
+    "receiverAddress": "No.601, 422-dong, 1300, yangjae-daero",
     "baseAddressKorean": "서울 강동구 양재대로 1300",
-    "detailAddressKorean": "422동 601호"
+    "detailAddressKorean": "601호 422동"
   },
   {
     "no": "1",
@@ -500,9 +504,9 @@ body.modal-open {
     "receiverName": "Jiyoung Her",
     "receiverNameKorean": "허지영",
     "receiverPhone": "01025190714",
-    "receiverAddress": "Songpagu Olympic-ro 35 dagil 42, 12F",
-    "baseAddressKorean": "서울 송파구 올림픽로35다길 42",
-    "detailAddressKorean": "12층"
+    "receiverAddress": "Songpa-gu 1218, Yangjae-daero 245-501",
+    "baseAddressKorean": "서울 송파구 양재대로 1218",
+    "detailAddressKorean": "245-501"
   }
 ]
 `;
@@ -614,7 +618,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.3";
+            const version = "v1.4.31";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
