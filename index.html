@@ -618,7 +618,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.32";
+            const version = "v1.4.33";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1542,7 +1542,7 @@ if (validationResult.validated) {
                         <div>
     <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500' : 'text-blue-600'}" 
        ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
-        ${fullAddress.trim() ? fullAddress : '<span class="text-gray-400 font-medium">[주소 없음 (터치하여 입력)]</span>'}
+        ${fullAddress.trim() ? fullAddress : '<span class="text-red-400 font-medium">[주소 없음 (터치하여 입력)]</span>'}
     </p>
     ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
 </div>
@@ -1571,13 +1571,13 @@ if (validationResult.validated) {
                         </div>
                         <div class="flex items-center space-x-2">
     <span 
-        class="text-base font-semibold ${isPhoneNumberInvalid ? 'text-red-500 cursor-pointer underline' : 'text-blue-600'}"
-        ${isPhoneNumberInvalid ? `data-action="edit-phone" data-no="${data.no}"` : ''}
+        class="text-base font-semibold ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 cursor-pointer underline' : 'text-blue-600'}"
+        ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? `data-action="edit-phone" data-no="${data.no}"` : ''}
     >
-        ${formatPhoneNumberForDisplay(data.receiverTelephoneNo)}
+        ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
     </span>
-                            <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100">전화</a>
-                            <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100">문자</a>
+                            <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
+                            <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
                         </div>
                     </div>
                     ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
