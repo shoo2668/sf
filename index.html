@@ -618,7 +618,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.31";
+            const version = "v1.4.32";
             const changelog = "프롬프트수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1542,7 +1542,7 @@ if (validationResult.validated) {
                         <div>
     <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500' : 'text-blue-600'}" 
        ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
-        ${fullAddress}
+        ${fullAddress.trim() ? fullAddress : '<span class="text-gray-400 font-medium">[주소 없음 (터치하여 입력)]</span>'}
     </p>
     ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
 </div>
