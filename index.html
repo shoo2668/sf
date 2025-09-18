@@ -621,7 +621,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.5";
+            const version = "v1.4.51";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -925,7 +925,7 @@ const showMessage = (message, title = '알림') => {
     const addressParts = baseAddress.split(' ');
     // 'specialCities' 배열을 확장하여 축약형 도 이름까지 포함하고, 이름을 'adminNames'로 변경
     const adminNames = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
-    const adminSuffixes = ['도', '시', '구', '군'];
+    const adminSuffixes = ['도', '시', '구', '군', '읍', '면'];
     
     while (addressParts.length > 0) {
         const firstPart = addressParts[0];
