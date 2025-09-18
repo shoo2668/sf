@@ -393,6 +393,19 @@ body.modal-open {
         </div>
     </div>
 
+<div id="delivery-location-modal" class="confirmation-modal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <h2 class="text-xl font-semibold mb-6 text-gray-800" id="delivery-location-title">배송 위치 선택</h2>
+            <div id="delivery-location-options" class="space-y-4">
+                <!-- 라디오 버튼 옵션들이 여기에 동적으로 추가됩니다. -->
+            </div>
+            <div class="flex justify-between space-x-2 mt-8">
+                <button id="location-modal-cancel" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
+                <button id="location-modal-confirm" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">배송 완료</button>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript">
         // ▼▼▼▼▼ [추가 시작] 이 코드 블록을 추가하세요 ▼▼▼▼▼
         
@@ -621,8 +634,8 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.51";
-            const changelog = "버그수정";
+            const version = "v1.4.6";
+            const changelog = "완료버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -699,7 +712,7 @@ const showMessage = (message, title = '알림') => {
                 const action = target.dataset.action;
                 const itemNo = parseInt(target.dataset.no, 10);
 
-                switch (action) {
+                                switch (action) {
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
                         break;
@@ -716,18 +729,14 @@ const showMessage = (message, title = '알림') => {
                         });
                         break;
                     case 'identity-verification':
-                        openConfirmationModal(`${itemNo}번 항목을 '본인확인'으로 완료 처리하시겠습니까?`, () => {
+                        openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
                             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '본인확인', '신분증');
+                            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
                             sortItemsByDistanceSilent();
                         });
                         break;
-                    case 'front-door-delivery':
-                        openConfirmationModal(`${itemNo}번 항목을 '문앞배송'으로 완료 처리하시겠습니까?`, () => {
-                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '문앞배송');
-                            sortItemsByDistanceSilent();
-                        });
+                    case 'open-location-modal':
+                        openDeliveryLocationModal(itemNo);
                         break;
                     case 'sign-delivery':
                         openSignatureModal(itemNo);
@@ -994,6 +1003,7 @@ const showMessage = (message, title = '알림') => {
         let completedSortOrder = 'no'; // 'no' 또는 'time'
         let longPressTimer = null;
         let isLongPress = false;
+        let currentLocationEditItemNo = null;
 
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -1056,6 +1066,12 @@ const showMessage = (message, title = '알림') => {
         const completionOptionsList = document.getElementById('completion-options-list');
         const completionOptionsCancelBtn = document.getElementById('completion-options-cancel');
 
+        const deliveryLocationModal = document.getElementById('delivery-location-modal');
+        const deliveryLocationTitle = document.getElementById('delivery-location-title');
+        const deliveryLocationOptions = document.getElementById('delivery-location-options');
+        const locationModalConfirm = document.getElementById('location-modal-confirm');
+        const locationModalCancel = document.getElementById('location-modal-cancel');
+
         // --- Modal & Core Logic Functions ---
 
         function autoResizeTextarea(event) {
@@ -1064,6 +1080,27 @@ const textarea = event.target;
             textarea.style.height = (textarea.scrollHeight) + 'px';
 }
 
+const openDeliveryLocationModal = (itemNo) => {
+            currentLocationEditItemNo = itemNo;
+            deliveryLocationTitle.textContent = `${itemNo}번 배송 위치 선택`;
+
+            const locations = ['문앞', '택배보관소', '택배함', '문서수발실', '경비실', '안내데스크'];
+            deliveryLocationOptions.innerHTML = locations.map((location, index) => `
+                <label for="loc-${index}" class="flex items-center p-3 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <input type="radio" id="loc-${index}" name="delivery-location" value="${location}" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500" ${index === 0 ? 'checked' : ''}>
+                    <span class="ml-4 text-base font-medium text-gray-800">${location}</span>
+                </label>
+            `).join('');
+
+            document.body.classList.add('modal-open');
+            deliveryLocationModal.style.display = 'flex';
+        };
+
+        const closeDeliveryLocationModal = () => {
+            document.body.classList.remove('modal-open');
+            deliveryLocationModal.style.display = 'none';
+            currentLocationEditItemNo = null;
+        };
 
         const openPhoneEditModal = (itemNo) => {
     const item = deliveryItems.find(i => i.no === itemNo);
@@ -1636,9 +1673,9 @@ if (validationResult.validated) {
                             </div>
                             ${showInProgressButtons ? `
                                 <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
-                                    <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인확인</button>
-                                    <button data-action="front-door-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">문앞배송</button>
-                                    <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">서명</button>
+                                    <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인전달</button>
+                                    <button data-action="open-location-modal" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">배송위치</button>
+                                    <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">직접입력</button>
                                 </div>
                             ` : ''}
                         </div>
@@ -2214,6 +2251,23 @@ tempMergedResults.set(no, geminiItem);
                     updateFilterCounts();
                     showToastMessage("모든 카드가 삭제되었습니다.");
                 });
+            });
+
+locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
+
+            locationModalConfirm.addEventListener('click', () => {
+                const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
+                if (!selectedOption) {
+                    showMessage('배송 위치를 선택해주세요.');
+                    return;
+                }
+
+                const location = selectedOption.value;
+                const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                
+                handleStatusChange(currentLocationEditItemNo, '완료', currentTime, location, location);
+                sortItemsByDistanceSilent();
+                closeDeliveryLocationModal();
             });
 
             // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
