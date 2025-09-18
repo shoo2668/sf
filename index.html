@@ -634,7 +634,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.6";
+            const version = "v1.4.61";
             const changelog = "완료버튼수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1082,15 +1082,27 @@ const textarea = event.target;
 
 const openDeliveryLocationModal = (itemNo) => {
             currentLocationEditItemNo = itemNo;
-            deliveryLocationTitle.textContent = `${itemNo}번 배송 위치 선택`;
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) return;
+
+            deliveryLocationTitle.textContent = `${item.no}번 배송 위치 선택`;
+
+            const cardInfoHtml = `
+                <div class="mb-4 p-2.5 bg-gray-100 border border-gray-200 rounded-md space-y-1">
+                    <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">주소:</span> ${item.baseAddress}${item.detailAddress ? ', ' + item.detailAddress : ''}</p>
+                    <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">받는분:</span> ${item.receiverNameKorean || item.receiverNameOriginal}</p>
+                </div>
+            `;
 
             const locations = ['문앞', '택배보관소', '택배함', '문서수발실', '경비실', '안내데스크'];
-            deliveryLocationOptions.innerHTML = locations.map((location, index) => `
-                <label for="loc-${index}" class="flex items-center p-3 rounded-lg hover:bg-gray-100 cursor-pointer">
+            const radioOptionsHtml = locations.map((location, index) => `
+                <label for="loc-${index}" class="flex items-center p-2.5 rounded-lg hover:bg-gray-100 cursor-pointer">
                     <input type="radio" id="loc-${index}" name="delivery-location" value="${location}" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500" ${index === 0 ? 'checked' : ''}>
-                    <span class="ml-4 text-base font-medium text-gray-800">${location}</span>
+                    <span class="ml-3 text-sm font-medium text-gray-800">${location}</span>
                 </label>
             `).join('');
+
+            deliveryLocationOptions.innerHTML = cardInfoHtml + `<div class="space-y-1">${radioOptionsHtml}</div>`;
 
             document.body.classList.add('modal-open');
             deliveryLocationModal.style.display = 'flex';
@@ -2268,6 +2280,9 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
                 handleStatusChange(currentLocationEditItemNo, '완료', currentTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
+
+                showToastMessage(`${currentLocationEditItemNo}번: ${location} 완료`);
+
             });
 
             // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
