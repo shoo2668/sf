@@ -2267,22 +2267,22 @@ tempMergedResults.set(no, geminiItem);
 
 locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
 
-            locationModalConfirm.addEventListener('click', () => {
+        locationModalConfirm.addEventListener('click', () => {
                 const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
                 if (!selectedOption) {
                     showMessage('배송 위치를 선택해주세요.');
                     return;
                 }
 
+                const itemNoToShow = currentLocationEditItemNo; // [이 줄 추가]
                 const location = selectedOption.value;
                 const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                 
                 handleStatusChange(currentLocationEditItemNo, '완료', currentTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
-
-                showToastMessage(`${currentLocationEditItemNo}번: ${location} 완료`);
-
+                
+                showToastMessage(`${itemNoToShow}번: ${location} 완료`); // [이 줄 수정]
             });
 
             // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
