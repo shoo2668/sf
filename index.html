@@ -620,8 +620,8 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.4";
-            const changelog = "검색창수정";
+            const version = "v1.5.0";
+            const changelog = "버전변경";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1979,7 +1979,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
                         generationConfig: { temperature: 0, responseMimeType: "application/json" }
                     };
                     const tempApiKeyForLocalTest = "AIzaSyD8ZGE4WyIGatmPzRkJijnOt8PqtnLFyds";
-                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
+                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                     const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
