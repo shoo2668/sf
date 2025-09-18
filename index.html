@@ -2022,12 +2022,6 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
                             }
                             // ▲▲▲ [추가] 여기까지 ▲▲▲
 
-                            const validationResult = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-geminiItem.baseAddressKorean = validationResult.baseAddress;
-geminiItem.detailAddressKorean = validationResult.detailAddress;
-geminiItem.isAddressValidated = validationResult.validated; // <-- 검증 상태 저장
-
-tempMergedResults.set(no, geminiItem);
                         }
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
