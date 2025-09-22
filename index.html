@@ -634,7 +634,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.10";
+            const version = "v1.4.11";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1016,6 +1016,8 @@ const showMessage = (message, title = '알림') => {
         let completedSortOrder = 'no'; // 'no' 또는 'time'
         let longPressTimer = null;
         let isLongPress = false;
+        let isRefreshing = false;
+        let pullStartY = 0;
         let currentLocationEditItemNo = null;
 
         const searchBarContainer = document.getElementById('search-bar-container');
@@ -1863,6 +1865,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
             if (silent) {
                 if (activeFilter === '배송중') {
                     renderDeliveryCards(activeFilter);
+                    showToastMessage('위치 정보가 갱신되었습니다.'); // [이 줄 추가]
                 }
             } else {
                 renderDeliveryCards(activeFilter);
@@ -1903,7 +1906,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
                 itemsWithDistance.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
                 deliveryItems = [...itemsWithDistance, ...itemsWithoutDistance];
                 
-                sortItemsByDistance(true);
+                // sortItemsByDistance(true); // [이 줄 삭제 또는 주석 처리]
             } else { 
                 deliveryItems.sort((a, b) => a.no - b.no);
             }
@@ -2334,6 +2337,35 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
             const mainContent = document.getElementById('main-content-wrapper');
             let isMainContentTouched = false;
 
+            // ▼▼▼ [아래 코드 블록 전체를 새로 추가] ▼▼▼
+            mainContent.addEventListener('touchstart', (e) => {
+                if (mainContent.scrollTop === 0 && !isRefreshing) {
+                    pullStartY = e.touches[0].pageY;
+                }
+            }, { passive: true });
+
+            mainContent.addEventListener('touchmove', (e) => {
+                const pullDistance = e.touches[0].pageY - pullStartY;
+                if (mainContent.scrollTop === 0 && pullDistance > 0 && !isRefreshing) {
+                    // 시각적 효과가 필요하다면 여기에 추가 (예: 아이콘 표시)
+                }
+            }, { passive: true });
+
+            mainContent.addEventListener('touchend', (e) => {
+                const pullDistance = e.changedTouches[0].pageY - pullStartY;
+                if (mainContent.scrollTop === 0 && pullDistance > 80 && !isRefreshing) {
+                    if (activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
+                        isRefreshing = true;
+                        showToastMessage('위치 새로고침 중...', 1500);
+                        sortItemsByDistance(true).finally(() => {
+                            isRefreshing = false;
+                            pullStartY = 0;
+                        });
+                    }
+                }
+            });
+            // ▲▲▲ [추가 끝] ▲▲▲
+
             mainContent.addEventListener('touchstart', () => {
                 isMainContentTouched = true;
             }, { passive: true });
@@ -2374,12 +2406,6 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
                         justReturnedFromExternalApp = false;
                     }, 500);
 
-                    // ▼▼▼ [추가] 자동 거리순 정렬 갱신 로직 ▼▼▼
-                    if (activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
-                        console.log('앱 활성화: 거리순 정렬을 갱신합니다.');
-                        sortItemsByDistance(true); // silent 옵션으로 백그라운드에서 실행
-                    }
-                    // ▲▲▲ [추가] ▲▲▲
                 }
             });
 
