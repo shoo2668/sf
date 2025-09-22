@@ -634,7 +634,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.8";
+            const version = "v1.4.9";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -718,21 +718,17 @@ const showMessage = (message, title = '알림') => {
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
                         break;
-                    // ▼▼▼ [이 블록 추가] ▼▼▼
-                    case 'copy-hawb':
+                                        case 'copy-hawb':
                         {
                             const hawbToCopy = target.dataset.hawbNo;
                             if (hawbToCopy) {
-                                navigator.clipboard.writeText(hawbToCopy).then(() => {
-                                    showToastMessage(`${itemNo}번 송장번호 복사 완료`);
-                                }).catch(err => {
+                                navigator.clipboard.writeText(hawbToCopy).catch(err => {
                                     console.error('송장번호 복사 실패:', err);
                                     showMessage('송장번호 복사에 실패했습니다.');
                                 });
                             }
                         }
                         break;
-                    // ▲▲▲ [추가 끝] ▲▲▲
                     case 'open-naver-map':
                         {
                             const item = deliveryItems.find(i => i.no === itemNo);
