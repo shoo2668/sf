@@ -634,8 +634,8 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.61";
-            const changelog = "완료버튼수정";
+            const version = "v1.4.7";
+            const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -686,15 +686,17 @@ const showMessage = (message, title = '알림') => {
                     return;
                 }
                 
-                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], div[data-status="완료"]');
+                                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], div[data-status="완료"], span[data-action="copy-hawb"]');
                 if (!target) return;
 
-                // ▼▼▼ [수정] 완료 카드 클릭 시 복사 기능 추가 ▼▼▼
+                                // ▼▼▼ [수정] 완료 카드 클릭 시 복사 기능 추가 ▼▼▼
                 if (target.dataset.status === '완료' && !event.target.closest('button, a')) {
                     const itemNo = parseInt(target.dataset.no, 10);
                     const item = deliveryItems.find(i => i.no === itemNo);
                     if (item) {
-                        const completionText = item.completionDetail || item.completionType || '';
+                        const completionText = item.completionType === '본인전달'
+                            ? (item.receiverNameKorean || '')
+                            : (item.completionDetail || item.completionType || '');
                         const timeText = formatCompletionTime(item.deliveryCompletionTime);
                         const textToCopy = `${item.no} - ${completionText} [${timeText}]`;
                         
@@ -716,6 +718,21 @@ const showMessage = (message, title = '알림') => {
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
                         break;
+                    // ▼▼▼ [이 블록 추가] ▼▼▼
+                    case 'copy-hawb':
+                        {
+                            const hawbToCopy = target.dataset.hawbNo;
+                            if (hawbToCopy) {
+                                navigator.clipboard.writeText(hawbToCopy).then(() => {
+                                    showToastMessage(`${itemNo}번 송장번호 복사 완료`);
+                                }).catch(err => {
+                                    console.error('송장번호 복사 실패:', err);
+                                    showMessage('송장번호 복사에 실패했습니다.');
+                                });
+                            }
+                        }
+                        break;
+                    // ▲▲▲ [추가 끝] ▲▲▲
                     case 'open-naver-map':
                         {
                             const item = deliveryItems.find(i => i.no === itemNo);
@@ -1635,10 +1652,10 @@ if (validationResult.validated) {
                     ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 `;
 
-                if (showCompletedCard) {
+                                if (showCompletedCard) {
                     const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
                         ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>`
-                        : data.completionType === '본인확인'
+                        : data.completionType === '본인전달'
                             ? `<span class="text-lg font-semibold text-gray-800">${data.receiverNameKorean || ''}</span>`
                             : `${data.completionType || ''}`;
 
@@ -1672,7 +1689,7 @@ if (validationResult.validated) {
                                             ${distanceInfo}
                                         </div>
                                         <div class="pt-1.5">
-                                            <span class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
+                                            <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
                                         </div>
                                     </div>
                                     <div class="pt-1.5">
