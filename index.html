@@ -10,10 +10,11 @@
         #refresh-indicator {
             transform: translateY(-100%);
             transition: transform 0.3s, opacity 0.3s;
+            z-index: 10; /* 카드가 위로 올라오지 않도록 z-index 추가 */
         }
         #refresh-indicator.visible {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(1rem); /* 보기 좋게 살짝 위에서 띄움 */
         }
         html {
     scroll-behavior: smooth !important;
@@ -647,7 +648,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.12";
+            const version = "v1.4.13";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2352,44 +2353,51 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
             refreshIndicator = document.getElementById('refresh-indicator'); // [이 줄 추가]
             let isMainContentTouched = false;
 
+            refreshIndicator = document.getElementById('refresh-indicator'); // DOM 요소 할당
+
             mainContent.addEventListener('touchstart', (e) => {
-                if (mainContent.scrollTop === 0 && !isRefreshing) {
+                // 1. 거리순 정렬 상태일 때만 새로고침 준비
+                if (mainContent.scrollTop === 0 && !isRefreshing && activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
                     pullStartY = e.touches[0].pageY;
+                } else {
+                    pullStartY = 0; // 그 외의 경우는 시작점을 0으로 초기화하여 동작 방지
                 }
             }, { passive: true });
 
             mainContent.addEventListener('touchmove', (e) => {
+                if (pullStartY === 0 || isRefreshing) return;
                 const pullDistance = e.touches[0].pageY - pullStartY;
-                if (mainContent.scrollTop === 0 && pullDistance > 0 && !isRefreshing) {
-                    // 당기는 동안 아이콘을 부드럽게 표시
-                    const opacity = Math.min(pullDistance / 80, 1);
+                if (pullDistance > 0) {
+                    const opacity = Math.min(pullDistance / 100, 1);
                     refreshIndicator.style.opacity = opacity;
-                    refreshIndicator.style.transform = `translateY(${Math.min(pullDistance, 80) - 80}px)`;
+                    refreshIndicator.style.transform = `translateY(${Math.min(pullDistance, 100) - 48}px)`;
                 }
             }, { passive: true });
 
             mainContent.addEventListener('touchend', (e) => {
+                if (pullStartY === 0 || isRefreshing) return;
                 const pullDistance = e.changedTouches[0].pageY - pullStartY;
                 
-                if (mainContent.scrollTop === 0 && pullDistance > 80 && !isRefreshing) {
-                    if (activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
-                        isRefreshing = true;
-                        refreshIndicator.classList.add('visible'); // 아이콘을 제자리에 고정
-                        
-                        sortItemsByDistance(true).finally(() => {
-                            isRefreshing = false;
-                            pullStartY = 0;
-                            refreshIndicator.classList.remove('visible'); // 아이콘 숨기기
-                        });
-                    } else {
-                        // 새로고침 조건이 아닐 경우 아이콘 숨기기
-                        refreshIndicator.classList.remove('visible');
-                    }
-                } else if (!isRefreshing) {
-                    // 당기다가 취소한 경우 아이콘 숨기기
+                const resetIndicator = () => {
                     refreshIndicator.classList.remove('visible');
+                    // 3. 아이콘을 확실하게 숨기기 위해 스타일 초기화
                     refreshIndicator.style.opacity = 0;
                     refreshIndicator.style.transform = 'translateY(-100%)';
+                };
+
+                // 1. 새로고침 실행 조건을 다시 한번 명확하게 확인
+                if (pullDistance > 100 && activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
+                    isRefreshing = true;
+                    refreshIndicator.classList.add('visible');
+                    
+                    sortItemsByDistance(true).finally(() => {
+                        isRefreshing = false;
+                        pullStartY = 0;
+                        resetIndicator(); // 3. 새로고침이 끝나면 아이콘 숨기기
+                    });
+                } else {
+                    // 당기다 취소했거나, 조건이 맞지 않으면 아이콘 숨기기
+                    resetIndicator();
                 }
             });
 
