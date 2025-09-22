@@ -648,7 +648,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.13";
+            const version = "v1.4.14";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1657,7 +1657,7 @@ if (validationResult.validated) {
         data-action="edit-phone" data-no="${data.no}"
     >
         ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
-    </span>d
+    </span>
                             <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
                             <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
                         </div>
