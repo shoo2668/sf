@@ -634,7 +634,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.9";
+            const version = "v1.4.10";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1135,7 +1135,7 @@ const openDeliveryLocationModal = (itemNo) => {
     
     confirmationModalBody.innerHTML = `
         <p class="text-sm text-gray-600 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
-        <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="${getCleanPhoneNumber(item.receiverTelephoneNo)}" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+        <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="" inputmode="numeric" pattern="[0-9]*" maxlength="13">
     `;
     
     confirmOkButton.textContent = '수정 완료';
@@ -1636,11 +1636,11 @@ if (validationResult.validated) {
                         </div>
                         <div class="flex items-center space-x-2">
     <span 
-        class="text-base font-semibold ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 cursor-pointer underline' : 'text-blue-600'}"
-        ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? `data-action="edit-phone" data-no="${data.no}"` : ''}
+        class="text-base font-semibold cursor-pointer ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 underline' : 'text-blue-600'}"
+        data-action="edit-phone" data-no="${data.no}"
     >
         ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
-    </span>
+    </span>d
                             <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
                             <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
                         </div>
