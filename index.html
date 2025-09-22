@@ -7,6 +7,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        #refresh-indicator {
+            transform: translateY(-100%);
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        #refresh-indicator.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
         html {
     scroll-behavior: smooth !important;
     height: 100%;
@@ -195,7 +203,12 @@ body.modal-open {
             </div>
         </div>
 
-        <div id="main-content-wrapper" class="flex-1 overflow-y-auto min-h-0" style="overscroll-behavior: contain;">
+        <div id="main-content-wrapper" class="flex-1 overflow-y-auto min-h-0 relative" style="overscroll-behavior: contain;">
+            <!-- ▼▼▼ [아래 div 추가] ▼▼▼ -->
+            <div id="refresh-indicator" class="absolute top-0 left-0 right-0 flex justify-center items-center h-12 opacity-0 transition-opacity duration-300 pointer-events-none">
+                <div class="spinner"></div>
+            </div>
+            <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
             <div class="max-w-md mx-auto p-4 sm:p-6 lg:p-8">
                 <div id="data-management-container" class="mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
                     <div>
@@ -634,7 +647,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.11";
+            const version = "v1.4.12";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1018,6 +1031,7 @@ const showMessage = (message, title = '알림') => {
         let isLongPress = false;
         let isRefreshing = false;
         let pullStartY = 0;
+        let refreshIndicator;
         let currentLocationEditItemNo = null;
 
         const searchBarContainer = document.getElementById('search-bar-container');
@@ -2335,9 +2349,9 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
             // ------------------------------------
 
             const mainContent = document.getElementById('main-content-wrapper');
+            refreshIndicator = document.getElementById('refresh-indicator'); // [이 줄 추가]
             let isMainContentTouched = false;
 
-            // ▼▼▼ [아래 코드 블록 전체를 새로 추가] ▼▼▼
             mainContent.addEventListener('touchstart', (e) => {
                 if (mainContent.scrollTop === 0 && !isRefreshing) {
                     pullStartY = e.touches[0].pageY;
@@ -2347,24 +2361,37 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
             mainContent.addEventListener('touchmove', (e) => {
                 const pullDistance = e.touches[0].pageY - pullStartY;
                 if (mainContent.scrollTop === 0 && pullDistance > 0 && !isRefreshing) {
-                    // 시각적 효과가 필요하다면 여기에 추가 (예: 아이콘 표시)
+                    // 당기는 동안 아이콘을 부드럽게 표시
+                    const opacity = Math.min(pullDistance / 80, 1);
+                    refreshIndicator.style.opacity = opacity;
+                    refreshIndicator.style.transform = `translateY(${Math.min(pullDistance, 80) - 80}px)`;
                 }
             }, { passive: true });
 
             mainContent.addEventListener('touchend', (e) => {
                 const pullDistance = e.changedTouches[0].pageY - pullStartY;
+                
                 if (mainContent.scrollTop === 0 && pullDistance > 80 && !isRefreshing) {
                     if (activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
                         isRefreshing = true;
-                        showToastMessage('위치 새로고침 중...', 1500);
+                        refreshIndicator.classList.add('visible'); // 아이콘을 제자리에 고정
+                        
                         sortItemsByDistance(true).finally(() => {
                             isRefreshing = false;
                             pullStartY = 0;
+                            refreshIndicator.classList.remove('visible'); // 아이콘 숨기기
                         });
+                    } else {
+                        // 새로고침 조건이 아닐 경우 아이콘 숨기기
+                        refreshIndicator.classList.remove('visible');
                     }
+                } else if (!isRefreshing) {
+                    // 당기다가 취소한 경우 아이콘 숨기기
+                    refreshIndicator.classList.remove('visible');
+                    refreshIndicator.style.opacity = 0;
+                    refreshIndicator.style.transform = 'translateY(-100%)';
                 }
             });
-            // ▲▲▲ [추가 끝] ▲▲▲
 
             mainContent.addEventListener('touchstart', () => {
                 isMainContentTouched = true;
