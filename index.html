@@ -7,6 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+
+.map-select-btn {
+            color: #4b5563; /* gray-600 */
+        }
+        .map-select-btn.active {
+            background-color: white;
+            color: #1f2937; /* gray-800 */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .map-icon-button {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .map-icon-button.naver {
+            background-color: #2DB400;
+        }
+        .map-icon-button.naver svg {
+            stroke: white;
+        }
+        .map-icon-button.kakao {
+            background-color: #FEE500;
+        }
+        .map-icon-button.kakao svg {
+            stroke: #0085FF;
+        }
+
         #refresh-indicator {
             transform: translateY(-100%);
             transition: transform 0.3s, opacity 0.3s;
@@ -212,6 +239,15 @@ body.modal-open {
             <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
             <div class="max-w-md mx-auto p-4 sm:p-6 lg:p-8">
                 <div id="data-management-container" class="mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
+                    <!-- ▼▼▼ [이 블록 추가] ▼▼▼ -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">지도 앱 선택</h3>
+                        <div id="map-selection-container" class="flex space-x-2 rounded-lg bg-gray-100 p-1">
+                            <button data-map="naver" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">네이버 지도</button>
+                            <button data-map="kakao" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">카카오맵</button>
+                        </div>
+                    </div>
+                    <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800 mb-2">데이터 내보내기/가져오기</h3>
                         <div class="flex space-x-2">
@@ -656,7 +692,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.18";
+            const version = "v1.5.0";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -738,6 +774,12 @@ const showMessage = (message, title = '알림') => {
                                 switch (action) {
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
+                        break;
+                    case 'open-map':
+                        {
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) openMap(item);
+                        }
                         break;
                     // ▼▼▼ [이 블록 추가] ▼▼▼
                     case 'swap-name':
@@ -1587,20 +1629,23 @@ if (validationResult.validated) {
             }
         };
         
-        const openNaverMap = (item) => {
+        const openMap = (item) => {
+            const selectedMap = localStorage.getItem('selectedMap') || 'naver';
             const addressForMapSearch = item.baseAddress || '';
             const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
-            const textarea = document.createElement('textarea');
-            textarea.value = textToCopy;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = 0;
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            try { document.execCommand('copy'); }
-            catch (err) { console.error('클립보드 복사 실패:', err); showMessage('클립보드 복사에 실패했습니다.', '복사 실패'); }
-            document.body.removeChild(textarea);
-            window.location.href = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
+
+            navigator.clipboard.writeText(textToCopy).catch(err => {
+                console.error('클립보드 복사 실패:', err);
+                showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
+            });
+
+            let mapUrl;
+            if (selectedMap === 'naver') {
+                mapUrl = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
+            } else { // kakao
+                mapUrl = `kakaomap://search?q=${encodeURIComponent(addressForMapSearch)}`;
+            }
+            window.location.href = mapUrl;
         };
 
         const highlightHawbNo = (hawbNo, term) => {
@@ -1641,6 +1686,8 @@ if (validationResult.validated) {
             }
 
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
+                const selectedMap = localStorage.getItem('selectedMap') || 'naver'; // [이 줄 추가]
+                const mapButtonClass = selectedMap === 'naver' ? 'naver' : 'kakao'; // [이 줄 추가]
                 const isPhoneNumberInvalid = !isValidPhoneNumber(data.receiverTelephoneNo);
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
                 const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전', '배송중'].includes(currentFilter);
@@ -2345,6 +2392,33 @@ tempMergedResults.set(no, geminiItem);
 
             setVersionInfo();
             setupDelegatedEventListeners();
+
+            // ▼▼▼ [이 블록 추가] ▼▼▼
+            const mapSelectionContainer = document.getElementById('map-selection-container');
+            const mapSelectButtons = mapSelectionContainer.querySelectorAll('.map-select-btn');
+
+            const updateMapSelectionUI = () => {
+                const selectedMap = localStorage.getItem('selectedMap') || 'naver';
+                mapSelectButtons.forEach(button => {
+                    button.classList.toggle('active', button.dataset.map === selectedMap);
+                });
+                // UI가 변경되었을 수 있으므로, 현재 보이는 카드들을 다시 렌더링
+                if (['전체', '배송전', '배송중', '완료'].includes(activeFilter)) {
+                    renderDeliveryCards(activeFilter);
+                }
+            };
+
+            mapSelectionContainer.addEventListener('click', (event) => {
+                const selectedButton = event.target.closest('.map-select-btn');
+                if (selectedButton) {
+                    const mapType = selectedButton.dataset.map;
+                    localStorage.setItem('selectedMap', mapType);
+                    updateMapSelectionUI();
+                }
+            });
+
+            updateMapSelectionUI(); // 앱 시작 시 UI 초기화
+            // ▲▲▲ [추가 끝] ▲▲▲
 
             clearAllCardsButton.addEventListener('click', () => {
                 openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
