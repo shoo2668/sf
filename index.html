@@ -653,7 +653,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.15";
+            const version = "v1.4.16";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -705,8 +705,7 @@ const showMessage = (message, title = '알림') => {
                     return;
                 }
                 
-                                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], div[data-status="완료"], span[data-action="copy-hawb"]');
-                if (!target) return;
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], div[data-status="완료"], span[data-action="copy-hawb"], button[data-action="swap-name"]');                if (!target) return;
 
                                 // ▼▼▼ [수정] 완료 카드 클릭 시 복사 기능 추가 ▼▼▼
                 if (target.dataset.status === '완료' && !event.target.closest('button, a')) {
@@ -737,7 +736,39 @@ const showMessage = (message, title = '알림') => {
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
                         break;
-                                        case 'copy-hawb':
+                    // ▼▼▼ [이 블록 추가] ▼▼▼
+                    case 'swap-name':
+                        {
+                            const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
+                            if (itemIndex > -1) {
+                                const item = deliveryItems[itemIndex];
+                                // 원본 이름이 없다면(초기 데이터), 현재 이름을 원본으로 저장
+                                if (!item.receiverNameKoreanOriginal) {
+                                    item.receiverNameKoreanOriginal = item.receiverNameKorean;
+                                }
+
+                                const currentName = item.receiverNameKorean;
+                                const originalName = item.receiverNameKoreanOriginal;
+
+                                // 현재 이름이 원본과 다르다면 (이미 한번 바뀐 상태라면) -> 원본으로 복구
+                                if (currentName !== originalName) {
+                                    deliveryItems[itemIndex].receiverNameKorean = originalName;
+                                } else {
+                                // 현재 이름이 원본과 같다면 -> 순서 바꾸기 실행
+                                    const nameParts = currentName.trim().split(/\s+/);
+                                    if (nameParts.length > 1) {
+                                        const lastNamePart = nameParts.pop();
+                                        const newName = `${lastNamePart} ${nameParts.join(' ')}`.trim();
+                                        deliveryItems[itemIndex].receiverNameKorean = newName;
+                                    }
+                                }
+                                saveDeliveryItemsToLocalStorage();
+                                renderDeliveryCards(activeFilter);
+                            }
+                        }
+                        break;
+                    // ▲▲▲ [추가 끝] ▲▲▲
+                    case 'copy-hawb':
                         {
                             const hawbToCopy = target.dataset.hawbNo;
                             if (hawbToCopy) {
@@ -1647,8 +1678,11 @@ if (validationResult.validated) {
                         <div class="flex-shrink-0 pt-1 text-gray-600">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
                         </div>
-                        <div>
+                        <div class="flex items-center space-x-2">
                             <p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
+                            <button data-action="swap-name" data-no="${data.no}" class="p-1 text-gray-400 hover:text-gray-700 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                            </button>
                             ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500">(${data.receiverNameOriginal})</p>` : ''}
                         </div>
                     </div>
@@ -2143,6 +2177,7 @@ tempMergedResults.set(no, geminiItem);
                 receiverNameOriginal: item.receiverName || '',
                 companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
                 receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                receiverNameKoreanOriginal: item.receiverNameKorean || item.receiverName || '',
                 receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
                 status: '배송전', isHawbConfirmed: false,
                 deliveryCompletionTime: null, completionType: null, completionDetail: null,
