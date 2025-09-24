@@ -349,12 +349,12 @@ body.modal-open {
 
                 <hr class="my-4 border-gray-300"/>
 
-                <div class="mt-4">
+                                <div class="mt-4">
                     <div class="flex justify-between items-center mb-2">
                          <h3 class="text-lg font-semibold text-gray-800">주소 조각 편집</h3>
                          <div class="flex items-center space-x-2">
-                            <button id="reset-pieces-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            <button id="reset-pieces-btn" class="p-1.5 text-red-500 hover:bg-red-100 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                             <button id="apply-pieces-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
                          </div>
@@ -366,8 +366,11 @@ body.modal-open {
                      <div class="flex justify-between items-center mb-2">
                          <h3 class="text-lg font-semibold text-gray-800">직접 주소 편집</h3>
                          <div class="flex items-center space-x-2">
-                             <button id="revert-direct-btn" class="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.354 1.646a.5.5 0 010 .708L2.707 8l5.647 5.646a.5.5 0 01-.708.708l-6-6a.5.5 0 010-.708l6-6a.5.5 0 01.708 0z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M12.5 8a.5.5 0 01.5-.5h5a.5.5 0 010 1h-5a.5.5 0 01-.5-.5z" clip-rule="evenodd" /></svg>
+                             <button id="revert-direct-btn" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                            </button>
+                             <button id="reset-direct-btn" class="p-1.5 text-red-500 hover:bg-red-100 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                             <button id="apply-direct-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
                          </div>
@@ -653,7 +656,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.17";
+            const version = "v1.4.18";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1384,12 +1387,14 @@ const openSmartEditModal = (itemNo) => {
         return button;
     };
 
-    const basePieces = (item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
+        // AI가 최초 생성한 주소를 기준으로 조각 생성
+    const basePieces = (item.baseAddress_AI || item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
     basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
 
-    if (item.detailAddress) {
+    const detailAddressSource = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
+    if (detailAddressSource) {
         addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 !py-1.5 rounded-full', undefined, 'add-comma'));
-        const detailPieces = (item.detailAddress || '').split(/[\s,]+/).filter(Boolean);
+        const detailPieces = (detailAddressSource || '').split(/[\s,]+/).filter(Boolean);
         detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
     }
 
@@ -1491,12 +1496,22 @@ if (validationResult.validated) {
             autoResizeTextarea({target: piecesAddressInput});
         });
         
-        revertDirectBtn.addEventListener('click', () => {
+                revertDirectBtn.addEventListener('click', () => {
             const item = deliveryItems.find(i => i.no === currentEditItemNo);
             if(item) {
-                directAddressInput.value = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+                // AI 최초 생성 주소로 복원
+                const originalBase = typeof item.baseAddress_AI !== 'undefined' ? item.baseAddress_AI : item.baseAddress;
+                const originalDetail = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
+                directAddressInput.value = originalBase + (originalDetail ? `, ${originalDetail}` : '');
                 autoResizeTextarea({target: directAddressInput});
             }
+        });
+
+        // [새로 추가] 직접 주소 편집 입력창 비우기 버튼
+        const resetDirectBtn = document.getElementById('reset-direct-btn');
+        resetDirectBtn.addEventListener('click', () => {
+            directAddressInput.value = '';
+            autoResizeTextarea({target: directAddressInput});
         });
         
         smartEditExitBtn.addEventListener('click', closeSmartEditModal);
@@ -2175,6 +2190,8 @@ tempMergedResults.set(no, geminiItem);
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
+                baseAddress_AI: item.baseAddressKorean || '', // [이 줄 추가]
+                detailAddress_AI: item.detailAddressKorean || '', // [이 줄 추가]
                 receiverAddressOriginal: item.receiverAddress || '',
                 companyNameOriginal: item.receiverCompanyName || '',
                 receiverNameOriginal: item.receiverName || '',
