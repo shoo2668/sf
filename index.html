@@ -17,8 +17,8 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .map-icon-button {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             flex-shrink: 0;
         }
         .map-icon-button.naver {
@@ -692,7 +692,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.5.1";
+            const version = "v1.5.2";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1713,10 +1713,10 @@ if (validationResult.validated) {
                 const detailsHtml = `
                     <div class="flex items-start space-x-2.5">
                         <button data-action="open-map" data-no="${data.no}" class="map-icon-button rounded-full flex items-center justify-center ${mapButtonClass} ${isMapButtonActive ? '' : 'opacity-50 cursor-not-allowed'}" ${isMapButtonActive ? '' : 'disabled'}>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                         </button>
-                        <div>
-    <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500' : 'text-blue-600'}" 
+                        <div class="pt-0.5">
+    <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500' : 'text-blue-600'}"
        ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
         ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
     </p>
