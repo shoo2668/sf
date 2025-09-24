@@ -494,7 +494,12 @@ body.modal-open {
     *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
     *   **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
         *   Translate every component EXACTLY as it appears.
-        *   **Word Joining Rule:** If a single word is broken across multiple lines (e.g., 'OLYMPI' on one line and 'CRO' on the next), you MUST join them into a single word without a space (e.g., 'OLYMPICRO').
+        *   **English Word Joining Rule:** If a single English word is broken across lines (e.g., 'OLYMPI' and 'CRO'), you MUST join them (e.g., 'OLYMPICRO').
+        *   **Korean Noun Joining Rule:** When processing Korean addresses, if two consecutive lines can form a natural compound noun (like an apartment name or a road name), you MUST join them without a space. However, do not merge numbers with units (like 동, 호) if they are on separate lines.
+            *   Example 1: `래미` on line 1 and `안` on line 2 MUST become `래미안`.
+            *   Example 2: `오금` on line 1 and `로` on line 2 MUST become `오금로`.
+            *   Example 3: `106동` on line 1 and `1302호` on line 2 MUST remain separate as `106동 1302호`.
+        *   **Default Rule:** If the lines do not form a natural single word, treat the line break as a space.
         *   DO NOT reorder, correct, or omit any other characters (e.g., 'GAGIL' MUST become '가길').
         *   If the original is already in Korean, just copy it.
         *   Let's call this result the "Translated Full Address".
@@ -648,7 +653,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.4.14";
+            const version = "v1.4.15";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
