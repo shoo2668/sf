@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delivery-sheet-cache-v12'; // 버전을 v10으로 올립니다.
+const CACHE_NAME = 'delivery-sheet-cache-v1.6.2-update'; // 버전을 명확하게 올립니다.
 const urlsToCache = [
   '/sf/',
   '/sf/index.html',
@@ -18,15 +18,13 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
+// [수정된 부분] 네트워크 우선 전략
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
+    fetch(event.request).catch(() => {
+      // 네트워크 요청이 실패하면 (오프라인) 캐시에서 반환
+      return caches.match(event.request);
+    })
   );
 });
 
