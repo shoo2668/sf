@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delivery-sheet-cache-v6'; // 숫자를 올려서 캐시를 강제 업데이트합니다.
+const CACHE_NAME = 'delivery-sheet-cache-v7'; // 숫자를 올려서 캐시를 강제 업데이트합니다.
 const urlsToCache = [
   './',
   './index.html'

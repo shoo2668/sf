@@ -5,7 +5,7 @@
   "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/shoo2668/sf/refs/heads/main/icon-192-maskable.png",
