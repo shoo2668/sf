@@ -1,7 +1,8 @@
-const CACHE_NAME = 'delivery-sheet-cache-v8'; // 버전을 v8로 올립니다.
+const CACHE_NAME = 'delivery-sheet-cache-v9'; // 버전을 v9로 올립니다.
 const urlsToCache = [
-  './index.html',
-  './manifest.json',
+  '/sf/', // 저장소 이름으로 된 루트 경로
+  '/sf/index.html',
+  '/sf/manifest.json',
   'https://raw.githubusercontent.com/shoo2668/sf/main/icon-192-maskable.png',
   'https://raw.githubusercontent.com/shoo2668/sf/main/icon-512-maskable.png'
 ];
