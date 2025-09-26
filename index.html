@@ -695,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.6";
+            const version = "v1.6.7";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2527,7 +2527,48 @@ tempMergedResults.set(no, geminiItem);
                     resetIndicator();
                 }
             });
+// ▼▼▼ [브라우저의 기본 '당겨서 새로고침' 방지 최종 코드] ▼▼▼
+            let pullDownStartY = 0;
+            document.body.addEventListener('touchstart', (e) => {
+                // 터치가 시작될 때의 Y좌표를 기록
+                if (e.touches.length === 1) {
+                    pullDownStartY = e.touches[0].clientY;
+                }
+            }, { passive: true });
 
+            window.addEventListener('touchmove', (event) => {
+                const touchY = event.touches[0].clientY;
+                const isPullingDown = touchY > pullDownStartY;
+
+                // 위로 스크롤하는 경우는 새로고침과 무관하므로, 아무것도 하지 않음
+                if (!isPullingDown) {
+                    return;
+                }
+
+                // 스크롤 가능한 모든 요소를 찾음
+                const mainContent = document.getElementById('main-content-wrapper');
+                const smartEditScroll = document.getElementById('smart-edit-scroll-area');
+                const numberJumpList = document.getElementById('number-jump-list');
+
+                let scrollableElement = null;
+                if (mainContent && mainContent.contains(event.target)) {
+                    scrollableElement = mainContent;
+                } else if (smartEditScroll && smartEditScroll.contains(event.target)) {
+                    scrollableElement = smartEditScroll;
+                } else if (numberJumpList && numberJumpList.contains(event.target)) {
+                    scrollableElement = numberJumpList;
+                }
+
+                // 조건: (스크롤 가능한 요소의 최상단에 있거나) 또는 (스크롤과 무관한 영역일 때)
+                // 이 두 가지 경우가 브라우저 새로고침이 발생할 수 있는 유일한 상황임
+                if ((scrollableElement && scrollableElement.scrollTop === 0) || !scrollableElement) {
+                    // 이 때만 브라우저의 기본 동작(새로고침)을 막음
+                    event.preventDefault();
+                }
+                // 그 외의 경우 (스크롤이 중간에 있는 경우)는 아무것도 하지 않아 정상 스크롤이 가능함
+
+            }, { passive: false });
+            // ▲▲▲ [추가 끝] ▲▲▲
             // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
