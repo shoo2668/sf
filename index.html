@@ -695,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.3";
+            const version = "v1.6.4";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2528,34 +2528,24 @@ tempMergedResults.set(no, geminiItem);
             });
 
             window.addEventListener('touchmove', (event) => {
-                // 스크롤 가능한 요소들을 찾음
                 const mainContent = document.getElementById('main-content-wrapper');
-                const smartEditScroll = document.getElementById('smart-edit-scroll-area');
-                const numberJumpList = document.getElementById('number-jump-list');
-
-                // 현재 스크롤 중인 요소가 있는지 확인
-                const isScrollingMain = mainContent && mainContent.contains(event.target);
-                const isScrollingModal = (smartEditScroll && smartEditScroll.contains(event.target)) || 
-                                         (numberJumpList && numberJumpList.contains(event.target));
-
-                // 1. 모달 내부에서 스크롤 중일 때는 아무것도 하지 않음 (스크롤 허용)
-                if (isScrollingModal) {
+                
+                // 현재 스크롤 위치가 0이 아니면, 새로고침이 발생할 수 없으므로 아무것도 하지 않음
+                if (mainContent.scrollTop > 0) {
                     return;
                 }
 
-                // 2. 메인 컨텐츠 영역에서 스크롤 중일 때
-                if (isScrollingMain) {
-                    // 스크롤이 최상단(0)보다 조금이라도 아래에 있다면,
-                    // 브라우저 새로고침을 막을 필요가 없으므로 여기서 종료
-                    if (mainContent.scrollTop > 0) {
-                        return;
-                    }
-                    // 만약 스크롤이 최상단(0)에 있다면, 아래의 preventDefault()가 실행되어
-                    // 브라우저 새로고침을 막고, 우리가 만든 GPS 새로고침만 가능하게 함
+                // 모달이 열려있고, 터치 지점이 스크롤 가능한 모달 내부라면 아무것도 하지 않음
+                const isModalOpen = document.body.classList.contains('modal-open');
+                if (isModalOpen && event.target.closest('#smart-edit-scroll-area, #number-jump-list')) {
+                    return;
                 }
-                
-                // 3. 위의 모든 경우에 해당하지 않으면 (모달 배경, 상단 필터 등)
-                // 브라우저의 기본 동작(새로고침, 스크롤 등)을 무조건 막음
+
+                // 위의 조건에 해당하지 않는 모든 경우, 즉
+                // 1. 메인 컨텐츠가 최상단에 있을 때
+                // 2. 모달이 열려있지만 스크롤 불가능한 영역일 때
+                // 3. 스크롤과 무관한 영역(상단 필터 등)일 때
+                // 브라우저의 기본 동작(당겨서 새로고침 등)을 막는다.
                 event.preventDefault();
 
             }, { passive: false });
