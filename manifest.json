@@ -1,0 +1,23 @@
+{
+  "name": "SF 배송 시트",
+  "short_name": "배송 시트",
+  "description": "SF Express 배송 관리를 위한 PWA 시트",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://github.com/shoo2668/sf/blob/main/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://github.com/shoo2668/sf/blob/main/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
