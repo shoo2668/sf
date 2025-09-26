@@ -695,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.2";
+            const version = "v1.6.3";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2528,10 +2528,36 @@ tempMergedResults.set(no, geminiItem);
             });
 
             window.addEventListener('touchmove', (event) => {
-                const canScroll = event.target.closest('#main-content-wrapper, #smart-edit-scroll-area, #number-jump-list');
-                if (!canScroll) {
-                    event.preventDefault();
+                // 스크롤 가능한 요소들을 찾음
+                const mainContent = document.getElementById('main-content-wrapper');
+                const smartEditScroll = document.getElementById('smart-edit-scroll-area');
+                const numberJumpList = document.getElementById('number-jump-list');
+
+                // 현재 스크롤 중인 요소가 있는지 확인
+                const isScrollingMain = mainContent && mainContent.contains(event.target);
+                const isScrollingModal = (smartEditScroll && smartEditScroll.contains(event.target)) || 
+                                         (numberJumpList && numberJumpList.contains(event.target));
+
+                // 1. 모달 내부에서 스크롤 중일 때는 아무것도 하지 않음 (스크롤 허용)
+                if (isScrollingModal) {
+                    return;
                 }
+
+                // 2. 메인 컨텐츠 영역에서 스크롤 중일 때
+                if (isScrollingMain) {
+                    // 스크롤이 최상단(0)보다 조금이라도 아래에 있다면,
+                    // 브라우저 새로고침을 막을 필요가 없으므로 여기서 종료
+                    if (mainContent.scrollTop > 0) {
+                        return;
+                    }
+                    // 만약 스크롤이 최상단(0)에 있다면, 아래의 preventDefault()가 실행되어
+                    // 브라우저 새로고침을 막고, 우리가 만든 GPS 새로고침만 가능하게 함
+                }
+                
+                // 3. 위의 모든 경우에 해당하지 않으면 (모달 배경, 상단 필터 등)
+                // 브라우저의 기본 동작(새로고침, 스크롤 등)을 무조건 막음
+                event.preventDefault();
+
             }, { passive: false });
 
             // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
