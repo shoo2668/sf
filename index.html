@@ -695,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.5";
+            const version = "v1.6.6";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2526,44 +2526,6 @@ tempMergedResults.set(no, geminiItem);
                     resetIndicator();
                 }
             });
-
-            window.addEventListener('touchmove', (event) => {
-                // ▼▼▼ [이 블록으로 통째로 교체] ▼▼▼
-            let lastTouchY = 0;
-            document.body.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    lastTouchY = e.touches[0].clientY;
-                }
-            }, { passive: true });
-
-            document.body.addEventListener('touchmove', (e) => {
-                const touchY = e.touches[0].clientY;
-                const touchYDelta = touchY - lastTouchY;
-                lastTouchY = touchY;
-
-                const isScrollingDown = touchYDelta > 0;
-
-                // 스크롤 가능한 요소들을 찾음
-                const mainContent = document.getElementById('main-content-wrapper');
-                const smartEditScroll = document.getElementById('smart-edit-scroll-area');
-                const numberJumpList = document.getElementById('number-jump-list');
-
-                // 현재 터치된 지점이 스크롤 가능한 영역인지 확인
-                const isTouchingScrollable = e.target.closest('#main-content-wrapper, #smart-edit-scroll-area, #number-jump-list');
-                
-                // 스크롤 가능한 요소의 현재 스크롤 위치
-                let currentScrollTop = 0;
-                if (mainContent.contains(e.target)) currentScrollTop = mainContent.scrollTop;
-                if (smartEditScroll && smartEditScroll.contains(e.target)) currentScrollTop = smartEditScroll.scrollTop;
-                if (numberJumpList && numberJumpList.contains(e.target)) currentScrollTop = numberJumpList.scrollTop;
-
-                // 조건: 아래로 당기고 있고, 스크롤 위치가 최상단이며, 터치 지점이 스크롤 영역일 때
-                if (isScrollingDown && currentScrollTop === 0 && isTouchingScrollable) {
-                    // 이 조건은 '당겨서 새로고침'이 발생할 수 있는 유일한 상황임
-                    event.preventDefault();
-                }
-            }, { passive: false });
-            // ▲▲▲ [교체 끝] ▲▲▲
 
             // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
             document.addEventListener('visibilitychange', () => {
