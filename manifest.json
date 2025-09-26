@@ -8,13 +8,13 @@
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "https://github.com/shoo2668/sf/blob/main/icon-192-maskable.png",
+      "src": "https://raw.githubusercontent.com/shoo2668/sf/refs/heads/main/icon-192-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://github.com/shoo2668/sf/blob/main/icon-512-maskable.png",
+      "src": "https://raw.githubusercontent.com/shoo2668/sf/refs/heads/main/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
