@@ -695,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.7";
+            const version = "v1.6.8";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2779,17 +2779,17 @@ document.addEventListener("touchmove", function (e) {
     const currentY = e.touches[0].clientY;
     const scrollTop = document.scrollingElement.scrollTop;
 
-    // 1. 모달이 열려 있으면 무조건 막음
+    // --- 모달이 켜진 경우: 모든 스크롤 차단 ---
     if (document.body.classList.contains("modal-open")) {
         e.preventDefault();
         return;
     }
 
-    // 2. 스크롤 최상단에서 아래로 당길 때
-    if (scrollTop === 0 && currentY > lastTouchY) {
+    // --- Pull-to-refresh 감지: 스크롤 최상단 + 아래로 당길 때 ---
+    if (scrollTop <= 0 && currentY > lastTouchY) {
         if (currentSortOrder === "distance") {
             // 거리순 정렬일 때만 GPS 갱신
-            e.preventDefault();
+            e.preventDefault(); // 브라우저 새로고침 막음
             if (!isRefreshing) {
                 isRefreshing = true;
                 refreshIndicator.classList.add("visible");
@@ -2811,11 +2811,12 @@ document.addEventListener("touchmove", function (e) {
                     });
             }
         } else {
-            // 다른 정렬일 때는 그냥 막기
+            // 거리순이 아닐 때는 그냥 막기
             e.preventDefault();
         }
     }
 
+    // 마지막 터치 위치 갱신 (중요)
     lastTouchY = currentY;
 }, { passive: false });
 // ▲▲▲ 새로고침 제어 끝 ▲▲▲
