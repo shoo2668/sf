@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>배송 시트</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -694,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.1";
+            const version = "v1.6.2";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2382,8 +2383,8 @@ tempMergedResults.set(no, geminiItem);
         );
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-        // ▼▼▼ [이 블록 추가] ▼▼▼
+        document.addEventListener('DOMContentLoaded', () => {
+        // ▼▼▼ PWA 서비스 워커 등록 ▼▼▼
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js').then(registration => {
@@ -2393,7 +2394,7 @@ tempMergedResults.set(no, geminiItem);
                 });
             });
         }
-        // ▲▲▲ [추가 끝] ▲▲▲
+        
         try {
             resizeAppContainer();
             window.addEventListener('resize', resizeAppContainer);
@@ -2401,7 +2402,7 @@ tempMergedResults.set(no, geminiItem);
             setVersionInfo();
             setupDelegatedEventListeners();
 
-            // ▼▼▼ [이 블록 추가] ▼▼▼
+            // ▼▼▼ 지도 앱 선택 UI 및 이벤트 핸들러 ▼▼▼
             const mapSelectionContainer = document.getElementById('map-selection-container');
             const mapSelectButtons = mapSelectionContainer.querySelectorAll('.map-select-btn');
 
@@ -2410,7 +2411,6 @@ tempMergedResults.set(no, geminiItem);
                 mapSelectButtons.forEach(button => {
                     button.classList.toggle('active', button.dataset.map === selectedMap);
                 });
-                // UI가 변경되었을 수 있으므로, 현재 보이는 카드들을 다시 렌더링
                 if (['전체', '배송전', '배송중', '완료'].includes(activeFilter)) {
                     renderDeliveryCards(activeFilter);
                 }
@@ -2425,9 +2425,9 @@ tempMergedResults.set(no, geminiItem);
                 }
             });
 
-            updateMapSelectionUI(); // 앱 시작 시 UI 초기화
-            // ▲▲▲ [추가 끝] ▲▲▲
+            updateMapSelectionUI();
 
+            // ▼▼▼ 기타 버튼 이벤트 핸들러 ▼▼▼
             clearAllCardsButton.addEventListener('click', () => {
                 openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
                     deliveryItems = [];
@@ -2438,43 +2438,36 @@ tempMergedResults.set(no, geminiItem);
                 });
             });
 
-locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
+            locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
 
-        locationModalConfirm.addEventListener('click', () => {
+            locationModalConfirm.addEventListener('click', () => {
                 const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
                 if (!selectedOption) {
                     showMessage('배송 위치를 선택해주세요.');
                     return;
                 }
-
-                const itemNoToShow = currentLocationEditItemNo; // [이 줄 추가]
+                const itemNoToShow = currentLocationEditItemNo;
                 const location = selectedOption.value;
                 const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                 
                 handleStatusChange(currentLocationEditItemNo, '완료', currentTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
-                
-                showToastMessage(`${itemNoToShow}번: ${location} 완료`); // [이 줄 수정]
+                showToastMessage(`${itemNoToShow}번: ${location} 완료`);
             });
 
-            // 키보드 '이동' 키로 검색 실행 및 키패드 숨기기
             invoiceNumberInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
-                    event.preventDefault(); // 폼 제출 등 기본 동작 방지
-                    
-                    // 검색어는 이미 'input' 이벤트에서 실시간으로 적용되고 있으므로
-                    // 여기서는 키보드를 숨기는 동작만 수행하면 됩니다.
+                    event.preventDefault();
                     invoiceNumberInput.blur(); 
                 }
             });
 
-            // --- 외부 스캐너 앱 연동 로직 ---
+            // ▼▼▼ 외부 스캐너 앱 연동 로직 ▼▼▼
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const filterFromUrl = urlParams.get('filter');
-
                 let initialLoad = true;
                 if (hawbFromUrl) {
                     searchTerm = hawbFromUrl;
@@ -2482,27 +2475,22 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
                 } else {
                     initialLoad = false;
                 }
-
                 if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                     changeFilter(filterFromUrl, '', initialLoad);
                 } else {
                     changeFilter('배송준비', '', true);
                 }
             }, 0);
-            // ------------------------------------
 
+            // ▼▼▼ 당겨서 새로고침 및 브라우저 새로고침 방지 로직 ▼▼▼
             const mainContent = document.getElementById('main-content-wrapper');
-            refreshIndicator = document.getElementById('refresh-indicator'); // [이 줄 추가]
-            let isMainContentTouched = false;
-
-            refreshIndicator = document.getElementById('refresh-indicator'); // DOM 요소 할당
+            refreshIndicator = document.getElementById('refresh-indicator');
 
             mainContent.addEventListener('touchstart', (e) => {
-                // 1. 거리순 정렬 상태일 때만 새로고침 준비
                 if (mainContent.scrollTop === 0 && !isRefreshing && activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
                     pullStartY = e.touches[0].pageY;
                 } else {
-                    pullStartY = 0; // 그 외의 경우는 시작점을 0으로 초기화하여 동작 방지
+                    pullStartY = 0;
                 }
             }, { passive: true });
 
@@ -2522,91 +2510,64 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
                 
                 const resetIndicator = () => {
                     refreshIndicator.classList.remove('visible');
-                    // 3. 아이콘을 확실하게 숨기기 위해 스타일 초기화
                     refreshIndicator.style.opacity = 0;
                     refreshIndicator.style.transform = 'translateY(-100%)';
                 };
 
-                // 1. 새로고침 실행 조건을 다시 한번 명확하게 확인
                 if (pullDistance > 100 && activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
                     isRefreshing = true;
                     refreshIndicator.classList.add('visible');
-                    
                     sortItemsByDistance(true).finally(() => {
                         isRefreshing = false;
                         pullStartY = 0;
-                        resetIndicator(); // 3. 새로고침이 끝나면 아이콘 숨기기
+                        resetIndicator();
                     });
                 } else {
-                    // 당기다 취소했거나, 조건이 맞지 않으면 아이콘 숨기기
                     resetIndicator();
                 }
             });
 
-            mainContent.addEventListener('touchstart', () => {
-                isMainContentTouched = true;
-            }, { passive: true });
-
-            mainContent.addEventListener('touchend', () => {
-                isMainContentTouched = false;
-            }, { passive: true });
-            
             window.addEventListener('touchmove', (event) => {
-                // 스크롤이 가능한 영역(메인 컨텐츠, 모달 내부 등)에서 터치가 시작된 경우는 기본 동작(스크롤)을 허용
                 const canScroll = event.target.closest('#main-content-wrapper, #smart-edit-scroll-area, #number-jump-list');
-                
                 if (!canScroll) {
-                    // 그 외의 모든 영역(상단 필터, 하단 바 등)에서의 터치 움직임은
-                    // 브라우저 새로고침 같은 기본 동작을 막음
                     event.preventDefault();
                 }
             }, { passive: false });
 
+            // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // 외부 앱(네이버 지도 등)에서 바로 돌아왔을 때의 popstate 이벤트를 무시하기 위한 플래그
                     justReturnedFromExternalApp = true;
                     setTimeout(() => {
                         justReturnedFromExternalApp = false;
                     }, 500);
-
                 }
             });
 
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', (event) => {
-    // 스마트 편집 모달이 열려있는 상태에서 popstate가 발생하면 모달을 닫습니다.
-    if (smartEditModal.style.display === 'flex') {
-        document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
-        smartEditModal.style.display = 'none';
-        currentEditItemNo = null;
-        // 모달을 닫는 동작을 수행했으므로, 앱 종료 로직으로 넘어가지 않도록 여기서 함수를 종료합니다.
-        return;
-    }
-
-    if (justReturnedFromExternalApp) {
-        justReturnedFromExternalApp = false; // 사용 후 플래그 초기화
-        history.pushState(null, '', location.href); // history 상태 복원
-        return;
-    }
-
-    if (backButtonPressedOnce) {
-        // 실제 앱 종료 의도. history.back()을 호출하여 앱을 닫거나 이전 페이지로 이동.
-        // 이 부분은 그대로 둡니다.
-        history.back(); 
-        return;
-    }
-
-    backButtonPressedOnce = true;
-    showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
-    setTimeout(() => {
-        backButtonPressedOnce = false;
-    }, 2000);
-
-    // 사용자가 뒤로가기를 눌렀지만 앱을 종료하지 않았으므로,
-    // pop된 history를 다시 push하여 현재 페이지에 머무르도록 합니다.
-    history.pushState(null, '', location.href);
-});
+                if (smartEditModal.style.display === 'flex') {
+                    document.body.classList.remove('modal-open');
+                    smartEditModal.style.display = 'none';
+                    currentEditItemNo = null;
+                    return;
+                }
+                if (justReturnedFromExternalApp) {
+                    justReturnedFromExternalApp = false;
+                    history.pushState(null, '', location.href);
+                    return;
+                }
+                if (backButtonPressedOnce) {
+                    history.back(); 
+                    return;
+                }
+                backButtonPressedOnce = true;
+                showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
+                setTimeout(() => {
+                    backButtonPressedOnce = false;
+                }, 2000);
+                history.pushState(null, '', location.href);
+            });
 
             document.body.addEventListener('touchstart', (event) => {
                 const touch = event.touches[0];
@@ -2615,46 +2576,34 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
                 touchStartTime = Date.now();
             }, { passive: true });
 
-            // ▼▼▼ [추가] 스와이프 시작을 감지하는 touchmove 이벤트 리스너 ▼▼▼
             let isSwiping = false;
             document.body.addEventListener('touchmove', () => {
                 if (!isSwiping) {
-                    // 스와이프가 시작되면 모든 필터 버튼의 포인터 이벤트를 비활성화
                     filterButtonsContainer.querySelectorAll('button').forEach(btn => btn.style.pointerEvents = 'none');
                 }
                 isSwiping = true;
             }, { passive: true });
 
             document.body.addEventListener('touchend', (event) => {
-                // ▼▼▼ [추가] 스와이프가 끝났으므로, 포인터 이벤트를 다시 활성화 ▼▼▼
                 if (isSwiping) {
                     setTimeout(() => {
                         filterButtonsContainer.querySelectorAll('button').forEach(btn => btn.style.pointerEvents = 'auto');
                         isSwiping = false;
-                    }, 100); // 약간의 딜레이를 주어 클릭 이벤트와 충돌 방지
+                    }, 100);
                 }
-
-                if (signatureModal.style.display === 'flex' ||
-                    confirmationModal.style.display === 'flex' ||
-                    smartEditModal.style.display === 'flex' ||
-                    numberJumpModal.style.display === 'flex') {
+                if (signatureModal.style.display === 'flex' || confirmationModal.style.display === 'flex' || smartEditModal.style.display === 'flex' || numberJumpModal.style.display === 'flex') {
                     return;
                 }
-
                 const touch = event.changedTouches[0];
                 const touchEndX = touch.clientX;
                 const touchEndY = touch.clientY;
-
                 const diffX = touchEndX - touchStartX;
                 const diffY = touchEndY - touchStartY;
                 const duration = Date.now() - touchStartTime;
-
                 if (duration > 500 || Math.abs(diffX) < 75 || Math.abs(diffX) < Math.abs(diffY) * 2) {
                     return;
                 }
-
                 const currentFilterIndex = filterCategories.indexOf(activeFilter);
-                
                 if (diffX > 0) {
                     if (currentFilterIndex > 0) {
                         const prevFilter = filterCategories[currentFilterIndex - 1];
@@ -2671,29 +2620,20 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
             actionBarContainer.addEventListener('click', async (event) => {
                 const button = event.target.closest('button');
                 if (!button) return;
-
                 const action = button.dataset.action;
                 if (!action) return;
-
                 const fabOptions = document.getElementById('fab-options');
-
-                // 메인 버튼 클릭 시 옵션 토글
                 if (action === 'toggle-fab') {
                     fabOptions.classList.toggle('expanded');
                     return;
                 }
-
-                // 옵션 버튼 클릭 시의 공통 동작
                 if (button.parentNode.id === 'fab-options') {
                     fabOptions.classList.remove('expanded');
-
                     if (action === 'sort-distance') deliveryInProgressSortOrder = 'distance';
                     else if (action === 'sort-no') deliveryInProgressSortOrder = 'no';
                     else if (action === 'sort-time') completedSortOrder = 'time';
                     else if (action === 'sort-no-completed') completedSortOrder = 'no';
                 }
-
-                // 각 액션에 따른 실제 기능 실행
                 switch (action) {
                     case 'sort-distance':
                         sortItemsByDistance();
@@ -2756,98 +2696,48 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
                         showToastMessage('빠른 완료시간순으로 정렬되었습니다.');
                         break;
                 }
-
-                // 옵션 버튼을 클릭했을 때만 FAB UI를 즉시 갱신
                 if (button.parentNode.id === 'fab-options') {
                     setTimeout(setupFab, 50);
                 }
             });
 
-            // --- 번호로 이동 모달 ---
-numberJumpClose.addEventListener('click', () => {
-    numberJumpModal.style.display = 'none';
-});
-// 배경 클릭으로 닫기 추가
-numberJumpModal.addEventListener('click', (event) => {
-    if (event.target === numberJumpModal) {
-        numberJumpModal.style.display = 'none';
-    }
-});
+            // --- 모달 닫기 이벤트 핸들러 ---
+            numberJumpClose.addEventListener('click', () => numberJumpModal.style.display = 'none');
+            numberJumpModal.addEventListener('click', (event) => { if (event.target === numberJumpModal) numberJumpModal.style.display = 'none'; });
+            smartEditExitBtn.addEventListener('click', closeSmartEditModal);
+            smartEditModal.addEventListener('click', (event) => { if (event.target === smartEditModal) closeSmartEditModal(); });
+            cancelSignatureBtn.addEventListener('click', closeSignatureModal);
+            signatureModal.addEventListener('click', (event) => { if (event.target === signatureModal) closeSignatureModal(); });
 
-// --- 스마트 주소 편집 모달 ---
-smartEditExitBtn.addEventListener('click', closeSmartEditModal);
-
-// 모달의 배경(회색 영역)을 클릭했을 때 닫히도록 이벤트 리스너 추가
-smartEditModal.addEventListener('click', (event) => {
-    // event.target은 사용자가 '정확히' 클릭한 요소를 가리킵니다.
-    // 만약 사용자가 모달의 회색 배경 부분을 직접 클릭했다면,
-    // event.target은 smartEditModal 요소 자체가 됩니다.
-    // 하지만 모달 내부의 하얀 컨텐츠 영역이나 버튼을 클릭하면
-    // event.target은 그 컨텐츠나 버튼이 되므로, 아래 조건문은 false가 되어
-    // 모달이 닫히지 않습니다.
-    if (event.target === smartEditModal) {
-        closeSmartEditModal();
-    }
-});
-
-// --- 서명 입력 모달 (예시) ---
-cancelSignatureBtn.addEventListener('click', closeSignatureModal);
-// 배경 클릭으로 닫기 추가
-signatureModal.addEventListener('click', (event) => {
-    if (event.target === signatureModal) {
-        closeSignatureModal();
-    }
-});
-
-// --- 로그 뷰어 관련 요소 및 이벤트 리스너 ---
+            // --- 로그 뷰어 이벤트 핸들러 ---
             const viewLogsButton = document.getElementById('viewLogsButton');
             const clearLogsButton = document.getElementById('clearLogsButton');
             const logViewerModal = document.getElementById('log-viewer-modal');
             const logContentDisplay = document.getElementById('log-content-display');
             const logViewerClose = document.getElementById('log-viewer-close');
             const exportLogsButton = document.getElementById('exportLogsButton');
-
             viewLogsButton.addEventListener('click', () => {
                 const logs = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY)) || [];
-                if (logs.length === 0) {
-                    logContentDisplay.textContent = '기록된 오류 로그가 없습니다.';
-                } else {
-                    // 로그 객체를 보기 좋은 문자열로 변환
-                    const formattedLogs = logs.map(log => {
-                        return `[${log.timestamp}] - ${log.message}\n  at ${log.source} (${log.line}:${log.column})\n  Stack: ${log.stack}\n--------------------------------------`;
-                    }).join('\n\n');
-                    logContentDisplay.textContent = formattedLogs;
-                }
+                logContentDisplay.textContent = logs.length === 0 ? '기록된 오류 로그가 없습니다.' : logs.map(log => `[${log.timestamp}] - ${log.message}\n  at ${log.source} (${log.line}:${log.column})\n  Stack: ${log.stack}\n--------------------------------------`).join('\n\n');
                 document.body.classList.add('modal-open');
                 logViewerModal.style.display = 'flex';
             });
-
             clearLogsButton.addEventListener('click', () => {
                 openConfirmationModal('모든 오류 로그 기록을 삭제하시겠습니까?', () => {
                     localStorage.removeItem(LOG_STORAGE_KEY);
                     showToastMessage('로그 기록이 삭제되었습니다.');
                 });
             });
-
             logViewerClose.addEventListener('click', () => {
                 document.body.classList.remove('modal-open');
                 logViewerModal.style.display = 'none';
             });
-
             exportLogsButton.addEventListener('click', () => {
                 const logs = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY)) || [];
-                if (logs.length === 0) {
-                    showMessage('저장할 로그가 없습니다.');
-                    return;
-                }
-                
-                const formattedLogs = logs.map(log => JSON.stringify(log, null, 2)).join(',\n');
-                const dataStr = `[\n${formattedLogs}\n]`;
-                
+                if (logs.length === 0) { showMessage('저장할 로그가 없습니다.'); return; }
+                const dataStr = `[\n${logs.map(log => JSON.stringify(log, null, 2)).join(',\n')}\n]`;
                 const today = new Date();
-                const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                const fileName = `SF-Error-Logs-${formattedDate}.txt`;
-
+                const fileName = `SF-Error-Logs-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.txt`;
                 const blob = new Blob([dataStr], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -2860,25 +2750,17 @@ signatureModal.addEventListener('click', (event) => {
                 showToastMessage(`로그가 '${fileName}' 파일로 저장되었습니다.`);
             });
 
-            // --- 로그 뷰어 끝 ---
-
+            // --- 앱 데이터 로딩 ---
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
-    let parsedItems = JSON.parse(storedItems);
-    deliveryItems = parsedItems.map(item => {
-        if (typeof item.addressLocation === 'undefined') {
-            item.addressLocation = null;
-        }
-        if (typeof item.isStruckThrough === 'undefined') {
-            item.isStruckThrough = false;
-        }
-        // isAddressValidated 속성이 없으면 기본값 true로 설정 (기존 데이터 호환)
-        if (typeof item.isAddressValidated === 'undefined') {
-            item.isAddressValidated = true;
-        }
-        return item;
-    }).sort((a, b) => a.no - b.no);
-}
+                let parsedItems = JSON.parse(storedItems);
+                deliveryItems = parsedItems.map(item => {
+                    if (typeof item.addressLocation === 'undefined') item.addressLocation = null;
+                    if (typeof item.isStruckThrough === 'undefined') item.isStruckThrough = false;
+                    if (typeof item.isAddressValidated === 'undefined') item.isAddressValidated = true;
+                    return item;
+                }).sort((a, b) => a.no - b.no);
+            }
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
