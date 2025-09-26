@@ -694,7 +694,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.0";
+            const version = "v1.6.1";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2552,25 +2552,12 @@ locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
             }, { passive: true });
             
             window.addEventListener('touchmove', (event) => {
-                if (!isMainContentTouched) {
-                    // allow touch scrolling when a modal with its own scroll is open
-                    try {
-                        const modalOpen = (smartEditModal && smartEditModal.style.display === 'flex') ||
-                                          (numberJumpModal && numberJumpModal.style.display === 'flex') ||
-                                          (signatureModal && signatureModal.style.display === 'flex') ||
-                                          (confirmationModal && confirmationModal.style.display === 'flex');
-                        const withinScrollableModal = event.target && event.target.closest && (
-                            event.target.closest('#smart-edit-scroll-area') ||
-                            event.target.closest('#number-jump-list') ||
-                            event.target.closest('.smart-edit-modal-content') ||
-                            event.target.closest('.number-jump-modal-content')
-                        );
-                        if (modalOpen || withinScrollableModal) {
-                            return; // allow normal scroll inside modal
-                        }
-                    } catch (e) {
-                        // if any error, fall back to preventing default (safer)
-                    }
+                // 스크롤이 가능한 영역(메인 컨텐츠, 모달 내부 등)에서 터치가 시작된 경우는 기본 동작(스크롤)을 허용
+                const canScroll = event.target.closest('#main-content-wrapper, #smart-edit-scroll-area, #number-jump-list');
+                
+                if (!canScroll) {
+                    // 그 외의 모든 영역(상단 필터, 하단 바 등)에서의 터치 움직임은
+                    // 브라우저 새로고침 같은 기본 동작을 막음
                     event.preventDefault();
                 }
             }, { passive: false });

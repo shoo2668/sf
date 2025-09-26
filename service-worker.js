@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delivery-sheet-cache-v10'; // 버전을 v10으로 올립니다.
+const CACHE_NAME = 'delivery-sheet-cache-v11'; // 버전을 v10으로 올립니다.
 const urlsToCache = [
   '/sf/',
   '/sf/index.html',
