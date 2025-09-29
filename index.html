@@ -698,7 +698,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.9";
+            const version = "v1.6.10";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2401,6 +2401,7 @@ tempMergedResults.set(no, geminiItem);
     });
 
         document.addEventListener('DOMContentLoaded', () => {
+
         // ▼▼▼ PWA 서비스 워커 등록 ▼▼▼
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -2413,6 +2414,14 @@ tempMergedResults.set(no, geminiItem);
         }
         
         try {
+            // ▼▼▼ [이 블록을 새로 추가합니다] ▼▼▼
+            if ('Notification' in window && Notification.permission === 'default') {
+                // 페이지 로드 후 잠시 뒤에 권한을 요청하여 사용자 경험을 해치지 않도록 함
+                setTimeout(() => {
+                    Notification.requestPermission();
+                }, 3000);
+            }
+            // ▲▲▲ [추가 끝] ▲▲▲
             resizeAppContainer();
             window.addEventListener('resize', resizeAppContainer);
 
@@ -2479,14 +2488,37 @@ tempMergedResults.set(no, geminiItem);
                 if (!item) return;
 
                 const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                const formattedTime = new Date().toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
                 
                 // 1. 카드 상태 변경 및 저장은 항상 실행
                 handleStatusChange(itemNo, '완료', currentTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
-                showToastMessage(`${itemNo}번: ${location} 완료`);
 
-                // 2. 전화번호 확인 후 문자 앱 실행 여부 결정
+                // 2. 토스트 메시지 대신 안드로이드 알림 보내기
+                if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker.controller) {
+                    const notificationData = {
+                        no: item.no,
+                        address: `${item.baseAddress}${item.detailAddress ? ', ' + item.detailAddress : ''}`,
+                        companyName: item.companyNameKorean || 'N/A',
+                        receiverName: item.receiverNameKorean || 'N/A',
+                        location: location,
+                        time: formattedTime
+                    };
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'SHOW_NOTIFICATION',
+                        payload: notificationData
+                    });
+                } else {
+                    // 알림 권한이 없으면, 기존처럼 토스트 메시지를 보여줌
+                    showToastMessage(`${itemNo}번: ${location} 완료`);
+                }
+
+                // 3. 전화번호 확인 후 문자 앱 실행 여부 결정
                 const cleanPhoneNumber = getCleanPhoneNumber(item.receiverTelephoneNo);
                 if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
                     const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
