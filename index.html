@@ -450,15 +450,12 @@ body.modal-open {
     </div>
 
 <div id="delivery-location-modal" class="confirmation-modal" style="display: none;">
-                <div class="confirmation-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800" id="delivery-location-title">배송 위치 선택</h2>
-            <div id="delivery-location-card-info" class="mb-4">
-                <!-- 카드 정보가 여기에 동적으로 추가됩니다 -->
-            </div>
-            <div id="delivery-location-options" class="space-y-1">
+        <div class="confirmation-modal-content">
+            <h2 class="text-xl font-semibold mb-6 text-gray-800" id="delivery-location-title">배송 위치 선택</h2>
+            <div id="delivery-location-options" class="space-y-4">
                 <!-- 라디오 버튼 옵션들이 여기에 동적으로 추가됩니다. -->
             </div>
-            <div class="flex justify-between space-x-2 mt-6">
+            <div class="flex justify-between space-x-2 mt-8">
                 <button id="location-modal-cancel" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
                 <button id="location-modal-confirm" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">배송 완료</button>
             </div>
@@ -698,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.12";
+            const version = "v1.6.8";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1112,6 +1109,7 @@ const showMessage = (message, title = '알림') => {
         let deliveryInProgressSortOrder = 'no';
         let completedSortOrder = 'no'; // 'no' 또는 'time'
         let longPressTimer = null;
+        let isLongPress = false;
         let isRefreshing = false;
         let pullStartY = 0;
         let refreshIndicator;
@@ -1188,85 +1186,34 @@ const showMessage = (message, title = '알림') => {
         // --- Modal & Core Logic Functions ---
 
         function autoResizeTextarea(event) {
-
-            const requestWakeLock = async () => {
-            if ('wakeLock' in navigator) {
-                try {
-                    // 이전에 잠금이 있었다면 먼저 해제
-                    if (wakeLock !== null) await wakeLock.release();
-                    
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('화면 꺼짐 방지 활성화.');
-                    
-                    wakeLock.addEventListener('release', () => {
-                        console.log('화면 꺼짐 방지 자동 해제됨.');
-                        wakeLock = null; // 참조 초기화
-                    });
-                } catch (err) {
-                    console.error(`화면 꺼짐 방지 실패: ${err.name}, ${err.message}`);
-                }
-            }
-        };
-
-        const releaseWakeLock = async () => {
-            if (wakeLock !== null) {
-                await wakeLock.release();
-                wakeLock = null;
-                console.log('화면 꺼짐 방지 수동 해제됨.');
-            }
-        };
-
 const textarea = event.target;
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
 }
 
-        const openDeliveryLocationModal = (itemNo) => {
+const openDeliveryLocationModal = (itemNo) => {
             currentLocationEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) return;
 
             deliveryLocationTitle.textContent = `${item.no}번 배송 위치 선택`;
 
-            // 카드 정보 표시
-            const deliveryLocationCardInfo = document.getElementById('delivery-location-card-info');
-            deliveryLocationCardInfo.innerHTML = `
-                <div class="p-2.5 bg-gray-100 border border-gray-200 rounded-md space-y-1">
+            const cardInfoHtml = `
+                <div class="mb-4 p-2.5 bg-gray-100 border border-gray-200 rounded-md space-y-1">
                     <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">주소:</span> ${item.baseAddress}${item.detailAddress ? ', ' + item.detailAddress : ''}</p>
                     <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">받는분:</span> ${item.receiverNameKorean || item.receiverNameOriginal}</p>
                 </div>
             `;
 
             const locations = ['문앞', '택배보관소', '택배함', '문서수발실', '경비실', '안내데스크'];
-            let radioOptionsHtml = locations.map((location, index) => `
+            const radioOptionsHtml = locations.map((location, index) => `
                 <label for="loc-${index}" class="flex items-center p-2.5 rounded-lg hover:bg-gray-100 cursor-pointer">
                     <input type="radio" id="loc-${index}" name="delivery-location" value="${location}" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500" ${index === 0 ? 'checked' : ''}>
                     <span class="ml-3 text-sm font-medium text-gray-800">${location}</span>
                 </label>
             `).join('');
 
-            // "기타" 옵션 및 입력창 추가
-            radioOptionsHtml += `
-                <div class="flex items-center p-2.5 rounded-lg hover:bg-gray-100 cursor-pointer">
-                    <input type="radio" id="loc-other" name="delivery-location" value="기타" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
-                    <label for="loc-other" class="ml-3 text-sm font-medium text-gray-800 mr-2">기타:</label>
-                    <input type="text" id="other-location-input" class="flex-1 bg-transparent border-b border-gray-400 focus:border-blue-500 focus:outline-none text-sm p-1 hidden" placeholder="직접 입력...">
-                </div>
-            `;
-            
-            deliveryLocationOptions.innerHTML = radioOptionsHtml;
-
-            // "기타" 라디오 버튼 선택 시 입력창을 보여주는 이벤트 리스너 추가
-            const radioButtons = document.querySelectorAll('input[name="delivery-location"]');
-            const otherInput = document.getElementById('other-location-input');
-            radioButtons.forEach(radio => {
-                radio.addEventListener('change', () => {
-                    otherInput.classList.toggle('hidden', radio.value !== '기타');
-                    if (radio.value === '기타') {
-                        otherInput.focus();
-                    }
-                });
-            });
+            deliveryLocationOptions.innerHTML = cardInfoHtml + `<div class="space-y-1">${radioOptionsHtml}</div>`;
 
             document.body.classList.add('modal-open');
             deliveryLocationModal.style.display = 'flex';
@@ -1619,23 +1566,15 @@ if (validationResult.validated) {
         cancelSignatureBtn.addEventListener('click', closeSignatureModal);
         saveSignatureBtn.addEventListener('click', saveSignature);
 
-                const saveDeliveryItemsToLocalStorage = () => {
+        const saveDeliveryItemsToLocalStorage = () => {
             localStorage.setItem('deliveryItems', JSON.stringify(deliveryItems));
             localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
-            // 마지막 앱 상태를 상세히 저장 (필터, 검색어, 정렬 순서)
-            localStorage.setItem('lastAppState', JSON.stringify({
-                activeFilter: activeFilter,
-                searchTerm: searchTerm,
-                deliveryInProgressSortOrder: deliveryInProgressSortOrder,
-                completedSortOrder: completedSortOrder
-            }));
         };
-                const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
+        const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
             deliveryItems = deliveryItems.map(item => item.no === itemNo ? { ...item, status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail, isHawbConfirmed: newStatus !== '배송전' } : item);
-            saveDeliveryItemsToLocalStorage(); // 변경된 데이터를 즉시 저장
+            saveDeliveryItemsToLocalStorage();
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
-            saveDeliveryItemsToLocalStorage(); // 필터 상태 등 UI 변경 후 다시 저장
         };
 
         const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
@@ -2445,7 +2384,7 @@ tempMergedResults.set(no, geminiItem);
         );
     });
 
-            document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', () => {
         // ▼▼▼ PWA 서비스 워커 등록 ▼▼▼
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -2458,15 +2397,16 @@ tempMergedResults.set(no, geminiItem);
         }
         
         try {
-            // ▼▼▼ 1. 기본 초기화 함수들 호출 ▼▼▼
             resizeAppContainer();
             window.addEventListener('resize', resizeAppContainer);
+
             setVersionInfo();
             setupDelegatedEventListeners();
 
-            // ▼▼▼ 2. 지도 앱 선택 UI 및 이벤트 핸들러 ▼▼▼
+            // ▼▼▼ 지도 앱 선택 UI 및 이벤트 핸들러 ▼▼▼
             const mapSelectionContainer = document.getElementById('map-selection-container');
             const mapSelectButtons = mapSelectionContainer.querySelectorAll('.map-select-btn');
+
             const updateMapSelectionUI = () => {
                 const selectedMap = localStorage.getItem('selectedMap') || 'naver';
                 mapSelectButtons.forEach(button => {
@@ -2476,6 +2416,7 @@ tempMergedResults.set(no, geminiItem);
                     renderDeliveryCards(activeFilter);
                 }
             };
+
             mapSelectionContainer.addEventListener('click', (event) => {
                 const selectedButton = event.target.closest('.map-select-btn');
                 if (selectedButton) {
@@ -2484,9 +2425,10 @@ tempMergedResults.set(no, geminiItem);
                     updateMapSelectionUI();
                 }
             });
+
             updateMapSelectionUI();
 
-            // ▼▼▼ 3. 기타 버튼 및 입력창 이벤트 핸들러 ▼▼▼
+            // ▼▼▼ 기타 버튼 이벤트 핸들러 ▼▼▼
             clearAllCardsButton.addEventListener('click', () => {
                 openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
                     deliveryItems = [];
@@ -2496,49 +2438,55 @@ tempMergedResults.set(no, geminiItem);
                     showToastMessage("모든 카드가 삭제되었습니다.");
                 });
             });
+
             locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
+
             locationModalConfirm.addEventListener('click', () => {
                 const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
                 if (!selectedOption) {
                     showMessage('배송 위치를 선택해주세요.');
                     return;
                 }
-                let location = selectedOption.value;
-                if (location === '기타') {
-                    const otherInput = document.getElementById('other-location-input');
-                    location = otherInput.value.trim();
-                    if (!location) {
-                        showMessage('기타 배송 위치를 입력해주세요.');
-                        return;
-                    }
-                }
-                const itemNo = currentLocationEditItemNo;
-                const item = deliveryItems.find(i => i.no === itemNo);
-                if (!item) return;
+                const itemNoToShow = currentLocationEditItemNo;
+                const location = selectedOption.value;
                 const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                handleStatusChange(itemNo, '완료', currentTime, location, location);
+                
+                handleStatusChange(currentLocationEditItemNo, '완료', currentTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
-                showToastMessage(`${itemNo}번: ${location} 완료`);
-                const cleanPhoneNumber = getCleanPhoneNumber(item.receiverTelephoneNo);
-                if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
-                    const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
-                    window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
-                }
+                showToastMessage(`${itemNoToShow}번: ${location} 완료`);
             });
+
             invoiceNumberInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
                     event.preventDefault();
-                    invoiceNumberInput.blur();
+                    invoiceNumberInput.blur(); 
                 }
             });
 
-            // ▼▼▼ 4. 당겨서 새로고침(GPS) 및 브라우저 새로고침 방지 로직 ▼▼▼
+            // ▼▼▼ 외부 스캐너 앱 연동 로직 ▼▼▼
+            setTimeout(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const hawbFromUrl = urlParams.get('hawb');
+                const filterFromUrl = urlParams.get('filter');
+                let initialLoad = true;
+                if (hawbFromUrl) {
+                    searchTerm = hawbFromUrl;
+                    invoiceNumberInput.value = hawbFromUrl;
+                } else {
+                    initialLoad = false;
+                }
+                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                    changeFilter(filterFromUrl, '', initialLoad);
+                } else {
+                    changeFilter('배송준비', '', true);
+                }
+            }, 0);
+
+            // ▼▼▼ 당겨서 새로고침 및 브라우저 새로고침 방지 로직 ▼▼▼
             const mainContent = document.getElementById('main-content-wrapper');
             refreshIndicator = document.getElementById('refresh-indicator');
-            let pullDownStartY = 0; // 새로고침 방지용 Y좌표
-            
-            // GPS 새로고침 로직
+
             mainContent.addEventListener('touchstart', (e) => {
                 if (mainContent.scrollTop === 0 && !isRefreshing && activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
                     pullStartY = e.touches[0].pageY;
@@ -2546,6 +2494,7 @@ tempMergedResults.set(no, geminiItem);
                     pullStartY = 0;
                 }
             }, { passive: true });
+
             mainContent.addEventListener('touchmove', (e) => {
                 if (pullStartY === 0 || isRefreshing) return;
                 const pullDistance = e.touches[0].pageY - pullStartY;
@@ -2555,14 +2504,17 @@ tempMergedResults.set(no, geminiItem);
                     refreshIndicator.style.transform = `translateY(${Math.min(pullDistance, 100) - 48}px)`;
                 }
             }, { passive: true });
+
             mainContent.addEventListener('touchend', (e) => {
                 if (pullStartY === 0 || isRefreshing) return;
                 const pullDistance = e.changedTouches[0].pageY - pullStartY;
+                
                 const resetIndicator = () => {
                     refreshIndicator.classList.remove('visible');
                     refreshIndicator.style.opacity = 0;
                     refreshIndicator.style.transform = 'translateY(-100%)';
                 };
+
                 if (pullDistance > 100 && activeFilter === '배송중' && deliveryInProgressSortOrder === 'distance') {
                     isRefreshing = true;
                     refreshIndicator.classList.add('visible');
@@ -2575,49 +2527,58 @@ tempMergedResults.set(no, geminiItem);
                     resetIndicator();
                 }
             });
-            
-            // 브라우저 기본 새로고침 방지 로직
+// ▼▼▼ [브라우저의 기본 '당겨서 새로고침' 방지 최종 코드] ▼▼▼
+            let pullDownStartY = 0;
             document.body.addEventListener('touchstart', (e) => {
+                // 터치가 시작될 때의 Y좌표를 기록
                 if (e.touches.length === 1) {
                     pullDownStartY = e.touches[0].clientY;
                 }
             }, { passive: true });
+
             window.addEventListener('touchmove', (event) => {
                 const touchY = event.touches[0].clientY;
                 const isPullingDown = touchY > pullDownStartY;
-                if (!isPullingDown) return;
 
-                const scrollableElements = document.querySelectorAll('#main-content-wrapper, #smart-edit-scroll-area, #number-jump-list');
-                let canScroll = false;
-                let currentScrollTop = -1;
+                // 위로 스크롤하는 경우는 새로고침과 무관하므로, 아무것도 하지 않음
+                if (!isPullingDown) {
+                    return;
+                }
 
-                scrollableElements.forEach(el => {
-                    if (el && el.contains(event.target)) {
-                        canScroll = true;
-                        currentScrollTop = el.scrollTop;
-                    }
-                });
+                // 스크롤 가능한 모든 요소를 찾음
+                const mainContent = document.getElementById('main-content-wrapper');
+                const smartEditScroll = document.getElementById('smart-edit-scroll-area');
+                const numberJumpList = document.getElementById('number-jump-list');
 
-                if ((canScroll && currentScrollTop === 0) || !canScroll) {
+                let scrollableElement = null;
+                if (mainContent && mainContent.contains(event.target)) {
+                    scrollableElement = mainContent;
+                } else if (smartEditScroll && smartEditScroll.contains(event.target)) {
+                    scrollableElement = smartEditScroll;
+                } else if (numberJumpList && numberJumpList.contains(event.target)) {
+                    scrollableElement = numberJumpList;
+                }
+
+                // 조건: (스크롤 가능한 요소의 최상단에 있거나) 또는 (스크롤과 무관한 영역일 때)
+                // 이 두 가지 경우가 브라우저 새로고침이 발생할 수 있는 유일한 상황임
+                if ((scrollableElement && scrollableElement.scrollTop === 0) || !scrollableElement) {
+                    // 이 때만 브라우저의 기본 동작(새로고침)을 막음
                     event.preventDefault();
                 }
-            }, { passive: false });
+                // 그 외의 경우 (스크롤이 중간에 있는 경우)는 아무것도 하지 않아 정상 스크롤이 가능함
 
-            // ▼▼▼ 5. 기타 전역 이벤트 핸들러 (visibility, popstate, 좌우 스와이프 등) ▼▼▼
-                        document.addEventListener('visibilitychange', () => {
+            }, { passive: false });
+            // ▲▲▲ [추가 끝] ▲▲▲
+            // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
+            document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // 앱이 화면에 다시 나타날 때 화면 꺼짐 방지 요청
-                    requestWakeLock();
-                    
                     justReturnedFromExternalApp = true;
                     setTimeout(() => {
                         justReturnedFromExternalApp = false;
                     }, 500);
-                } else {
-                    // 앱이 화면에서 사라지면 화면 꺼짐 방지 해제
-                    releaseWakeLock();
                 }
             });
+
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', (event) => {
                 if (smartEditModal.style.display === 'flex') {
@@ -2637,27 +2598,27 @@ tempMergedResults.set(no, geminiItem);
                 }
                 backButtonPressedOnce = true;
                 showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
-                setTimeout(() => { backButtonPressedOnce = false; }, 2000);
+                setTimeout(() => {
+                    backButtonPressedOnce = false;
+                }, 2000);
                 history.pushState(null, '', location.href);
             });
+
             document.body.addEventListener('touchstart', (event) => {
                 const touch = event.touches[0];
                 touchStartX = touch.clientX;
                 touchStartY = touch.clientY;
                 touchStartTime = Date.now();
             }, { passive: true });
+
             let isSwiping = false;
-            document.body.addEventListener('touchmove', (e) => {
-                if(isRefreshing) return; // GPS 새로고침 중에는 좌우 스와이프 방지
+            document.body.addEventListener('touchmove', () => {
                 if (!isSwiping) {
-                    const diffX = Math.abs(e.touches[0].clientX - touchStartX);
-                    const diffY = Math.abs(e.touches[0].clientY - touchStartY);
-                    if (diffX > diffY) { // 수평 스와이프일 때만
-                        filterButtonsContainer.querySelectorAll('button').forEach(btn => btn.style.pointerEvents = 'none');
-                        isSwiping = true;
-                    }
+                    filterButtonsContainer.querySelectorAll('button').forEach(btn => btn.style.pointerEvents = 'none');
                 }
+                isSwiping = true;
             }, { passive: true });
+
             document.body.addEventListener('touchend', (event) => {
                 if (isSwiping) {
                     setTimeout(() => {
@@ -2665,18 +2626,32 @@ tempMergedResults.set(no, geminiItem);
                         isSwiping = false;
                     }, 100);
                 }
-                if (document.body.classList.contains('modal-open')) return;
+                if (signatureModal.style.display === 'flex' || confirmationModal.style.display === 'flex' || smartEditModal.style.display === 'flex' || numberJumpModal.style.display === 'flex') {
+                    return;
+                }
                 const touch = event.changedTouches[0];
-                const diffX = touch.clientX - touchStartX;
+                const touchEndX = touch.clientX;
+                const touchEndY = touch.clientY;
+                const diffX = touchEndX - touchStartX;
+                const diffY = touchEndY - touchStartY;
                 const duration = Date.now() - touchStartTime;
-                if (duration > 500 || Math.abs(diffX) < 75) return;
+                if (duration > 500 || Math.abs(diffX) < 75 || Math.abs(diffX) < Math.abs(diffY) * 2) {
+                    return;
+                }
                 const currentFilterIndex = filterCategories.indexOf(activeFilter);
-                if (diffX > 0 && currentFilterIndex > 0) {
-                    changeFilter(filterCategories[currentFilterIndex - 1], 'animate-slide-in-left');
-                } else if (diffX < 0 && currentFilterIndex < filterCategories.length - 1) {
-                    changeFilter(filterCategories[currentFilterIndex + 1], 'animate-slide-in-right');
+                if (diffX > 0) {
+                    if (currentFilterIndex > 0) {
+                        const prevFilter = filterCategories[currentFilterIndex - 1];
+                        changeFilter(prevFilter, 'animate-slide-in-left');
+                    }
+                } else {
+                    if (currentFilterIndex < filterCategories.length - 1) {
+                        const nextFilter = filterCategories[currentFilterIndex + 1];
+                        changeFilter(nextFilter, 'animate-slide-in-right');
+                    }
                 }
             });
+
             actionBarContainer.addEventListener('click', async (event) => {
                 const button = event.target.closest('button');
                 if (!button) return;
@@ -2695,8 +2670,13 @@ tempMergedResults.set(no, geminiItem);
                     else if (action === 'sort-no-completed') completedSortOrder = 'no';
                 }
                 switch (action) {
-                    case 'sort-distance': sortItemsByDistance(); break;
-                    case 'sort-no': sortItemsByNumber(); showToastMessage('순번순으로 정렬되었습니다.'); break;
+                    case 'sort-distance':
+                        sortItemsByDistance();
+                        break;
+                    case 'sort-no':
+                        sortItemsByNumber();
+                        showToastMessage('순번순으로 정렬되었습니다.');
+                        break;
                     case 'sort-no-completed':
                         completedSortOrder = 'no';
                         currentSortOrder = 'no';
@@ -2706,12 +2686,11 @@ tempMergedResults.set(no, geminiItem);
                         break;
                     case 'jump-no':
                         numberJumpList.innerHTML = '';
-                        const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
-                        if (inProgressItems.length === 0) {
+                        if (deliveryItems.length === 0) {
                             numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
                         } else {
-                            const maxNo = Math.max(0, ...inProgressItems.map(item => item.no));
-                            const itemsMap = new Map(inProgressItems.map(item => [item.no, item.status]));
+                            const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
+                            const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
                             for (let i = 1; i <= maxNo; i++) {
                                 const status = itemsMap.get(i);
                                 const btn = document.createElement('div');
@@ -2721,9 +2700,13 @@ tempMergedResults.set(no, geminiItem);
                                     btn.dataset.no = i;
                                     btn.onclick = () => {
                                         const targetCard = document.querySelector(`[data-no="${i}"]`);
-                                        if (targetCard) targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        if (targetCard) {
+                                            targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
                                         numberJumpModal.style.display = 'none';
                                     };
+                                } else if (status) {
+                                    btn.className = 'number-jump-item inactive';
                                 } else {
                                     btn.className = 'number-jump-item placeholder';
                                     btn.innerHTML = ' ';
@@ -2752,12 +2735,16 @@ tempMergedResults.set(no, geminiItem);
                     setTimeout(setupFab, 50);
                 }
             });
+
+            // --- 모달 닫기 이벤트 핸들러 ---
             numberJumpClose.addEventListener('click', () => numberJumpModal.style.display = 'none');
             numberJumpModal.addEventListener('click', (event) => { if (event.target === numberJumpModal) numberJumpModal.style.display = 'none'; });
             smartEditExitBtn.addEventListener('click', closeSmartEditModal);
             smartEditModal.addEventListener('click', (event) => { if (event.target === smartEditModal) closeSmartEditModal(); });
             cancelSignatureBtn.addEventListener('click', closeSignatureModal);
             signatureModal.addEventListener('click', (event) => { if (event.target === signatureModal) closeSignatureModal(); });
+
+            // --- 로그 뷰어 이벤트 핸들러 ---
             const viewLogsButton = document.getElementById('viewLogsButton');
             const clearLogsButton = document.getElementById('clearLogsButton');
             const logViewerModal = document.getElementById('log-viewer-modal');
@@ -2776,7 +2763,10 @@ tempMergedResults.set(no, geminiItem);
                     showToastMessage('로그 기록이 삭제되었습니다.');
                 });
             });
-            logViewerClose.addEventListener('click', () => { document.body.classList.remove('modal-open'); logViewerModal.style.display = 'none'; });
+            logViewerClose.addEventListener('click', () => {
+                document.body.classList.remove('modal-open');
+                logViewerModal.style.display = 'none';
+            });
             exportLogsButton.addEventListener('click', () => {
                 const logs = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY)) || [];
                 if (logs.length === 0) { showMessage('저장할 로그가 없습니다.'); return; }
@@ -2810,8 +2800,10 @@ tempMergedResults.set(no, geminiItem);
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
             
-            // 앱이 처음 시작될 때 화면 꺼짐 방지 활성화
-            requestWakeLock();
+            const urlParamsForCheck = new URLSearchParams(window.location.search);
+            if (!urlParamsForCheck.has('hawb') && !urlParamsForCheck.has('filter')) {
+                changeFilter('배송준비', '', true);
+            }
 
         } catch (error) {
             console.error("초기화 오류:", error);
