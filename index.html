@@ -451,11 +451,14 @@ body.modal-open {
 
 <div id="delivery-location-modal" class="confirmation-modal" style="display: none;">
         <div class="confirmation-modal-content">
-            <h2 class="text-xl font-semibold mb-6 text-gray-800" id="delivery-location-title">배송 위치 선택</h2>
-            <div id="delivery-location-options" class="space-y-4">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800" id="delivery-location-title">배송 위치 선택</h2>
+            <div id="delivery-location-card-info" class="mb-4">
+                <!-- 카드 정보가 여기에 동적으로 추가됩니다 -->
+            </div>
+            <div id="delivery-location-options" class="space-y-1">
                 <!-- 라디오 버튼 옵션들이 여기에 동적으로 추가됩니다. -->
             </div>
-            <div class="flex justify-between space-x-2 mt-8">
+            <div class="flex justify-between space-x-2 mt-6">
                 <button id="location-modal-cancel" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
                 <button id="location-modal-confirm" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">배송 완료</button>
             </div>
@@ -695,7 +698,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.8";
+            const version = "v1.6.9";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -784,26 +787,20 @@ const showMessage = (message, title = '알림') => {
                             if (item) openMap(item);
                         }
                         break;
-                    // ▼▼▼ [이 블록 추가] ▼▼▼
                     case 'swap-name':
                         {
                             const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
                             if (itemIndex > -1) {
                                 const item = deliveryItems[itemIndex];
-                                // 원본 이름이 없다면(초기 데이터), 현재 이름을 원본으로 저장
                                 if (typeof item.receiverNameKoreanOriginal === 'undefined') {
                                     item.receiverNameKoreanOriginal = item.receiverNameKorean;
                                 }
-
                                 const currentName = item.receiverNameKorean;
                                 const originalName = item.receiverNameKoreanOriginal;
-
-                                // 현재 이름이 원본과 다르다면 (이미 한번 바뀐 상태) -> 원본으로 복구
                                 if (currentName !== originalName) {
                                     deliveryItems[itemIndex].receiverNameKorean = originalName;
                                 } else {
-                                // 현재 이름이 원본과 같다면 -> 순서 바꾸기 실행
-                                    const nameToSwap = currentName.trim().replace(/\s/g, ''); // 공백 모두 제거
+                                    const nameToSwap = currentName.trim().replace(/\s/g, '');
                                     if (nameToSwap.length > 1) {
                                         const lastChar = nameToSwap.slice(-1);
                                         const restOfString = nameToSwap.slice(0, -1);
@@ -816,7 +813,6 @@ const showMessage = (message, title = '알림') => {
                             }
                         }
                         break;
-                    // ▲▲▲ [추가 끝] ▲▲▲
                     case 'copy-hawb':
                         {
                             const hawbToCopy = target.dataset.hawbNo;
@@ -828,7 +824,6 @@ const showMessage = (message, title = '알림') => {
                             }
                         }
                         break;
-                    
                     case 'revert-delivery':
                         openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
                             handleStatusChange(itemNo, '배송중');
@@ -853,11 +848,9 @@ const showMessage = (message, title = '알림') => {
                             const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
                             const iconButton = target.closest('button');
                             const iconSvg = iconButton.querySelector('svg');
-
                             if (detailsContainer && iconSvg) {
                                 const isHidden = detailsContainer.style.display === 'none';
                                 detailsContainer.style.display = isHidden ? 'block' : 'none';
-                                
                                 if (isHidden) {
                                     iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />`;
                                 } else {
@@ -1191,29 +1184,52 @@ const textarea = event.target;
             textarea.style.height = (textarea.scrollHeight) + 'px';
 }
 
-const openDeliveryLocationModal = (itemNo) => {
+        const openDeliveryLocationModal = (itemNo) => {
             currentLocationEditItemNo = itemNo;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) return;
 
             deliveryLocationTitle.textContent = `${item.no}번 배송 위치 선택`;
 
-            const cardInfoHtml = `
-                <div class="mb-4 p-2.5 bg-gray-100 border border-gray-200 rounded-md space-y-1">
+            // 카드 정보 표시
+            const deliveryLocationCardInfo = document.getElementById('delivery-location-card-info');
+            deliveryLocationCardInfo.innerHTML = `
+                <div class="p-2.5 bg-gray-100 border border-gray-200 rounded-md space-y-1">
                     <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">주소:</span> ${item.baseAddress}${item.detailAddress ? ', ' + item.detailAddress : ''}</p>
                     <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">받는분:</span> ${item.receiverNameKorean || item.receiverNameOriginal}</p>
                 </div>
             `;
 
             const locations = ['문앞', '택배보관소', '택배함', '문서수발실', '경비실', '안내데스크'];
-            const radioOptionsHtml = locations.map((location, index) => `
+            let radioOptionsHtml = locations.map((location, index) => `
                 <label for="loc-${index}" class="flex items-center p-2.5 rounded-lg hover:bg-gray-100 cursor-pointer">
                     <input type="radio" id="loc-${index}" name="delivery-location" value="${location}" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500" ${index === 0 ? 'checked' : ''}>
                     <span class="ml-3 text-sm font-medium text-gray-800">${location}</span>
                 </label>
             `).join('');
 
-            deliveryLocationOptions.innerHTML = cardInfoHtml + `<div class="space-y-1">${radioOptionsHtml}</div>`;
+            // "기타" 옵션 및 입력창 추가
+            radioOptionsHtml += `
+                <div class="flex items-center p-2.5 rounded-lg hover:bg-gray-100">
+                    <input type="radio" id="loc-other" name="delivery-location" value="기타" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
+                    <label for="loc-other" class="ml-3 text-sm font-medium text-gray-800 mr-2 cursor-pointer">기타:</label>
+                    <input type="text" id="other-location-input" class="flex-1 bg-transparent border-b border-gray-400 focus:border-blue-500 focus:outline-none text-sm p-1 hidden" placeholder="직접 입력...">
+                </div>
+            `;
+            
+            deliveryLocationOptions.innerHTML = radioOptionsHtml;
+
+            // "기타" 라디오 버튼 선택 시 입력창을 보여주는 이벤트 리스너 추가
+            const radioButtons = document.querySelectorAll('input[name="delivery-location"]');
+            const otherInput = document.getElementById('other-location-input');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    otherInput.classList.toggle('hidden', radio.value !== '기타');
+                    if (radio.value === '기타') {
+                        otherInput.focus();
+                    }
+                });
+            });
 
             document.body.classList.add('modal-open');
             deliveryLocationModal.style.display = 'flex';
@@ -1817,7 +1833,7 @@ if (validationResult.validated) {
                                 ${detailsHtml}
                             </div>
                             ${showInProgressButtons ? `
-                                <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
+                                                                <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
                                     <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인전달</button>
                                     <button data-action="open-location-modal" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">배송위치</button>
                                     <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">직접입력</button>
@@ -2439,7 +2455,7 @@ tempMergedResults.set(no, geminiItem);
                 });
             });
 
-            locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
+                        locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
 
             locationModalConfirm.addEventListener('click', () => {
                 const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
@@ -2447,14 +2463,35 @@ tempMergedResults.set(no, geminiItem);
                     showMessage('배송 위치를 선택해주세요.');
                     return;
                 }
-                const itemNoToShow = currentLocationEditItemNo;
-                const location = selectedOption.value;
+
+                let location = selectedOption.value;
+                if (location === '기타') {
+                    const otherInput = document.getElementById('other-location-input');
+                    location = otherInput.value.trim();
+                    if (!location) {
+                        showMessage('기타 배송 위치를 입력해주세요.');
+                        return;
+                    }
+                }
+
+                const itemNo = currentLocationEditItemNo;
+                const item = deliveryItems.find(i => i.no === itemNo);
+                if (!item) return;
+
                 const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                 
-                handleStatusChange(currentLocationEditItemNo, '완료', currentTime, location, location);
+                // 1. 카드 상태 변경 및 저장은 항상 실행
+                handleStatusChange(itemNo, '완료', currentTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
-                showToastMessage(`${itemNoToShow}번: ${location} 완료`);
+                showToastMessage(`${itemNo}번: ${location} 완료`);
+
+                // 2. 전화번호 확인 후 문자 앱 실행 여부 결정
+                const cleanPhoneNumber = getCleanPhoneNumber(item.receiverTelephoneNo);
+                if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
+                    const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
+                    window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
+                }
             });
 
             invoiceNumberInput.addEventListener('keydown', (event) => {
