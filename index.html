@@ -698,7 +698,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.11";
+            const version = "v1.6.12";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1188,6 +1188,34 @@ const showMessage = (message, title = '알림') => {
         // --- Modal & Core Logic Functions ---
 
         function autoResizeTextarea(event) {
+
+            const requestWakeLock = async () => {
+            if ('wakeLock' in navigator) {
+                try {
+                    // 이전에 잠금이 있었다면 먼저 해제
+                    if (wakeLock !== null) await wakeLock.release();
+                    
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('화면 꺼짐 방지 활성화.');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('화면 꺼짐 방지 자동 해제됨.');
+                        wakeLock = null; // 참조 초기화
+                    });
+                } catch (err) {
+                    console.error(`화면 꺼짐 방지 실패: ${err.name}, ${err.message}`);
+                }
+            }
+        };
+
+        const releaseWakeLock = async () => {
+            if (wakeLock !== null) {
+                await wakeLock.release();
+                wakeLock = null;
+                console.log('화면 꺼짐 방지 수동 해제됨.');
+            }
+        };
+
 const textarea = event.target;
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
@@ -2576,13 +2604,18 @@ tempMergedResults.set(no, geminiItem);
             }, { passive: false });
 
             // ▼▼▼ 5. 기타 전역 이벤트 핸들러 (visibility, popstate, 좌우 스와이프 등) ▼▼▼
-            document.addEventListener('visibilitychange', () => {
+                        document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
+                    // 앱이 화면에 다시 나타날 때 화면 꺼짐 방지 요청
                     requestWakeLock();
+                    
                     justReturnedFromExternalApp = true;
                     setTimeout(() => {
                         justReturnedFromExternalApp = false;
                     }, 500);
+                } else {
+                    // 앱이 화면에서 사라지면 화면 꺼짐 방지 해제
+                    releaseWakeLock();
                 }
             });
             history.pushState(null, '', location.href);
