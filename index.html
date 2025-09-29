@@ -695,7 +695,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.8";
+            const version = "v1.6.9";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1566,15 +1566,23 @@ if (validationResult.validated) {
         cancelSignatureBtn.addEventListener('click', closeSignatureModal);
         saveSignatureBtn.addEventListener('click', saveSignature);
 
-        const saveDeliveryItemsToLocalStorage = () => {
+                const saveDeliveryItemsToLocalStorage = () => {
             localStorage.setItem('deliveryItems', JSON.stringify(deliveryItems));
             localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
+            // 마지막 앱 상태를 상세히 저장 (필터, 검색어, 정렬 순서)
+            localStorage.setItem('lastAppState', JSON.stringify({
+                activeFilter: activeFilter,
+                searchTerm: searchTerm,
+                deliveryInProgressSortOrder: deliveryInProgressSortOrder,
+                completedSortOrder: completedSortOrder
+            }));
         };
-        const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
+                const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
             deliveryItems = deliveryItems.map(item => item.no === itemNo ? { ...item, status: newStatus, deliveryCompletionTime: completionTime, completionType, completionDetail, isHawbConfirmed: newStatus !== '배송전' } : item);
-            saveDeliveryItemsToLocalStorage();
+            saveDeliveryItemsToLocalStorage(); // 변경된 데이터를 즉시 저장
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
+            saveDeliveryItemsToLocalStorage(); // 필터 상태 등 UI 변경 후 다시 저장
         };
 
         const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
@@ -2465,21 +2473,44 @@ tempMergedResults.set(no, geminiItem);
             });
 
             // ▼▼▼ 외부 스캐너 앱 연동 로직 ▼▼▼
+                        // ▼▼▼ 외부 스캐너 앱 연동 및 마지막 상태 복원 로직 ▼▼▼
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const filterFromUrl = urlParams.get('filter');
-                let initialLoad = true;
-                if (hawbFromUrl) {
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
+
+                // URL 파라미터가 있으면 최우선으로 적용
+                if (hawbFromUrl || filterFromUrl) {
+                    let initialLoad = true;
+                    if (hawbFromUrl) {
+                        searchTerm = hawbFromUrl;
+                        invoiceNumberInput.value = hawbFromUrl;
+                    } else {
+                        initialLoad = false;
+                    }
+                    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                        changeFilter(filterFromUrl, '', initialLoad);
+                    } else {
+                        changeFilter('배송준비', '', initialLoad);
+                    }
                 } else {
-                    initialLoad = false;
-                }
-                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                    changeFilter(filterFromUrl, '', initialLoad);
-                } else {
-                    changeFilter('배송준비', '', true);
+                    // URL 파라미터가 없으면, 저장된 마지막 상태를 복원
+                    const lastAppState = JSON.parse(localStorage.getItem('lastAppState'));
+                    if (lastAppState && lastAppState.activeFilter) {
+                        // 저장된 정렬 순서를 전역 변수에 먼저 복원
+                        deliveryInProgressSortOrder = lastAppState.deliveryInProgressSortOrder || 'no';
+                        completedSortOrder = lastAppState.completedSortOrder || 'no';
+                        
+                        // 저장된 검색어 복원
+                        searchTerm = lastAppState.searchTerm || '';
+                        invoiceNumberInput.value = searchTerm;
+                        
+                        // 저장된 필터로 변경 (이때 복원된 정렬 순서가 적용됨)
+                        changeFilter(lastAppState.activeFilter, '', true);
+                    } else {
+                        // 저장된 상태도 없으면, 최초 실행으로 간주
+                        changeFilter('배송준비', '', true);
+                    }
                 }
             }, 0);
 
