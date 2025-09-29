@@ -698,7 +698,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.10";
+            const version = "v1.6.11";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -750,34 +750,52 @@ const showMessage = (message, title = '알림') => {
                     return;
                 }
                 
-                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], div[data-status="완료"], span[data-action="copy-hawb"], button[data-action="swap-name"]');                if (!target) return;
-
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], span[data-action="copy-completion"], span[data-action="edit-completion-detail"], span[data-action="copy-hawb"], button[data-action="swap-name"]');
                                 // ▼▼▼ [수정] 완료 카드 클릭 시 복사 기능 추가 ▼▼▼
-                if (target.dataset.status === '완료' && !event.target.closest('button, a')) {
-                    const itemNo = parseInt(target.dataset.no, 10);
-                    const item = deliveryItems.find(i => i.no === itemNo);
-                    if (item) {
-                        const completionText = item.completionType === '본인전달'
-                            ? (item.receiverNameKorean || '')
-                            : (item.completionDetail || item.completionType || '');
-                        const timeText = formatCompletionTime(item.deliveryCompletionTime);
-                        const textToCopy = `${item.no} - ${completionText} [${timeText}]`;
-                        
-                        navigator.clipboard.writeText(textToCopy).then(() => {
-                            showToastMessage(`'${textToCopy}' 복사 완료`);
-                        }).catch(err => {
-                            console.error('클립보드 복사 실패:', err);
-                            showMessage('클립보드 복사에 실패했습니다.');
-                        });
-                    }
-                    return; // 복사 후 다른 동작 방지
-                }
-                // ▲▲▲ [수정] ▲▲▲
-
                 const action = target.dataset.action;
                 const itemNo = parseInt(target.dataset.no, 10);
 
-                                switch (action) {
+                switch (action) {
+                    // ▼▼▼ [새로운 case 추가] ▼▼▼
+                    case 'copy-completion':
+                        {
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                const completionText = item.completionType === '본인전달'
+                                    ? (item.receiverNameKorean || '')
+                                    : (item.completionDetail || item.completionType || '');
+                                const timeText = formatCompletionTime(item.deliveryCompletionTime);
+                                const textToCopy = `${item.no} - ${completionText} [${timeText}]`;
+                                
+                                navigator.clipboard.writeText(textToCopy).then(() => {
+                                    showToastMessage(`'${textToCopy}' 복사 완료`);
+                                }).catch(err => {
+                                    console.error('클립보드 복사 실패:', err);
+                                    showMessage('클립보드 복사에 실패했습니다.');
+                                });
+                            }
+                        }
+                        break;
+                    case 'edit-completion-detail':
+                        {
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                const isEditableText = ['본인전달', '직접입력'].includes(item.completionType);
+                                if (isEditableText) {
+                                    // '본인전달'이나 '직접입력'은 텍스트 입력 모달을 엽니다.
+                                    // (기존 서명 모달을 재활용하거나, 비슷한 텍스트 입력 모달을 열도록 수정 필요)
+                                    // 여기서는 임시로 서명 모달을 열도록 하겠습니다.
+                                    openSignatureModal(item.no); 
+                                } else {
+                                    // 그 외 위치는 배송 위치 선택 모달을 엽니다.
+                                    openDeliveryLocationModal(item.no);
+                                }
+                            }
+                        }
+                        break;
+                    // ▲▲▲ [추가 끝] ▲▲▲
+
+                    case 'toggle-hawb-confirm':
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
                         break;
@@ -1784,18 +1802,21 @@ if (validationResult.validated) {
                     ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 `;
 
-                                if (showCompletedCard) {
+                                                if (showCompletedCard) {
+                    const isEditableText = ['본인전달', '직접입력'].includes(data.completionType);
+                    const isSelectableLocation = !isEditableText && data.completionType !== '서명';
+
                     const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
                         ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>`
-                        : data.completionType === '본인전달'
-                            ? `<span class="text-lg font-semibold text-gray-800">${data.receiverNameKorean || ''}</span>`
-                            : `${data.completionType || ''}`;
+                        : (isEditableText || isSelectableLocation)
+                            ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 cursor-pointer underline decoration-dotted">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`
+                            : `<span class="text-lg font-semibold text-gray-800">${data.completionDetail || data.completionType}</span>`;
 
                     return `
-                        <div class="${cardClasses} p-4 mb-4" data-no="${data.no}" data-status="완료">
+                        <div class="${cardClasses} p-4 mb-4" data-no="${data.no}">
                             <div class="flex justify-between items-center">
-                                <div class="text-xl font-semibold text-gray-700 text-left ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
-                                    <span class="text-red-500 text-2xl mr-4">${data.no}</span>
+                                <div class="text-xl font-semibold text-gray-700 text-left flex items-center ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
+                                    <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 text-2xl mr-4 cursor-pointer">${data.no}</span>
                                     ${completionDisplayHtml}
                                     <span class="ml-2">${formatCompletionTime(data.deliveryCompletionTime)}</span>
                                 </div>
