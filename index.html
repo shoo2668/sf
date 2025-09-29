@@ -698,7 +698,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.10";
+            const version = "v1.6.9";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2489,7 +2489,7 @@ tempMergedResults.set(no, geminiItem);
                 // 2. 전화번호 확인 후 문자 앱 실행 여부 결정
                 const cleanPhoneNumber = getCleanPhoneNumber(item.receiverTelephoneNo);
                 if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
-                    const messageBody = `SF택배 퀵배송 왔습니다. (${location})\n\n`; // 끝에 줄바꿈 두 개 추가
+                    const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
                     window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
                 }
             });
