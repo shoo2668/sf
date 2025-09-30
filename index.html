@@ -718,7 +718,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.15";
+            const version = "v1.6.16";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1478,7 +1478,7 @@ const openSmartEditModal = (itemNo) => {
     const unitKeypad = document.getElementById('unit-keypad');
     [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
     
-    const createKeyButton = (text, colorClass, value, action = 'add') => {
+        const createKeyButton = (text, colorClass, value, action = 'add') => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
@@ -1511,7 +1511,8 @@ const openSmartEditModal = (itemNo) => {
                     input.value = currentValue + val;
                     break;
                 case 'add-space':
-                    input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + val;
+                    // [수정] 하이픈(-) 뒤에는 띄어쓰기를 추가하지 않도록 조건 변경
+                    input.value = currentValue + (currentValue.length > 0 && !/[-\s]$/.test(currentValue) ? ' ' : '') + val;
                     break;
                 case 'add-unit':
                     input.value = currentValue + val + ' ';
@@ -1544,7 +1545,6 @@ const openSmartEditModal = (itemNo) => {
         });
         return button;
     };
-
         // AI가 최초 생성한 주소를 기준으로 조각 생성
     const basePieces = (item.baseAddress_AI || item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
     basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
