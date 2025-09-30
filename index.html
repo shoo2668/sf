@@ -698,7 +698,7 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.13";
+            const version = "v1.6.14";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2565,7 +2565,7 @@ tempMergedResults.set(no, geminiItem);
 
                         locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
 
-                        locationModalConfirm.addEventListener('click', () => {
+                                    locationModalConfirm.addEventListener('click', () => {
                 const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
                 if (!selectedOption) {
                     showMessage('배송 위치를 선택해주세요.');
@@ -2587,22 +2587,22 @@ tempMergedResults.set(no, geminiItem);
                 if (!item) return;
 
                 let completionTime = null;
-                // 새로 완료하는 카드일 경우에만 현재 시간을 기록
+                // 새로 완료하는 카드일 경우에만 현재 시간을 기록하고 문자를 보냅니다.
                 if (item.status !== '완료') {
                     completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+
+                    // 전화번호 확인 후 문자 앱 실행 여부 결정 (이 블록이 안으로 이동했습니다)
+                    const cleanPhoneNumber = getCleanPhoneNumber(item.receiverTelephoneNo);
+                    if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
+                        const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
+                        window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
+                    }
                 }
                 
                 handleStatusChange(itemNo, '완료', completionTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
                 showToastMessage(`${itemNo}번: ${location} 완료`);
-
-                // 전화번호 확인 후 문자 앱 실행 여부 결정
-                const cleanPhoneNumber = getCleanPhoneNumber(item.receiverTelephoneNo);
-                if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
-                    const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
-                    window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
-                }
             });
 
             invoiceNumberInput.addEventListener('keydown', (event) => {
