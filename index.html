@@ -698,13 +698,13 @@ const showMessage = (message, title = '알림') => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.12";
+            const version = "v1.6.13";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
 
-        const setupDelegatedEventListeners = () => {
+                const setupDelegatedEventListeners = () => {
             let touchTarget = null;
 
             // 롱프레스(길게 누르기) 이벤트 처리
@@ -750,7 +750,7 @@ const showMessage = (message, title = '알림') => {
                     return;
                 }
                 
-                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], span[data-action="copy-completion"], span[data-action="edit-completion-detail"], span[data-action="copy-hawb"], button[data-action="swap-name"]');
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], span[data-action="copy-completion"], span[data-action="edit-completion-detail"], span[data-action="copy-hawb"], button[data-action="swap-name"], span[data-action="edit-completion-time"]');
                                 // ▼▼▼ [수정] 완료 카드 클릭 시 복사 기능 추가 ▼▼▼
                 const action = target.dataset.action;
                 const itemNo = parseInt(target.dataset.no, 10);
@@ -882,6 +882,9 @@ const showMessage = (message, title = '알림') => {
                         break;
                     case 'open-smart-edit':
                         openSmartEditModal(itemNo);
+                        break;
+                    case 'edit-completion-time':
+                        openTimeEditModal(itemNo);
                         break;
                 }
             });
@@ -1300,6 +1303,50 @@ const textarea = event.target;
     confirmationModal.style.display = 'flex';
     phoneInput.focus();
 };
+        const openTimeEditModal = (itemNo) => {
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item || !item.deliveryCompletionTime) return;
+
+            // 'HH:mm' 형식으로 현재 시간 추출
+            const currentTime = item.deliveryCompletionTime.split(' ')[3].substring(0, 5);
+
+            confirmationModalTitle.textContent = `${item.no}번 완료 시간 수정`;
+            
+            confirmationModalBody.innerHTML = `
+                <p class="text-sm text-gray-600 mb-2">변경할 완료 시간을 선택하세요.</p>
+                <input type="time" id="time-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="${currentTime}">
+            `;
+            
+            confirmOkButton.textContent = '수정 완료';
+            confirmCancelButton.textContent = '취소';
+            confirmCancelButton.style.display = '';
+            confirmationModalButtons.style.display = 'flex';
+            
+            onConfirmCallback = () => {
+                const timeInput = document.getElementById('time-edit-input');
+                const newTime = timeInput.value; // "HH:mm" 형식
+
+                if (newTime) {
+                    const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
+                    if (itemIndex > -1) {
+                        // 기존 날짜 부분(예: "2025. 09. 30.")은 유지하고 시간만 교체
+                        const originalDateTime = deliveryItems[itemIndex].deliveryCompletionTime;
+                        const datePart = originalDateTime.split(' ').slice(0, 3).join(' ');
+                        
+                        // 새 시간으로 전체 날짜/시간 문자열 재구성 (초는 '00'으로 고정)
+                        const newCompletionTime = `${datePart} ${newTime}:00`;
+
+                        deliveryItems[itemIndex].deliveryCompletionTime = newCompletionTime;
+                        saveDeliveryItemsToLocalStorage();
+                        renderDeliveryCards(activeFilter);
+                        showToastMessage(`${item.no}번 완료 시간이 수정되었습니다.`);
+                    }
+                }
+            };
+
+            document.body.classList.add('modal-open');
+            confirmationModal.style.display = 'flex';
+        };
 const openSignatureModal = (itemNo) => { 
     currentSignatureItemNo = itemNo; 
     document.body.classList.add('modal-open'); // body 스크롤 잠금
@@ -1723,7 +1770,7 @@ if (validationResult.validated) {
         };
         
                 // --- Render function ---
-        const renderDeliveryCards = (currentFilter, animationClass = '') => {
+                const renderDeliveryCards = (currentFilter, animationClass = '') => {
             if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
 
             let baseData = [];
@@ -1849,7 +1896,7 @@ if (validationResult.validated) {
                                 <div class="text-xl font-semibold text-gray-700 text-left flex items-center ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
                                     <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 text-2xl mr-4 cursor-pointer">${data.no}</span>
                                     ${completionDisplayHtml}
-                                    <span class="ml-2">${formatCompletionTime(data.deliveryCompletionTime)}</span>
+                                    <span data-action="edit-completion-time" data-no="${data.no}" class="ml-2 cursor-pointer">${formatCompletionTime(data.deliveryCompletionTime)}</span>
                                 </div>
                                 <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-200 flex-shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
