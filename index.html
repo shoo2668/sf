@@ -737,7 +737,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.3";
+            const version = "v1.7.4";
             const changelog = "바코드스캔";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2165,7 +2165,10 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
         if (newFilter === activeFilter && !isInitialLoad) return;
 
         collapseSearch();
-        document.getElementById('fab-options').classList.remove('expanded'); // [추가] 정렬 버튼 접기
+        const fabOptions = document.getElementById('fab-options');
+        if (fabOptions) {
+            fabOptions.classList.remove('expanded');
+        }
 
         if (!isInitialLoad) {
             searchTerm = '';
@@ -2992,17 +2995,13 @@ tempMergedResults.set(no, geminiItem);
                 showToastMessage(`로그가 '${fileName}' 파일로 저장되었습니다.`);
             });
             // ▼▼▼ [바코드 스캐너 초기화 로직 추가] ▼▼▼
+            // ▼▼▼ [바코드 스캐너 초기화 로직 추가] ▼▼▼
             const barcodeScannerModal = document.getElementById('barcode-scanner-modal');
             const videoElement = document.getElementById('scanner-video');
             const viewfinder = document.getElementById('scanner-viewfinder');
             const barcodeScanButton = document.getElementById('barcode-scan-button');
-            if ('BarcodeDetector' in window) {
-                barcodeScanButton.classList.remove('hidden');
-                barcodeScanButton.addEventListener('click', openScanner);
-            }
-            document.getElementById('scanner-close-button').addEventListener('click', closeScanner);
-            
-            // ▼▼▼ [이 위치로 모든 스캐너 함수 이동] ▼▼▼
+
+            // ▼▼▼ [모든 스캐너 함수를 이 위치로 이동] ▼▼▼
             const openScanner = async () => {
                 try {
                     if (!('BarcodeDetector' in window)) {
@@ -3188,7 +3187,14 @@ tempMergedResults.set(no, geminiItem);
                 window.addEventListener('mouseup', stopResize);
                 window.addEventListener('touchend', stopResize);
             };
-            // ▲▲▲ [이동 끝] ▲▲▲
+            // ▲▲▲ [함수 이동 끝] ▲▲▲
+
+            if ('BarcodeDetector' in window) {
+                barcodeScanButton.classList.remove('hidden');
+                barcodeScanButton.addEventListener('click', openScanner);
+            }
+            document.getElementById('scanner-close-button').addEventListener('click', closeScanner);
+            // ▲▲▲ [추가 끝] ▲▲▲
 
             // --- 앱 데이터 로딩 ---
             const storedItems = localStorage.getItem('deliveryItems');
