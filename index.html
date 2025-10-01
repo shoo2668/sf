@@ -737,7 +737,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.1";
+            const version = "v1.7.2";
             const changelog = "바코드스캔";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1391,11 +1391,6 @@ const textarea = event.target;
             document.body.classList.add('modal-open');
             confirmationModal.style.display = 'flex';
         };
-
-// ▼▼▼ [바코드 스캐너 핵심 기능 함수 추가] ▼▼▼
-const barcodeScannerModal = document.getElementById('barcode-scanner-modal');
-const videoElement = document.getElementById('scanner-video');
-const viewfinder = document.getElementById('scanner-viewfinder');
 
 const openScanner = async () => {
     try {
@@ -3182,6 +3177,10 @@ tempMergedResults.set(no, geminiItem);
                 showToastMessage(`로그가 '${fileName}' 파일로 저장되었습니다.`);
             });
 // ▼▼▼ [바코드 스캐너 초기화 로직 추가] ▼▼▼
+            // ▼▼▼ [바코드 스캐너 초기화 로직 추가] ▼▼▼
+            const barcodeScannerModal = document.getElementById('barcode-scanner-modal');
+            const videoElement = document.getElementById('scanner-video');
+            const viewfinder = document.getElementById('scanner-viewfinder');
             const barcodeScanButton = document.getElementById('barcode-scan-button');
             if ('BarcodeDetector' in window) {
                 barcodeScanButton.classList.remove('hidden');
@@ -3189,6 +3188,7 @@ tempMergedResults.set(no, geminiItem);
             }
             document.getElementById('scanner-close-button').addEventListener('click', closeScanner);
             // ▲▲▲ [추가 끝] ▲▲▲
+
             // --- 앱 데이터 로딩 ---
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
