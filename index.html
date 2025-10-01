@@ -323,8 +323,7 @@ body.modal-open {
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
                 <!-- 검색창 -->
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
-                <!-- ▼▼▼ [바코드 스캔 버튼 추가] ▼▼▼ -->
+<input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow flex-shrink min-w-0 px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>                <!-- ▼▼▼ [바코드 스캔 버튼 추가] ▼▼▼ -->
                 <button id="barcode-scan-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800 hidden">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scan-barcode-icon lucide-scan-barcode"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
                 </button>
@@ -738,7 +737,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.0";
+            const version = "v1.7.1";
             const changelog = "바코드스캔";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1409,7 +1408,7 @@ const openScanner = async () => {
             video: { facingMode: 'environment' }
         });
         videoElement.srcObject = videoStream;
-        await videoElement.play();
+        await videoElement.play(); // <--- [수정] 비디오가 재생될 때까지 여기서 기다림
 
         barcodeScanner = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
         isScanning = true;
