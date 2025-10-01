@@ -196,23 +196,8 @@ body.modal-open {
     /* 카드와 유사한 느낌의 그림자 효과 */
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
     border: 2px solid #2563eb; /* blue-600 색상의 2px 테두리 추가 */
+
 }
-/* ▼▼▼ [바코드 스캐너 스타일 추가] ▼▼▼ */
-#barcode-scanner-modal {
-    overscroll-behavior: contain;
-}
-.resize-handle {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background-color: rgba(255, 255, 255, 0.8);
-    border: 2px solid #10B981; /* green-500 */
-}
-.resize-handle.top-left { top: -10px; left: -10px; cursor: nwse-resize; }
-.resize-handle.top-right { top: -10px; right: -10px; cursor: nesw-resize; }
-.resize-handle.bottom-left { bottom: -10px; left: -10px; cursor: nesw-resize; }
-.resize-handle.bottom-right { bottom: -10px; right: -10px; cursor: nwse-resize; }
-/* ▲▲▲ [추가 끝] ▲▲▲ */
     </style>
 </head>
 <body class="bg-white font-sans">
@@ -323,11 +308,7 @@ body.modal-open {
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
                 <!-- 검색창 -->
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow flex-shrink min-w-0 px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
-                <!-- 바코드 스캔 버튼 -->
-                <button id="barcode-scan-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800 hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scan-barcode-icon lucide-scan-barcode"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
-                </button>
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
                 <!-- 지움 버튼 -->
                 <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
@@ -737,8 +718,8 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.6";
-            const changelog = "바코드스캔";
+            const version = "v1.6.17";
+            const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1167,11 +1148,6 @@ const sendCompletionNotification = (item) => {
         let pullStartY = 0;
         let refreshIndicator;
         let currentLocationEditItemNo = null;
-         // ▼▼▼ [바코드 스캐너 전역 변수 추가] ▼▼▼
-        let barcodeScanner = null;
-        let isScanning = false;
-        let videoStream = null;
-        // ▲▲▲ [추가 끝] ▲▲▲
         
 
         const searchBarContainer = document.getElementById('search-bar-container');
@@ -1347,7 +1323,7 @@ const textarea = event.target;
     confirmationModal.style.display = 'flex';
     phoneInput.focus();
 };
-                const openTimeEditModal = (itemNo) => {
+        const openTimeEditModal = (itemNo) => {
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item || !item.deliveryCompletionTime) return;
 
@@ -1391,7 +1367,6 @@ const textarea = event.target;
             document.body.classList.add('modal-open');
             confirmationModal.style.display = 'flex';
         };
-
 const openSignatureModal = (itemNo) => { 
     currentSignatureItemNo = itemNo; 
     document.body.classList.add('modal-open'); // body 스크롤 잠금
@@ -2165,10 +2140,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
         if (newFilter === activeFilter && !isInitialLoad) return;
 
         collapseSearch();
-        const fabOptions = document.getElementById('fab-options');
-        if (fabOptions) {
-            fabOptions.classList.remove('expanded');
-        }
+        document.getElementById('fab-options').classList.remove('expanded'); // [추가] 정렬 버튼 접기
 
         if (!isInitialLoad) {
             searchTerm = '';
@@ -2994,234 +2966,6 @@ tempMergedResults.set(no, geminiItem);
                 URL.revokeObjectURL(url);
                 showToastMessage(`로그가 '${fileName}' 파일로 저장되었습니다.`);
             });
-            // ▼▼▼ [바코드 스캐너 초기화 로직 추가] ▼▼▼
-            // ▼▼▼ [바코드 스캐너 초기화 로직 추가] ▼▼▼
-            const barcodeScannerModal = document.getElementById('barcode-scanner-modal');
-            const videoElement = document.getElementById('scanner-video');
-            const viewfinder = document.getElementById('scanner-viewfinder');
-            const barcodeScanButton = document.getElementById('barcode-scan-button');
-
-            // ▼▼▼ [모든 스캐너 함수를 이 위치로 이동] ▼▼▼
-            const openScanner = async () => {
-    try {
-        if (!('BarcodeDetector' in window)) {
-            showMessage("이 브라우저에서는 바코드 스캔을 지원하지 않습니다.");
-            return;
-        }
-
-        // 1단계: 가능한 모든 자동 초점 옵션을 포함하여 카메라 요청
-        const constraints = {
-            video: {
-                facingMode: 'environment',
-                // 일부 브라우저를 위한 직접 설정
-                focusMode: 'continuous',
-                // 표준 방식의 고급 설정
-                advanced: [{ focusMode: 'continuous' }]
-            }
-        };
-        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-        
-        videoElement.srcObject = videoStream;
-        await videoElement.play();
-
-        // 2단계 (가장 중요): 비디오가 재생된 후, 활성화된 트랙에 직접 초점 설정을 강제 적용
-        try {
-            const track = videoStream.getVideoTracks()[0];
-            const capabilities = track.getCapabilities();
-
-            // 기기가 'continuous' 포커스 모드를 지원하는지 확인
-            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                // 지원한다면, 설정을 다시 한번 강제로 적용
-                await track.applyConstraints({
-                    advanced: [{ focusMode: 'continuous' }]
-                });
-                console.log("연속 자동 초점 모드가 성공적으로 적용되었습니다.");
-            }
-        } catch (focusError) {
-            // 이 단계가 실패하더라도 스캐너는 계속 작동해야 하므로 경고만 표시
-            console.warn("재생 후 초점 설정 적용 실패:", focusError);
-        }
-
-        barcodeScanner = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
-        isScanning = true;
-        
-        document.body.classList.add('modal-open');
-        barcodeScannerModal.style.display = 'block';
-        
-        loadViewfinderRect();
-        setupViewfinderResizing();
-        
-        scanLoop();
-    } catch (err) {
-        console.error("카메라 접근 오류:", err.name, err.message);
-        switch (err.name) {
-            case 'NotAllowedError':
-                showMessage("카메라 권한이 거부되었습니다. 브라우저의 사이트 설정에서 카메라 권한을 허용해주세요.");
-                break;
-            case 'NotFoundError':
-                showMessage("사용 가능한 후면 카메라를 찾을 수 없습니다.");
-                break;
-            case 'NotReadableError':
-                showMessage("카메라 하드웨어 오류가 발생했습니다. 다른 앱이 카메라를 사용 중인지 확인하거나 기기를 재부팅해보세요.");
-                break;
-            case 'SecurityError':
-                showMessage("카메라는 보안 연결(HTTPS)에서만 사용할 수 있습니다. 주소창의 주소가 https:// 로 시작하는지 확인해주세요.");
-                break;
-            default:
-                showMessage(`알 수 없는 오류로 카메라를 열 수 없습니다: ${err.name}`);
-                break;
-        }
-    }
-};
-
-            const closeScanner = () => {
-                isScanning = false;
-                if (videoStream) {
-                    videoStream.getTracks().forEach(track => track.stop());
-                }
-                videoElement.srcObject = null;
-                document.body.classList.remove('modal-open');
-                barcodeScannerModal.style.display = 'none';
-            };
-
-            const scanLoop = async () => {
-                if (!isScanning) return;
-            
-                try {
-                    const barcodes = await barcodeScanner.detect(videoElement);
-                    if (barcodes.length > 0) {
-                        const viewfinderRect = viewfinder.getBoundingClientRect();
-                        for (const barcode of barcodes) {
-                            const bc = barcode.boundingBox;
-                            const barcodeCenterX = bc.x + bc.width / 2;
-                            const barcodeCenterY = bc.y + bc.height / 2;
-            
-                            if (barcodeCenterX >= viewfinderRect.left &&
-                                barcodeCenterX <= viewfinderRect.right &&
-                                barcodeCenterY >= viewfinderRect.top &&
-                                barcodeCenterY <= viewfinderRect.bottom)
-                            {
-                                isScanning = false;
-                                if (navigator.vibrate) {
-                                    navigator.vibrate(200);
-                                }
-                                closeScanner();
-                                invoiceNumberInput.value = barcode.rawValue;
-                                searchTerm = barcode.rawValue;
-                                renderDeliveryCards(activeFilter);
-                                document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
-                                filterScrollPositions[activeFilter] = 0;
-                                return;
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.error("스캔 중 오류:", err);
-                }
-            
-                requestAnimationFrame(scanLoop);
-            };
-
-            const saveViewfinderRect = () => {
-                const rect = {
-                    top: viewfinder.style.top,
-                    left: viewfinder.style.left,
-                    width: viewfinder.style.width,
-                    height: viewfinder.style.height
-                };
-                localStorage.setItem('scannerViewfinderRect', JSON.stringify(rect));
-            };
-
-            const loadViewfinderRect = () => {
-                const savedRect = localStorage.getItem('scannerViewfinderRect');
-                if (savedRect) {
-                    const rect = JSON.parse(savedRect);
-                    viewfinder.style.top = rect.top;
-                    viewfinder.style.left = rect.left;
-                    viewfinder.style.width = rect.width;
-                    viewfinder.style.height = rect.height;
-                } else {
-                    viewfinder.style.width = '80%';
-                    viewfinder.style.height = '30%';
-                    viewfinder.style.top = '35%';
-                    viewfinder.style.left = '10%';
-                }
-            };
-
-            const setupViewfinderResizing = () => {
-                let isResizing = false;
-                let currentHandle = null;
-                let startX, startY, startWidth, startHeight, startLeft, startTop;
-            
-                const startResize = (e) => {
-                    e.preventDefault();
-                    isResizing = true;
-                    currentHandle = e.target.dataset.handle;
-                    const event = e.touches ? e.touches[0] : e;
-                    startX = event.clientX;
-                    startY = event.clientY;
-                    const rect = viewfinder.getBoundingClientRect();
-                    startWidth = rect.width;
-                    startHeight = rect.height;
-                    startLeft = rect.left;
-                    startTop = rect.top;
-                };
-            
-                const doResize = (e) => {
-                    if (!isResizing) return;
-                    e.preventDefault();
-                    const event = e.touches ? e.touches[0] : e;
-                    const diffX = event.clientX - startX;
-                    const diffY = event.clientY - startY;
-                    let newWidth = startWidth, newHeight = startHeight, newLeft = startLeft, newTop = startTop;
-            
-                    if (currentHandle.includes('right')) newWidth = startWidth + diffX;
-                    if (currentHandle.includes('left')) {
-                        newWidth = startWidth - diffX;
-                        newLeft = startLeft + diffX;
-                    }
-                    if (currentHandle.includes('bottom')) newHeight = startHeight + diffY;
-                    if (currentHandle.includes('top')) {
-                        newHeight = startHeight - diffY;
-                        newTop = startTop + diffY;
-                    }
-                    if (newWidth < 100) newWidth = 100;
-                    if (newHeight < 50) newHeight = 50;
-            
-                    viewfinder.style.width = `${newWidth}px`;
-                    viewfinder.style.height = `${newHeight}px`;
-                    viewfinder.style.left = `${newLeft}px`;
-                    viewfinder.style.top = `${newTop}px`;
-                };
-            
-                const stopResize = () => {
-                    if (!isResizing) return;
-                    isResizing = false;
-                    const rect = viewfinder.getBoundingClientRect();
-                    viewfinder.style.left = `${(rect.left / window.innerWidth) * 100}%`;
-                    viewfinder.style.top = `${(rect.top / window.innerHeight) * 100}%`;
-                    viewfinder.style.width = `${(rect.width / window.innerWidth) * 100}%`;
-                    viewfinder.style.height = `${(rect.height / window.innerHeight) * 100}%`;
-                    saveViewfinderRect();
-                };
-            
-                viewfinder.querySelectorAll('.resize-handle').forEach(handle => {
-                    handle.addEventListener('mousedown', startResize);
-                    handle.addEventListener('touchstart', startResize, { passive: false });
-                });
-                window.addEventListener('mousemove', doResize);
-                window.addEventListener('touchmove', doResize, { passive: false });
-                window.addEventListener('mouseup', stopResize);
-                window.addEventListener('touchend', stopResize);
-            };
-            // ▲▲▲ [함수 이동 끝] ▲▲▲
-
-            if ('BarcodeDetector' in window) {
-                barcodeScanButton.classList.remove('hidden');
-                barcodeScanButton.addEventListener('click', openScanner);
-            }
-            document.getElementById('scanner-close-button').addEventListener('click', closeScanner);
-            // ▲▲▲ [추가 끝] ▲▲▲
 
             // --- 앱 데이터 로딩 ---
             const storedItems = localStorage.getItem('deliveryItems');
@@ -3249,19 +2993,5 @@ tempMergedResults.set(no, geminiItem);
         }
     });
     </script>
-    <!-- ▼▼▼ [바코드 스캐너 모달 추가] ▼▼▼ -->
-<div id="barcode-scanner-modal" class="fixed inset-0 bg-black z-50" style="display: none;">
-    <video id="scanner-video" class="w-full h-full object-cover" playsinline></video>
-    <div id="scanner-viewfinder" class="absolute border-4 border-green-500" style="box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);">
-        <div class="resize-handle top-left" data-handle="top-left"></div>
-        <div class="resize-handle top-right" data-handle="top-right"></div>
-        <div class="resize-handle bottom-left" data-handle="bottom-left"></div>
-        <div class="resize-handle bottom-right" data-handle="bottom-right"></div>
-    </div>
-    <button id="scanner-close-button" class="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-</div>
-<!-- ▲▲▲ [추가 끝] ▲▲▲ -->
 </body>
 </html>
