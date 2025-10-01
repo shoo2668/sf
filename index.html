@@ -737,7 +737,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.5";
+            const version = "v1.7.6";
             const changelog = "바코드스캔";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -3009,14 +3009,38 @@ tempMergedResults.set(no, geminiItem);
             return;
         }
 
-        videoStream = await navigator.mediaDevices.getUserMedia({
-            video: { 
+        // 1단계: 가능한 모든 자동 초점 옵션을 포함하여 카메라 요청
+        const constraints = {
+            video: {
                 facingMode: 'environment',
-                advanced: [{ focusMode: 'continuous' }] // <-- 이 줄을 추가하세요
+                // 일부 브라우저를 위한 직접 설정
+                focusMode: 'continuous',
+                // 표준 방식의 고급 설정
+                advanced: [{ focusMode: 'continuous' }]
             }
-        });
+        };
+        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
         videoElement.srcObject = videoStream;
         await videoElement.play();
+
+        // 2단계 (가장 중요): 비디오가 재생된 후, 활성화된 트랙에 직접 초점 설정을 강제 적용
+        try {
+            const track = videoStream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities();
+
+            // 기기가 'continuous' 포커스 모드를 지원하는지 확인
+            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                // 지원한다면, 설정을 다시 한번 강제로 적용
+                await track.applyConstraints({
+                    advanced: [{ focusMode: 'continuous' }]
+                });
+                console.log("연속 자동 초점 모드가 성공적으로 적용되었습니다.");
+            }
+        } catch (focusError) {
+            // 이 단계가 실패하더라도 스캐너는 계속 작동해야 하므로 경고만 표시
+            console.warn("재생 후 초점 설정 적용 실패:", focusError);
+        }
 
         barcodeScanner = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
         isScanning = true;
