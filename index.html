@@ -723,7 +723,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.18";
+            const version = "v1.6.19";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2581,7 +2581,7 @@ tempMergedResults.set(no, geminiItem);
             const barcodeScanWebhookButton = document.getElementById('barcode-scan-webhook-button');
             barcodeScanWebhookButton.addEventListener('click', () => {
                 // 여기에 매크로드로이드에서 발급받은 Webhook URL을 입력하세요.
-                const webhookUrl = 'https://trigger.macrodroid.com/bac6329f-79d2-449a-a727-0be2000ac745/';
+                const webhookUrl = 'https://trigger.macrodroid.com/bac6329f-79d2-449a-a727-0be2000ac745/scan';
 
                 if (webhookUrl === 'YOUR_MACRODROID_WEBHOOK_URL_HERE') {
                     showMessage('Webhook URL이 설정되지 않았습니다. 코드에서 URL을 설정해주세요.', '설정 필요');
