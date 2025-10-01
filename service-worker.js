@@ -52,7 +52,7 @@ self.addEventListener('message', event => {
             `주소: ${data.address}\n` +
             `시간: ${data.time}`,
       icon: 'https://raw.githubusercontent.com/shoo2668/sf/main/icon-192-maskable.png', // 알림 아이콘
-      badge: 'https://raw.githubusercontent.com/shoo2668/sf/main/icon-192-maskable.png', // 단색 아이콘 (상단 바용)
+      badge: 'https://raw.githubusercontent.com/shoo2668/sf/main/noti_icon.png', // 단색 아이콘 (상단 바용)
       vibrate: [200, 100, 200] // 진동 패턴
     };
     event.waitUntil(self.registration.showNotification(title, options));
