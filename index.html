@@ -196,8 +196,23 @@ body.modal-open {
     /* 카드와 유사한 느낌의 그림자 효과 */
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
     border: 2px solid #2563eb; /* blue-600 색상의 2px 테두리 추가 */
-
 }
+/* ▼▼▼ [바코드 스캐너 스타일 추가] ▼▼▼ */
+#barcode-scanner-modal {
+    overscroll-behavior: contain;
+}
+.resize-handle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px solid #10B981; /* green-500 */
+}
+.resize-handle.top-left { top: -10px; left: -10px; cursor: nwse-resize; }
+.resize-handle.top-right { top: -10px; right: -10px; cursor: nesw-resize; }
+.resize-handle.bottom-left { bottom: -10px; left: -10px; cursor: nesw-resize; }
+.resize-handle.bottom-right { bottom: -10px; right: -10px; cursor: nwse-resize; }
+/* ▲▲▲ [추가 끝] ▲▲▲ */
     </style>
 </head>
 <body class="bg-white font-sans">
@@ -302,16 +317,21 @@ body.modal-open {
     <div id="search-bar-container" class="fixed bottom-0 left-0 w-full z-40">
         <!-- 카드 목록의 부모와 동일한 구조로 변경 -->
         <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8 pb-3">
-            <div id="search-bar" class="flex items-center w-full p-1.5 rounded-2xl bg-white/90 backdrop-blur-md border border-gray-200">
+                        <div id="search-bar" class="flex items-center w-full p-1.5 rounded-2xl bg-white/90 backdrop-blur-md border border-gray-200">
                 <!-- 검색 아이콘 -->
                 <div class="pl-2 pr-1 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
                 <!-- 검색창 -->
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
+                <!-- ▼▼▼ [바코드 스캔 버튼 추가] ▼▼▼ -->
+                <button id="barcode-scan-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scan-barcode-icon lucide-scan-barcode"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
+                </button>
+                <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
                 <!-- 지움 버튼 -->
                 <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
                 </button>
             </div>
         </div>
@@ -718,8 +738,8 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.17";
-            const changelog = "버그수정";
+            const version = "v1.7.0";
+            const changelog = "바코드스캔";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1148,6 +1168,11 @@ const sendCompletionNotification = (item) => {
         let pullStartY = 0;
         let refreshIndicator;
         let currentLocationEditItemNo = null;
+         // ▼▼▼ [바코드 스캐너 전역 변수 추가] ▼▼▼
+        let barcodeScanner = null;
+        let isScanning = false;
+        let videoStream = null;
+        // ▲▲▲ [추가 끝] ▲▲▲
         
 
         const searchBarContainer = document.getElementById('search-bar-container');
@@ -1323,7 +1348,7 @@ const textarea = event.target;
     confirmationModal.style.display = 'flex';
     phoneInput.focus();
 };
-        const openTimeEditModal = (itemNo) => {
+                const openTimeEditModal = (itemNo) => {
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item || !item.deliveryCompletionTime) return;
 
@@ -1367,6 +1392,197 @@ const textarea = event.target;
             document.body.classList.add('modal-open');
             confirmationModal.style.display = 'flex';
         };
+
+// ▼▼▼ [바코드 스캐너 핵심 기능 함수 추가] ▼▼▼
+const barcodeScannerModal = document.getElementById('barcode-scanner-modal');
+const videoElement = document.getElementById('scanner-video');
+const viewfinder = document.getElementById('scanner-viewfinder');
+
+const openScanner = async () => {
+    try {
+        if (!('BarcodeDetector' in window)) {
+            showMessage("이 브라우저에서는 바코드 스캔을 지원하지 않습니다.");
+            return;
+        }
+
+        videoStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+        });
+        videoElement.srcObject = videoStream;
+        await videoElement.play();
+
+        barcodeScanner = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
+        isScanning = true;
+        
+        document.body.classList.add('modal-open');
+        barcodeScannerModal.style.display = 'block';
+        
+        loadViewfinderRect();
+        setupViewfinderResizing();
+        
+        scanLoop();
+    } catch (err) {
+        console.error("카메라 접근 오류:", err);
+        showMessage("카메라를 열 수 없습니다. 카메라 권한을 확인해주세요.");
+    }
+};
+
+const closeScanner = () => {
+    isScanning = false;
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+    }
+    videoElement.srcObject = null;
+    document.body.classList.remove('modal-open');
+    barcodeScannerModal.style.display = 'none';
+};
+
+const scanLoop = async () => {
+    if (!isScanning) return;
+
+    try {
+        const barcodes = await barcodeScanner.detect(videoElement);
+        if (barcodes.length > 0) {
+            const viewfinderRect = viewfinder.getBoundingClientRect();
+            for (const barcode of barcodes) {
+                const bc = barcode.boundingBox;
+                // 바코드의 중심점이 뷰파인더 안에 있는지 확인
+                const barcodeCenterX = bc.x + bc.width / 2;
+                const barcodeCenterY = bc.y + bc.height / 2;
+
+                if (barcodeCenterX >= viewfinderRect.left &&
+                    barcodeCenterX <= viewfinderRect.right &&
+                    barcodeCenterY >= viewfinderRect.top &&
+                    barcodeCenterY <= viewfinderRect.bottom)
+                {
+                    isScanning = false; // 스캔 중지
+                    
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200); // 0.2초 진동
+                    }
+                    
+                    closeScanner();
+                    
+                    // 스캔된 값으로 자동 검색
+                    invoiceNumberInput.value = barcode.rawValue;
+                    searchTerm = barcode.rawValue;
+                    renderDeliveryCards(activeFilter);
+                    document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
+                    filterScrollPositions[activeFilter] = 0;
+                    
+                    return; // 루프 종료
+                }
+            }
+        }
+    } catch (err) {
+        console.error("스캔 중 오류:", err);
+    }
+
+    requestAnimationFrame(scanLoop);
+};
+
+const saveViewfinderRect = () => {
+    const rect = {
+        top: viewfinder.style.top,
+        left: viewfinder.style.left,
+        width: viewfinder.style.width,
+        height: viewfinder.style.height
+    };
+    localStorage.setItem('scannerViewfinderRect', JSON.stringify(rect));
+};
+
+const loadViewfinderRect = () => {
+    const savedRect = localStorage.getItem('scannerViewfinderRect');
+    if (savedRect) {
+        const rect = JSON.parse(savedRect);
+        viewfinder.style.top = rect.top;
+        viewfinder.style.left = rect.left;
+        viewfinder.style.width = rect.width;
+        viewfinder.style.height = rect.height;
+    } else {
+        // 기본값 설정
+        viewfinder.style.width = '80%';
+        viewfinder.style.height = '30%';
+        viewfinder.style.top = '35%';
+        viewfinder.style.left = '10%';
+    }
+};
+
+const setupViewfinderResizing = () => {
+    let isResizing = false;
+    let currentHandle = null;
+    let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+    const startResize = (e) => {
+        e.preventDefault();
+        isResizing = true;
+        currentHandle = e.target.dataset.handle;
+        
+        const event = e.touches ? e.touches[0] : e;
+        startX = event.clientX;
+        startY = event.clientY;
+
+        const rect = viewfinder.getBoundingClientRect();
+        startWidth = rect.width;
+        startHeight = rect.height;
+        startLeft = rect.left;
+        startTop = rect.top;
+    };
+
+    const doResize = (e) => {
+        if (!isResizing) return;
+        e.preventDefault();
+        
+        const event = e.touches ? e.touches[0] : e;
+        const diffX = event.clientX - startX;
+        const diffY = event.clientY - startY;
+
+        let newWidth = startWidth, newHeight = startHeight, newLeft = startLeft, newTop = startTop;
+
+        if (currentHandle.includes('right')) newWidth = startWidth + diffX;
+        if (currentHandle.includes('left')) {
+            newWidth = startWidth - diffX;
+            newLeft = startLeft + diffX;
+        }
+        if (currentHandle.includes('bottom')) newHeight = startHeight + diffY;
+        if (currentHandle.includes('top')) {
+            newHeight = startHeight - diffY;
+            newTop = startTop + diffY;
+        }
+        
+        // 최소 크기 제한
+        if (newWidth < 100) newWidth = 100;
+        if (newHeight < 50) newHeight = 50;
+
+        viewfinder.style.width = `${newWidth}px`;
+        viewfinder.style.height = `${newHeight}px`;
+        viewfinder.style.left = `${newLeft}px`;
+        viewfinder.style.top = `${newTop}px`;
+    };
+
+    const stopResize = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        // 뷰포트 기준 px 값을 %로 변환하여 저장 (화면 크기 변경에 대응)
+        const rect = viewfinder.getBoundingClientRect();
+        viewfinder.style.left = `${(rect.left / window.innerWidth) * 100}%`;
+        viewfinder.style.top = `${(rect.top / window.innerHeight) * 100}%`;
+        viewfinder.style.width = `${(rect.width / window.innerWidth) * 100}%`;
+        viewfinder.style.height = `${(rect.height / window.innerHeight) * 100}%`;
+        saveViewfinderRect();
+    };
+
+    viewfinder.querySelectorAll('.resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', startResize);
+        handle.addEventListener('touchstart', startResize, { passive: false });
+    });
+    window.addEventListener('mousemove', doResize);
+    window.addEventListener('touchmove', doResize, { passive: false });
+    window.addEventListener('mouseup', stopResize);
+    window.addEventListener('touchend', stopResize);
+};
+// ▲▲▲ [추가 끝] ▲▲▲
+
 const openSignatureModal = (itemNo) => { 
     currentSignatureItemNo = itemNo; 
     document.body.classList.add('modal-open'); // body 스크롤 잠금
@@ -2966,7 +3182,14 @@ tempMergedResults.set(no, geminiItem);
                 URL.revokeObjectURL(url);
                 showToastMessage(`로그가 '${fileName}' 파일로 저장되었습니다.`);
             });
-
+// ▼▼▼ [바코드 스캐너 초기화 로직 추가] ▼▼▼
+            const barcodeScanButton = document.getElementById('barcode-scan-button');
+            if ('BarcodeDetector' in window) {
+                barcodeScanButton.classList.remove('hidden');
+                barcodeScanButton.addEventListener('click', openScanner);
+            }
+            document.getElementById('scanner-close-button').addEventListener('click', closeScanner);
+            // ▲▲▲ [추가 끝] ▲▲▲
             // --- 앱 데이터 로딩 ---
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
@@ -2993,5 +3216,19 @@ tempMergedResults.set(no, geminiItem);
         }
     });
     </script>
+    <!-- ▼▼▼ [바코드 스캐너 모달 추가] ▼▼▼ -->
+<div id="barcode-scanner-modal" class="fixed inset-0 bg-black z-50" style="display: none;">
+    <video id="scanner-video" class="w-full h-full object-cover" playsinline></video>
+    <div id="scanner-viewfinder" class="absolute border-4 border-green-500" style="box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);">
+        <div class="resize-handle top-left" data-handle="top-left"></div>
+        <div class="resize-handle top-right" data-handle="top-right"></div>
+        <div class="resize-handle bottom-left" data-handle="bottom-left"></div>
+        <div class="resize-handle bottom-right" data-handle="bottom-right"></div>
+    </div>
+    <button id="scanner-close-button" class="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full p-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+</div>
+<!-- ▲▲▲ [추가 끝] ▲▲▲ -->
 </body>
 </html>
