@@ -718,7 +718,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.17";
+            const version = "v1.6.18";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2648,22 +2648,36 @@ tempMergedResults.set(no, geminiItem);
 
             // ▼▼▼ 외부 스캐너 앱 연동 로직 ▼▼▼
             setTimeout(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const hawbFromUrl = urlParams.get('hawb');
-                const filterFromUrl = urlParams.get('filter');
-                let initialLoad = true;
-                if (hawbFromUrl) {
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
-                } else {
-                    initialLoad = false;
-                }
-                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                    changeFilter(filterFromUrl, '', initialLoad);
-                } else {
-                    changeFilter('배송준비', '', true);
-                }
-            }, 0);
+    const urlParams = new URLSearchParams(window.location.search);
+    const hawbFromUrl = urlParams.get('hawb');
+    const filterFromUrl = urlParams.get('filter');
+    
+    let targetFilter = '배송준비';
+    
+    // 필터 파라미터 처리
+    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+        targetFilter = filterFromUrl;
+    }
+    
+    // 바코드 파라미터 처리 - 필터 변경 후 검색창 설정
+    if (hawbFromUrl) {
+        targetFilter = '전체';
+        
+        // 필터 변경이 완료된 후 검색창 설정
+        changeFilter(targetFilter, '', false);
+        
+        // 약간의 지연 후 검색창 설정 (필터 렌더링 완료 보장)
+        setTimeout(() => {
+            searchTerm = hawbFromUrl;
+            invoiceNumberInput.value = hawbFromUrl;
+            renderDeliveryCards('전체'); // 명시적으로 다시 렌더링
+            console.log('바코드 값 입력됨:', hawbFromUrl);
+        }, 100);
+        
+    } else {
+        changeFilter(targetFilter, '', true);
+    }
+}, 0);
 
             // ▼▼▼ 당겨서 새로고침 및 브라우저 새로고침 방지 로직 ▼▼▼
             const mainContent = document.getElementById('main-content-wrapper');
