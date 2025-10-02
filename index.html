@@ -718,7 +718,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.20";
+            const version = "v1.6.21";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1996,16 +1996,16 @@ if (validationResult.validated) {
             dataManagementContainer.classList.toggle('hidden', !isScanVisible);
             versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
 
-            const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
-            searchBarContainer.style.display = isSearchVisible ? 'block' : 'none';
-            
-            // ▼▼▼ [핵심 수정] 플로팅 버튼 보이기/숨기기 로직 강화 ▼▼▼
-            if (['배송중', '완료'].includes(activeFilter)) {
-                // '배송중' 또는 '완료' 필터일 때만 플로팅 버튼을 보여주고 설정합니다.
+            // ▼▼▼ [핵심 수정] 하단 바 제어 로직 강화 ▼▼▼
+            if (['전체', '배송전'].includes(activeFilter)) {
+                searchBarContainer.style.display = 'block';
+                actionBarContainer.style.display = 'none';
+            } else if (['배송중', '완료'].includes(activeFilter)) {
+                searchBarContainer.style.display = 'none';
                 actionBarContainer.style.display = 'block';
                 setupFab();
-            } else {
-                // 그 외의 모든 필터('전체', '배송전', '배송준비')에서는 플로팅 버튼을 확실하게 숨깁니다.
+            } else { // '배송준비' 필터의 경우
+                searchBarContainer.style.display = 'none';
                 actionBarContainer.style.display = 'none';
             }
             // ▲▲▲ [수정 끝] ▲▲▲
@@ -2158,18 +2158,6 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
         filterScrollPositions[activeFilter] = mainContentWrapper.scrollTop;
         activeFilter = newFilter;
 
-        // --- [핵심 수정] 하단 바 표시/숨김 로직을 필터 변경 시점에 명확하게 처리 ---
-        const isSearchVisible = ['전체', '배송전'].includes(newFilter);
-        const isActionVisible = ['배송중', '완료'].includes(newFilter);
-
-        searchBarContainer.style.display = isSearchVisible ? 'block' : 'none';
-        actionBarContainer.style.display = isActionVisible ? 'block' : 'none';
-
-        if (isActionVisible) {
-            setupFab();
-        }
-        // --- [수정 끝] ---
-
         if (newFilter === '배송중') {
             currentSortOrder = deliveryInProgressSortOrder;
             if (deliveryInProgressSortOrder === 'distance') {
@@ -2221,8 +2209,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
         
         renderDeliveryCards(newFilter, animationClass); // activeFilter 대신 newFilter 사용
         
-        // updateStickyHeaderPositions() 호출은 이제 불필요하므로 삭제하거나 주석 처리
-        // updateStickyHeaderPositions(); 
+        updateStickyHeaderPositions(); // [수정] 이 함수를 다시 호출합니다.
 
         const button = filterButtonsContainer.querySelector(`button[data-filter="${newFilter}"]`);
         if (button) button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
