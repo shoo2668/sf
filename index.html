@@ -718,7 +718,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.21";
+            const version = "v1.6.22";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2654,38 +2654,33 @@ tempMergedResults.set(no, geminiItem);
                 }
             });
 
-            // ▼▼▼ 외부 스캐너 앱 연동 로직 ▼▼▼
+            // ▼▼▼ [최종 수정] 외부 스캐너 앱 연동 로직 ▼▼▼
             setTimeout(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hawbFromUrl = urlParams.get('hawb');
-    const filterFromUrl = urlParams.get('filter');
-    
-    let targetFilter = '배송준비';
-    
-    // 필터 파라미터 처리
-    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-        targetFilter = filterFromUrl;
-    }
-    
-    // 바코드 파라미터 처리 - 필터 변경 후 검색창 설정
-    if (hawbFromUrl) {
-        targetFilter = '전체';
-        
-        // 필터 변경이 완료된 후 검색창 설정
-        changeFilter(targetFilter, '', false);
-        
-        // 약간의 지연 후 검색창 설정 (필터 렌더링 완료 보장)
-        setTimeout(() => {
-            searchTerm = hawbFromUrl;
-            invoiceNumberInput.value = hawbFromUrl;
-            renderDeliveryCards('전체'); // 명시적으로 다시 렌더링
-            console.log('바코드 값 입력됨:', hawbFromUrl);
-        }, 100);
-        
-    } else {
-        changeFilter(targetFilter, '', true);
-    }
-}, 0);
+                const urlParams = new URLSearchParams(window.location.search);
+                const hawbFromUrl = urlParams.get('hawb');
+                const filterFromUrl = urlParams.get('filter');
+
+                if (hawbFromUrl) {
+                    // 1. 먼저 '전체' 필터로 확실하게 변경합니다.
+                    // 이렇게 하면 검색창이 나타나고, 플로팅 버튼은 확실하게 사라집니다.
+                    changeFilter('전체', '', true);
+
+                    // 2. 그 다음에, 검색어(searchTerm)를 설정하고 검색창에 값을 입력합니다.
+                    searchTerm = hawbFromUrl;
+                    invoiceNumberInput.value = hawbFromUrl;
+
+                    // 3. 마지막으로, 설정된 검색어로 화면을 다시 한번 그려서 검색 결과를 표시합니다.
+                    renderDeliveryCards('전체');
+                    
+                } else {
+                    // hawb 값이 없을 때만 기존 필터 로직을 실행합니다.
+                    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                        changeFilter(filterFromUrl, '', true);
+                    } else {
+                        changeFilter('배송준비', '', true);
+                    }
+                }
+            }, 0);
 
             // ▼▼▼ 당겨서 새로고침 및 브라우저 새로고침 방지 로직 ▼▼▼
             const mainContent = document.getElementById('main-content-wrapper');
