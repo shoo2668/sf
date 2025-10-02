@@ -5,6 +5,9 @@
   "start_url": "/sf/index.html",
   "scope": "/sf/",
   "display": "standalone",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [
