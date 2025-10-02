@@ -723,7 +723,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.22";
+            const version = "v1.6.23";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1153,6 +1153,7 @@ const sendCompletionNotification = (item) => {
         let pullStartY = 0;
         let refreshIndicator;
         let currentLocationEditItemNo = null;
+        let lastScannedHawb = null; // [추가] 마지막으로 스캔한 송장번호를 기억할 변수
         
 
         const searchBarContainer = document.getElementById('search-bar-container');
@@ -2577,35 +2578,6 @@ tempMergedResults.set(no, geminiItem);
 
             updateMapSelectionUI();
 
-// ▼▼▼ [Webhook 호출 버튼 이벤트 핸들러 추가] ▼▼▼
-            const barcodeScanWebhookButton = document.getElementById('barcode-scan-webhook-button');
-            barcodeScanWebhookButton.addEventListener('click', () => {
-                // 여기에 매크로드로이드에서 발급받은 Webhook URL을 입력하세요.
-                const webhookUrl = 'https://trigger.macrodroid.com/bac6329f-79d2-449a-a727-0be2000ac745/scan';
-
-                if (webhookUrl === 'YOUR_MACRODROID_WEBHOOK_URL_HERE') {
-                    showMessage('Webhook URL이 설정되지 않았습니다. 코드에서 URL을 설정해주세요.', '설정 필요');
-                    return;
-                }
-
-                // fetch API를 사용하여 백그라운드에서 URL 호출
-                fetch(webhookUrl)
-                    .then(response => {
-                        if (response.ok) {
-                            console.log('Webhook 호출 성공');
-                            // 성공 시 사용자에게 간단한 피드백을 줄 수 있습니다.
-                            showToastMessage('스캐너 앱을 실행합니다...', 1000);
-                        } else {
-                            throw new Error(`Webhook 서버 응답 오류: ${response.status}`);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Webhook 호출 실패:', error);
-                        showMessage(`스캐너 앱 호출에 실패했습니다: ${error.message}`, '호출 실패');
-                    });
-            });
-            // ▲▲▲ [추가 끝] ▲▲▲
-
             // ▼▼▼ 기타 버튼 이벤트 핸들러 ▼▼▼
             clearAllCardsButton.addEventListener('click', () => {
                 openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
@@ -2680,22 +2652,20 @@ tempMergedResults.set(no, geminiItem);
                 }
             });
 
-            // ▼▼▼ 외부 스캐너 앱 연동 로직 ▼▼▼
+            // ▼▼▼ [수정] 외부 스캐너 앱 연동 로직 ▼▼▼
             setTimeout(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const hawbFromUrl = urlParams.get('hawb');
-                const filterFromUrl = urlParams.get('filter');
-                let initialLoad = true;
-                if (hawbFromUrl) {
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
-                } else {
-                    initialLoad = false;
-                }
-                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                    changeFilter(filterFromUrl, '', initialLoad);
-                } else {
-                    changeFilter('배송준비', '', true);
+                // 1. URL에 hawb 파라미터가 있는지 먼저 처리
+                const wasHawbHandled = handleUrlParameters();
+
+                // 2. hawb가 처리되지 않았을 경우에만 기존 필터 로직 실행
+                if (!wasHawbHandled) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const filterFromUrl = urlParams.get('filter');
+                    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                        changeFilter(filterFromUrl, '', true);
+                    } else {
+                        changeFilter('배송준비', '', true);
+                    }
                 }
             }, 0);
 
@@ -2786,50 +2756,6 @@ tempMergedResults.set(no, geminiItem);
             }, { passive: false });
             // ▲▲▲ [추가 끝] ▲▲▲
             // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
-            // [수정] 외부 앱에서 호출될 때 URL을 처리하는 표준 Launch Handler API
-            if ('launchQueue' in window) {
-    window.launchQueue.setConsumer(async (launchParams) => {
-        // ▼▼▼ [이 부분 수정] ▼▼▼
-        // 파일이 있는 경우 처리 (현재는 필요 없으므로 무시)
-        if (launchParams.files && launchParams.files.length > 0) {
-            for (const file of launchParams.files) {
-                // 파일 처리 로직 (지금은 필요 없음)
-                console.log('File received:', file.name);
-            }
-            return; // 파일이 있으면 URL 파라미터 처리를 하지 않음
-        }
-        // ▲▲▲ [수정 끝] ▲▲▲
-        
-        // URL에서 'hawb' 파라미터 확인
-        const url = new URL(launchParams.targetURL);
-        const hawbFromUrl = url.searchParams.get('hawb');
-
-        if (hawbFromUrl) {
-            console.log('HAWB from URL:', hawbFromUrl); // 디버깅용
-            
-            // 1. 검색창에 값 입력 및 검색 실행
-            invoiceNumberInput.value = hawbFromUrl;
-            searchTerm = hawbFromUrl;
-            
-            // 2. '전체' 탭으로 강제 이동 및 화면 다시 그리기
-            const currentFilterIndex = filterCategories.indexOf(activeFilter);
-            const targetFilterIndex = filterCategories.indexOf('전체');
-            const animation = targetFilterIndex > currentFilterIndex ? 'animate-slide-in-right' : 'animate-slide-in-left';
-            changeFilter('전체', animation);
-            
-            // 3. 스크롤을 맨 위로 이동
-            document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
-            filterScrollPositions['전체'] = 0;
-
-            // 4. 처리가 끝난 URL 파라미터를 주소창에서 제거
-            const newUrl = window.location.pathname;
-            history.replaceState({}, document.title, newUrl);
-            
-            showToastMessage(`'${hawbFromUrl}' 스캔 완료`);
-        }
-    });
-}
-
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
                     justReturnedFromExternalApp = true;
