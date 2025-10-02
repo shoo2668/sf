@@ -308,12 +308,7 @@ body.modal-open {
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
                 <!-- 검색창 -->
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow flex-shrink min-w-0 px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
-                <!-- ▼▼▼ [바코드 스캔 버튼 추가] ▼▼▼ -->
-                <button id="barcode-scan-webhook-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scan-barcode-icon lucide-scan-barcode"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
-                </button>
-                <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
                 <!-- 지움 버튼 -->
                 <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
@@ -723,7 +718,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.23";
+            const version = "v1.6.17";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1153,7 +1148,6 @@ const sendCompletionNotification = (item) => {
         let pullStartY = 0;
         let refreshIndicator;
         let currentLocationEditItemNo = null;
-        let lastScannedHawb = null; // [추가] 마지막으로 스캔한 송장번호를 기억할 변수
         
 
         const searchBarContainer = document.getElementById('search-bar-container');
@@ -2652,20 +2646,22 @@ tempMergedResults.set(no, geminiItem);
                 }
             });
 
-            // ▼▼▼ [수정] 외부 스캐너 앱 연동 로직 ▼▼▼
+            // ▼▼▼ 외부 스캐너 앱 연동 로직 ▼▼▼
             setTimeout(() => {
-                // 1. URL에 hawb 파라미터가 있는지 먼저 처리
-                const wasHawbHandled = handleUrlParameters();
-
-                // 2. hawb가 처리되지 않았을 경우에만 기존 필터 로직 실행
-                if (!wasHawbHandled) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const filterFromUrl = urlParams.get('filter');
-                    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                        changeFilter(filterFromUrl, '', true);
-                    } else {
-                        changeFilter('배송준비', '', true);
-                    }
+                const urlParams = new URLSearchParams(window.location.search);
+                const hawbFromUrl = urlParams.get('hawb');
+                const filterFromUrl = urlParams.get('filter');
+                let initialLoad = true;
+                if (hawbFromUrl) {
+                    searchTerm = hawbFromUrl;
+                    invoiceNumberInput.value = hawbFromUrl;
+                } else {
+                    initialLoad = false;
+                }
+                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                    changeFilter(filterFromUrl, '', initialLoad);
+                } else {
+                    changeFilter('배송준비', '', true);
                 }
             }, 0);
 
