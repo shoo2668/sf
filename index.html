@@ -303,17 +303,17 @@ body.modal-open {
         <!-- 카드 목록의 부모와 동일한 구조로 변경 -->
         <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8 pb-3">
             <div id="search-bar" class="flex items-center w-full p-1.5 rounded-2xl bg-white/90 backdrop-blur-md border border-gray-200">
-    <!-- 검색 아이콘 -->
-    <div class="pl-2 pr-1 text-gray-400">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    </div>
-    <!-- 검색창 -->
-    <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
-    <!-- 지움 버튼 -->
-    <button id="resetButton" class="flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800 p-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
-    </button>
-</div>
+                <!-- 검색 아이콘 -->
+                <div class="pl-2 pr-1 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+                <!-- 검색창 -->
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
+                <!-- 지움 버튼 -->
+                <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1999,12 +1999,16 @@ if (validationResult.validated) {
             const isSearchVisible = ['전체', '배송전'].includes(activeFilter);
             searchBarContainer.style.display = isSearchVisible ? 'block' : 'none';
             
-            const isActionVisible = ['배송중', '완료'].includes(activeFilter);
-            actionBarContainer.style.display = isActionVisible ? 'block' : 'none';
-
-            if (isActionVisible) {
-                setupFab(); // 새로운 FAB 설정 함수 호출
+            // ▼▼▼ [핵심 수정] 플로팅 버튼 보이기/숨기기 로직 강화 ▼▼▼
+            if (['배송중', '완료'].includes(activeFilter)) {
+                // '배송중' 또는 '완료' 필터일 때만 플로팅 버튼을 보여주고 설정합니다.
+                actionBarContainer.style.display = 'block';
+                setupFab();
+            } else {
+                // 그 외의 모든 필터('전체', '배송전', '배송준비')에서는 플로팅 버튼을 확실하게 숨깁니다.
+                actionBarContainer.style.display = 'none';
             }
+            // ▲▲▲ [수정 끝] ▲▲▲
         });
     };
     
