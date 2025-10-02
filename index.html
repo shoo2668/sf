@@ -723,7 +723,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.19";
+            const version = "v1.6.20";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2788,10 +2788,33 @@ tempMergedResults.set(no, geminiItem);
             // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
+                    // --- 외부 앱에서 돌아왔을 때의 뒤로가기 방지 로직 ---
                     justReturnedFromExternalApp = true;
                     setTimeout(() => {
                         justReturnedFromExternalApp = false;
                     }, 500);
+
+                    // ▼▼▼ [핵심 수정] 화면이 다시 보일 때마다 URL을 확인하는 로직 추가 ▼▼▼
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const hawbFromUrl = urlParams.get('hawb');
+
+                    if (hawbFromUrl) {
+                        // 1. 검색창에 값 입력 및 검색 실행
+                        invoiceNumberInput.value = hawbFromUrl;
+                        searchTerm = hawbFromUrl;
+                        renderDeliveryCards('전체'); // '전체' 필터에서 검색하도록 강제
+                        
+                        // 2. 스크롤을 맨 위로 이동
+                        document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
+                        filterScrollPositions['전체'] = 0;
+
+                        // 3. (매우 중요) 처리가 끝난 URL 파라미터를 주소창에서 제거하여 중복 실행 방지
+                        const newUrl = window.location.pathname;
+                        history.replaceState({}, document.title, newUrl);
+                        
+                        showToastMessage(`'${hawbFromUrl}' 스캔 완료`);
+                    }
+                    // ▲▲▲ [추가 끝] ▲▲▲
                 }
             });
 
