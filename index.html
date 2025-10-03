@@ -724,7 +724,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.27";
+            const version = "v1.6.28";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2680,26 +2680,53 @@ tempMergedResults.set(no, geminiItem);
                 }
             });
 
-            // ▼▼▼ [최종 수정] 외부 스캐너 앱 연동 로직 ▼▼▼
+            // ▼▼▼ [변경 후] 외부 스캐너 앱 연동 로직 ▼▼▼
+
+            // [1. 새로운 함수 추가] 바코드 처리 로직을 별도의 함수로 분리합니다.
+            const handleScannedBarcode = (hawb) => {
+                if (!hawb) return;
+
+                // 1. '전체' 필터로 변경하여 검색창을 활성화합니다.
+                changeFilter('전체', '', true);
+
+                // 2. 검색어를 설정하고 입력창에 값을 채웁니다.
+                searchTerm = hawb;
+                invoiceNumberInput.value = hawb;
+
+                // 3. 검색 결과로 화면을 다시 그립니다.
+                renderDeliveryCards('전체');
+
+                // 4. (중요) 브라우저 주소창에서 파라미터를 제거하여, 사용자가 실수로 새로고침해도
+                //    검색 결과가 유지되지 않도록 합니다.
+                const cleanUrl = window.location.pathname;
+                history.replaceState(null, '', cleanUrl);
+            };
+
+            // [2. 새로운 이벤트 리스너 추가] 페이지 새로고침 없이 URL이 변경될 때를 감지합니다.
+            if ('navigation' in window) {
+                window.navigation.addEventListener('navigate', (event) => {
+                    const url = new URL(event.destination.url);
+                    const hawbFromUrl = url.searchParams.get('hawb');
+                    if (hawbFromUrl) {
+                        // 기본 페이지 이동(새로고침)을 막고,
+                        event.preventDefault();
+                        // 우리가 만든 함수를 호출하여 부드럽게 처리합니다.
+                        handleScannedBarcode(hawbFromUrl);
+                    }
+                });
+            }
+
+            // [3. 기존 로직 수정] 페이지가 처음 로드될 때도 URL을 확인하도록 유지합니다.
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
-                const filterFromUrl = urlParams.get('filter');
-
+                
                 if (hawbFromUrl) {
-                    // 1. 먼저 '전체' 필터로 확실하게 변경합니다.
-                    // 이렇게 하면 검색창이 나타나고, 플로팅 버튼은 확실하게 사라집니다.
-                    changeFilter('전체', '', true);
-
-                    // 2. 그 다음에, 검색어(searchTerm)를 설정하고 검색창에 값을 입력합니다.
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
-
-                    // 3. 마지막으로, 설정된 검색어로 화면을 다시 한번 그려서 검색 결과를 표시합니다.
-                    renderDeliveryCards('전체');
-                    
+                    // 새로 만든 함수를 호출합니다.
+                    handleScannedBarcode(hawbFromUrl);
                 } else {
-                    // hawb 값이 없을 때만 기존 필터 로직을 실행합니다.
+                    // 바코드 값이 없을 때는 기존 필터 로직을 그대로 실행합니다.
+                    const filterFromUrl = urlParams.get('filter');
                     if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                         changeFilter(filterFromUrl, '', true);
                     } else {
