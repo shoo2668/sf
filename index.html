@@ -724,7 +724,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.26";
+            const version = "v1.6.27";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2587,21 +2587,23 @@ tempMergedResults.set(no, geminiItem);
             updateMapSelectionUI();
 
             // ▼▼▼ [네이티브 스캐너 직접 호출 이벤트 핸들러 추가] ▼▼▼
-            const barcodeScanButton = document.getElementById('barcode-scan-logcat-button');
-if (barcodeScanButton) {
-    barcodeScanButton.addEventListener('click', () => {
-        // 1. 스캔 후 돌아올 우리 PWA의 URL을 만듭니다.
-        const callbackUrl = `https://shoo2668.github.io/sf/?filter=전체&hawb=`;
-        const encodedCallbackUrl = encodeURIComponent(callbackUrl);
+            const barcodeScanButton = document.getElementById('barcode-scan-webhook-button');
+                if (barcodeScanButton) {
+                    barcodeScanButton.addEventListener('click', () => {
+                        // 1. 스캔 후 돌아올 우리 PWA의 URL 형식을 만듭니다.
+                        // {CODE}는 스캐너 앱이 스캔된 값으로 바꿔줄 약속된 기호입니다.
+                        const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
+                        
+                        // 2. URL을 ZXing 스킴에 맞게 인코딩합니다.
+                        const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
 
-        // 2. 스캐너 앱을 호출하는 최종 URL을 만듭니다.
-        const scannerUrl = `https://qrbot.net/x-callback-url/scan?x-success=${encodedCallbackUrl}`;
-
-        // 3. 사용자에게 피드백을 주고 스캐너 앱을 실행합니다.
-        showToastMessage('스캐너 앱을 실행합니다...', 1000);
-        window.location.href = scannerUrl;
-    });
-}
+                        // 3. 최종적으로 스캐너를 호출할 URL 스킴을 만듭니다.
+                        const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
+    
+                        showToastMessage('스캐너 앱을 실행합니다...', 1000);
+                        window.location.href = scannerUrl;
+                    });
+                }
             // ▲▲▲ [추가 끝] ▲▲▲
 
             // ▼▼▼ 기타 버튼 이벤트 핸들러 ▼▼▼
