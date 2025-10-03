@@ -724,7 +724,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.23";
+            const version = "v1.6.24";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2586,12 +2586,20 @@ tempMergedResults.set(no, geminiItem);
 
             updateMapSelectionUI();
 
-            // ▼▼▼ [Logcat 호출 버튼 이벤트 핸들러 추가] ▼▼▼
-            const barcodeScanLogcatButton = document.getElementById('barcode-scan-logcat-button');
-            barcodeScanLogcatButton.addEventListener('click', () => {
-                // Logcat으로 보낼 암호를 콘솔에 출력
-                console.log('LAUNCH_BARCODE_SCANNER');
+            // ▼▼▼ [네이티브 스캐너 직접 호출 이벤트 핸들러 추가] ▼▼▼
+            const barcodeScanButton = document.getElementById('barcode-scan-webhook-button');
+            barcodeScanButton.addEventListener('click', () => {
+                // 1. 스캔 후 돌아올 우리 PWA의 URL을 만듭니다.
+                // URL 파라미터는 인코딩해야 안전합니다.
+                const callbackUrl = `https://shoo2668.github.io/sf/?filter=전체&hawb=`;
+                const encodedCallbackUrl = encodeURIComponent(callbackUrl);
+
+                // 2. 스캐너 앱을 호출하는 최종 URL을 만듭니다.
+                const scannerUrl = `https://qrbot.net/x-callback-url/scan?x-success=${encodedCallbackUrl}`;
+
+                // 3. 사용자에게 피드백을 주고 스캐너 앱을 실행합니다.
                 showToastMessage('스캐너 앱을 실행합니다...', 1000);
+                window.location.href = scannerUrl;
             });
             // ▲▲▲ [추가 끝] ▲▲▲
 
