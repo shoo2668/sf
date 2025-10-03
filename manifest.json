@@ -3,8 +3,10 @@
   "short_name": "배송 시트",
   "description": "SF Express 배송 관리를 위한 PWA 시트",
   "start_url": "/sf/index.html",
-  "scope": "/sf/",
   "display": "standalone",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [
