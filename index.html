@@ -724,7 +724,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.24";
+            const version = "v1.6.25";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2595,7 +2595,7 @@ tempMergedResults.set(no, geminiItem);
                 const encodedCallbackUrl = encodeURIComponent(callbackUrl);
 
                 // 2. 스캐너 앱을 호출하는 최종 URL을 만듭니다.
-                const scannerUrl = `https://qrbot.net/x-callback-url/scan?x-success=${encodedCallbackUrl}`;
+                const scannerUrl = `https://qrbot.net/x-callback-url/scan?x-success=${encodedCallbackUrl}{CODE}`; // {CODE} 추가
 
                 // 3. 사용자에게 피드백을 주고 스캐너 앱을 실행합니다.
                 showToastMessage('스캐너 앱을 실행합니다...', 1000);
