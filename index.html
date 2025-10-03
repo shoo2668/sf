@@ -307,8 +307,14 @@ body.modal-open {
                 <div class="pl-2 pr-1 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
-                <!-- 검색창 -->
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
+                <!-- 검색창 (수정: flex-shrink와 min-w-0 추가로 레이아웃 깨짐 방지) -->
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow flex-shrink min-w-0 px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
+                <!-- ▼▼▼ [바코드 스캔 버튼 추가] ▼▼▼ -->
+                <button id="barcode-scan-logcat-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
+                    <!-- [수정] class에 짙은 민트색(text-teal-600) 추가 -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-teal-600"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
+                </button>
+                <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
                 <!-- 지움 버튼 -->
                 <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
@@ -718,7 +724,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.22";
+            const version = "v1.6.23";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2579,6 +2585,15 @@ tempMergedResults.set(no, geminiItem);
             });
 
             updateMapSelectionUI();
+
+            // ▼▼▼ [Logcat 호출 버튼 이벤트 핸들러 추가] ▼▼▼
+            const barcodeScanLogcatButton = document.getElementById('barcode-scan-logcat-button');
+            barcodeScanLogcatButton.addEventListener('click', () => {
+                // Logcat으로 보낼 암호를 콘솔에 출력
+                console.log('LAUNCH_BARCODE_SCANNER');
+                showToastMessage('스캐너 앱을 실행합니다...', 1000);
+            });
+            // ▲▲▲ [추가 끝] ▲▲▲
 
             // ▼▼▼ 기타 버튼 이벤트 핸들러 ▼▼▼
             clearAllCardsButton.addEventListener('click', () => {
