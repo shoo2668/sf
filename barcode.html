@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>클립보드 테스트</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f5f5f5;
+    }
+    button {
+      padding: 20px 40px;
+      font-size: 18px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #007bff;
+      color: white;
+    }
+    button:active {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <button id="copyBtn">클립보드에 복사</button>
+
+  <script>
+    const uniqueCode = "X9G7B-TEST-MACRO-20251003";
+
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(uniqueCode);
+        alert("클립보드에 복사되었습니다:\n" + uniqueCode);
+      } catch (err) {
+        alert("클립보드 복사 실패: " + err);
+      }
+    });
+  </script>
+</body>
+</html>
