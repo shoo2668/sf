@@ -29,16 +29,17 @@
   <button id="copyBtn">클립보드에 복사</button>
 
   <script>
-    const uniqueCode = "X9G7B-TEST-MACRO-20251003";
+const uniqueCode = "X9G7B-TEST-MACRO-20251003";
 
-    document.getElementById("copyBtn").addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(uniqueCode);
-        alert("클립보드에 복사되었습니다:\n" + uniqueCode);
-      } catch (err) {
-        alert("클립보드 복사 실패: " + err);
-      }
-    });
-  </script>
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(uniqueCode);
+    // alert 제거, 대신 콘솔로 확인
+    console.log("클립보드에 복사 완료:", uniqueCode);
+  } catch (err) {
+    console.error("클립보드 복사 실패:", err);
+  }
+});
+</script>
 </body>
 </html>
