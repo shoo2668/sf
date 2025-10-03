@@ -724,7 +724,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.6.29";
+            const version = "v1.6.30";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2682,24 +2682,13 @@ tempMergedResults.set(no, geminiItem);
 
             // ▼▼▼ [최종 수정] 외부 스캐너 앱 연동 로직 ▼▼▼
             setTimeout(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const hawbFromUrl = urlParams.get('hawb');
-                const filterFromUrl = urlParams.get('filter');
+                // 1. URL에 hawb 파라미터가 있는지 먼저 처리
+                const wasHawbHandled = handleUrlParameters();
 
-                if (hawbFromUrl) {
-                    // 1. 먼저 '전체' 필터로 확실하게 변경합니다.
-                    // 이렇게 하면 검색창이 나타나고, 플로팅 버튼은 확실하게 사라집니다.
-                    changeFilter('전체', '', true);
-
-                    // 2. 그 다음에, 검색어(searchTerm)를 설정하고 검색창에 값을 입력합니다.
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
-
-                    // 3. 마지막으로, 설정된 검색어로 화면을 다시 한번 그려서 검색 결과를 표시합니다.
-                    renderDeliveryCards('전체');
-                    
-                } else {
-                    // hawb 값이 없을 때만 기존 필터 로직을 실행합니다.
+                // 2. hawb가 처리되지 않았을 경우에만 기존 필터 로직 실행
+                if (!wasHawbHandled) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const filterFromUrl = urlParams.get('filter');
                     if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                         changeFilter(filterFromUrl, '', true);
                     } else {
@@ -2826,10 +2815,14 @@ tempMergedResults.set(no, geminiItem);
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
+                    // --- 외부 앱에서 돌아왔을 때의 뒤로가기 방지 로직 ---
                     justReturnedFromExternalApp = true;
                     setTimeout(() => {
                         justReturnedFromExternalApp = false;
                     }, 500);
+
+                    // [추가] 화면이 다시 보일 때마다 URL 처리 함수를 호출
+                    handleUrlParameters();
                 }
             });
 
