@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delivery-sheet-cache-v1.6.28-update'; // 버전을 명확하게 올립니다.
+const CACHE_NAME = 'delivery-sheet-cache-v1.6.27-update'; // 버전을 명확하게 올립니다.
 const urlsToCache = [
   '/sf/',
   '/sf/index.html',
