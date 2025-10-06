@@ -724,7 +724,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.0";
+            const version = "v1.7.1";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -3034,6 +3034,38 @@ tempMergedResults.set(no, geminiItem);
             console.error("초기화 오류:", error);
             document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
         }
+        // === [추가 시작] launchQueue 및 URL 파라미터 처리 ===
+    const handleUrlParams = (url) => {
+        const urlParams = new URLSearchParams(url.search);
+        const hawbFromUrl = urlParams.get('hawb');
+        if (hawbFromUrl) {
+            // 1. 전체 필터로 전환
+            changeFilter('전체', '', true);
+            // 2. 검색어 세팅
+            searchTerm = hawbFromUrl;
+            invoiceNumberInput.value = hawbFromUrl;
+            // 3. 결과 렌더링
+            renderDeliveryCards('전체');
+            // 4. URL 정리
+            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+            window.history.replaceState({}, '', cleanUrl);
+        }
+    };
+
+    // launchQueue 지원 브라우저
+    if ('launchQueue' in window) {
+        window.launchQueue.setConsumer(launchParams => {
+            if (launchParams.targetURL) {
+                const url = new URL(launchParams.targetURL);
+                handleUrlParams(url);
+            }
+        });
+    } else {
+        // fallback (일반 URL 접근 시)
+        const url = new URL(window.location.href);
+        handleUrlParams(url);
+    }
+    // === [추가 끝] ===
     });
     </script>
 </body>

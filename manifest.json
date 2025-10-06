@@ -5,7 +5,7 @@
   "start_url": "/sf/index.html",
   "display": "standalone",
   "launch_handler": {
-    "client_mode": "navigate-existing"
+    "client_mode": "focus-existing"
   },
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
