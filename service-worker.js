@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delivery-sheet-cache-v1.7.1-update'; // 버전을 명확하게 올립니다.
+const CACHE_NAME = 'delivery-sheet-cache-v1.7.2-update'; // 버전을 명확하게 올립니다.
 const urlsToCache = [
   '/sf/',
   '/sf/index.html',
@@ -14,6 +14,16 @@ self.addEventListener('install', event => {
         console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
+       // ▼▼▼ [추가 시작: 프리캐시 강화] ▼▼▼
+      .then(() => {
+        // 핵심 파일들을 추가로 미리 캐싱합니다.
+        return caches.open(CACHE_NAME).then(cache => {
+          return cache.addAll([
+            '/sf/index.html'
+          ]);
+        });
+      })
+      // ▲▲▲ [추가 끝] ▲▲▲
   );
   self.skipWaiting();
 });
