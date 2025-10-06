@@ -19,7 +19,9 @@ self.addEventListener('install', event => {
         // 핵심 파일들을 추가로 미리 캐싱합니다.
         return caches.open(CACHE_NAME).then(cache => {
           return cache.addAll([
-            '/sf/index.html'
+            '/sf/index.html',
+            'https://raw.githubusercontent.com/shoo2668/sf/main/icon-192-maskable.png',
+            'https://raw.githubusercontent.com/shoo2668/sf/main/icon-512-maskable.png'
           ]);
         });
       })
