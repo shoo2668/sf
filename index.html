@@ -746,7 +746,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.5";
+            const version = "v1.7.5f";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2108,7 +2108,7 @@ const sendCompletionNotification = (item) => {
             const svg = btn.querySelector('svg');
             const isActive = btn.dataset.filter === newFilter;
             
-            c// ▼▼▼ [수정] 활성/비활성 상태에 대한 클래스 정의 ▼▼▼
+            // ▼▼▼ [수정] 활성/비활성 상태에 대한 클래스 정의 ▼▼▼
             const baseClasses = 'relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors';
             const activeClasses = 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400';
             const inactiveClasses = 'bg-transparent text-gray-500 dark:text-gray-400';
