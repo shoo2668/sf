@@ -757,7 +757,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.9";
+            const version = "v1.7.10";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1964,7 +1964,7 @@ const sendCompletionNotification = (item) => {
         const fabMainButton = document.getElementById('fab-main-button');
         const fabOptions = document.getElementById('fab-options');
 
-        // ▼▼▼ [수정] 더 안정적인 DOM 비우기 방식으로 변경 ▼▼▼
+        // 1. [수정] 더 안정적인 방식으로 기존 아이콘들을 확실하게 제거합니다.
         while (fabOptions.firstChild) {
             fabOptions.removeChild(fabOptions.firstChild);
         }
@@ -1976,48 +1976,43 @@ const sendCompletionNotification = (item) => {
         let currentSortType = '';
         let activeColorClass = '';
 
-        const iconJump = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m16 14-4-4-4 4"/><path d="M12 14V6"/></svg>`;
-        const iconSortNo = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5V19M12 5l-4 4M12 5l4 4M4 13h6M4 17h10M4 9h2"/></svg>`;
-        const iconSortDistance = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/><path d="M19.1 12.5a7.1 7.1 0 0 0-1.4-2.9l-1.2 1.2a5 5 0 1 1-7 0l-1.2-1.2a7.1 7.1 0 0 0-1.4 2.9"/></svg>`;
-        const iconSortTime = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+        const iconJump = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m16 14-4-4-4 4"/><path d="M12 14V6"/></svg>`;
+        const iconSortNo = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5V19M12 5l-4 4M12 5l4 4M4 13h6M4 17h10M4 9h2"/></svg>`;
+        const iconSortDistance = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/><path d="M19.1 12.5a7.1 7.1 0 0 0-1.4-2.9l-1.2 1.2a5 5 0 1 1-7 0l-1.2-1.2a7.1 7.1 0 0 0-1.4 2.9"/></svg>`;
+        const iconSortTime = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 
         if (activeFilter === '배송중') {
             allMenuItems = [
-                { icon: iconJump, action: 'jump-no' }, // 이것은 '액션' 아이템
-                { icon: iconSortNo, action: 'sort-no', sortType: 'no' }, // 이것은 '상태' 아이템
-                { icon: iconSortDistance, action: 'sort-distance', sortType: 'distance' } // 이것은 '상태' 아이템
+                { icon: iconJump, action: 'jump-no', type: 'action' }, // type 속성 추가
+                { icon: iconSortNo, action: 'sort-no', sortType: 'no', type: 'sort' },
+                { icon: iconSortDistance, action: 'sort-distance', sortType: 'distance', type: 'sort' }
             ];
             currentSortType = deliveryInProgressSortOrder;
             activeColorClass = 'bg-blue-600 text-white';
         } else if (activeFilter === '완료') {
             allMenuItems = [
-                { icon: iconSortNo, action: 'sort-no-completed', sortType: 'no' },
-                { icon: iconSortTime, action: 'sort-time', sortType: 'time' }
+                { icon: iconSortNo, action: 'sort-no-completed', sortType: 'no', type: 'sort' },
+                { icon: iconSortTime, action: 'sort-time', sortType: 'time', type: 'sort' }
             ];
             currentSortType = completedSortOrder;
             activeColorClass = 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800';
         }
 
-        // ▼▼▼ [수정] 로직 개선: 상태(정렬) 아이템과 액션 아이템을 명확히 분리 ▼▼▼
+        // 2. [수정] 메인 버튼에 표시할 '정렬 아이콘'을 명확하게 찾습니다.
+        // 'sort' 타입 중에서 현재 정렬 상태와 일치하는 것을 찾고, 없으면 첫 번째 'sort' 타입을 기본값으로 합니다.
+        const sortItems = allMenuItems.filter(item => item.type === 'sort');
+        let activeSortItem = sortItems.find(item => item.sortType === currentSortType) || sortItems[0];
 
-        // 1. 정렬 상태를 나타내는 아이템들만 필터링
-        const sortableItems = allMenuItems.filter(item => item.sortType);
-        
-        // 2. 현재 정렬 상태에 맞는 아이콘을 찾음. 없으면 첫 번째 정렬 아이콘을 기본값으로 사용
-        let activeSortItem = sortableItems.find(item => item.sortType === currentSortType) || sortableItems[0];
-
-        // 3. 메인 FAB 버튼에는 '현재 정렬 상태' 아이콘을 표시
+        // 3. 메인 FAB 버튼에는 위에서 찾은 '정렬 아이콘' 하나만 표시합니다.
         if (activeSortItem) {
             fabMainButton.innerHTML = activeSortItem.icon;
         }
         fabMainButton.className = `w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
         fabMainButton.dataset.action = 'toggle-fab';
 
-        // 4. 옵션 버튼 목록을 생성
-        //    - 모든 메뉴 아이템 중에서, 현재 메인 버튼에 표시된 아이템만 제외
+        // 4. 옵션 버튼 목록에는 메인 버튼에 표시된 것을 제외한 나머지 모든 아이템을 포함합니다.
         const optionItems = allMenuItems.filter(item => item !== activeSortItem);
 
-        // 5. 필터링된 옵션 아이템들로 버튼을 생성
         optionItems.forEach(item => {
             const button = document.createElement('button');
             button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 shadow-md';
