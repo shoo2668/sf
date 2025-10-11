@@ -757,7 +757,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.7";
+            const version = "v1.7.8";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1970,30 +1970,48 @@ const sendCompletionNotification = (item) => {
         let currentSortType = '';
         let activeColorClass = '';
 
+        // ▼▼▼ [추가] 아이콘 SVG 문자열 정의 ▼▼▼
+        // 번호로 이동 아이콘
+        const iconJump = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m16 14-4-4-4 4"/><path d="M12 14V6"/></svg>`;
+        // 순번 정렬 아이콘
+        const iconSortNo = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5V19M12 5l-4 4M12 5l4 4M4 13h6M4 17h10M4 9h2"/></svg>`;
+        // 거리순 정렬 아이콘
+        const iconSortDistance = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/><path d="M19.1 12.5a7.1 7.1 0 0 0-1.4-2.9l-1.2 1.2a5 5 0 1 1-7 0l-1.2-1.2a7.1 7.1 0 0 0-1.4 2.9"/></svg>`;
+        // 시간순 정렬 아이콘
+        const iconSortTime = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
         if (activeFilter === '배송중') {
+            // ▼▼▼ [수정] 플레이스홀더를 실제 아이콘 변수로 교체 ▼▼▼
             menuItems = [
-                { icon: `<svg ...>...</svg>`, action: 'jump-no' },
-                { icon: `<svg ...>...</svg>`, action: 'sort-no', sortType: 'no' },
-                { icon: `<svg ...>...</svg>`, action: 'sort-distance', sortType: 'distance' }
+                { icon: iconJump, action: 'jump-no' },
+                { icon: iconSortNo, action: 'sort-no', sortType: 'no' },
+                { icon: iconSortDistance, action: 'sort-distance', sortType: 'distance' }
             ];
             currentSortType = deliveryInProgressSortOrder;
             activeColorClass = 'bg-blue-600 text-white';
         } else if (activeFilter === '완료') {
+            // ▼▼▼ [수정] 플레이스홀더를 실제 아이콘 변수로 교체 ▼▼▼
             menuItems = [
-                { icon: `<svg ...>...</svg>`, action: 'sort-no-completed', sortType: 'no' },
-                { icon: `<svg ...>...</svg>`, action: 'sort-time', sortType: 'time' }
+                { icon: iconSortNo, action: 'sort-no-completed', sortType: 'no' },
+                { icon: iconSortTime, action: 'sort-time', sortType: 'time' }
             ];
             currentSortType = completedSortOrder;
             activeColorClass = 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800';
         }
 
+        // ▼▼▼ [수정] activeItem이 없을 경우를 대비한 예외 처리 추가 ▼▼▼
         const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems.find(item => item.sortType);
-        fabMainButton.innerHTML = activeItem.icon;
+        if (activeItem) {
+            fabMainButton.innerHTML = activeItem.icon;
+        }
+        
         fabMainButton.className = `w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200 ${activeColorClass}`;
         fabMainButton.dataset.action = 'toggle-fab';
 
         menuItems.forEach(item => {
+            // 현재 활성화된 정렬 타입과 같은 아이콘은 옵션 버튼으로 만들지 않음
             if (item.sortType === currentSortType) return;
+            
             const button = document.createElement('button');
             button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 shadow-md';
             button.innerHTML = item.icon;
