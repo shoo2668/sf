@@ -77,6 +77,10 @@
             overflow: auto; 
         }
         body {
+            /* ▼▼▼ [추가] CSS 변수를 사용하여 body의 기본 배경/텍스트 색상 설정 ▼▼▼ */
+            background-color: var(--page-bg);
+            color: var(--text-primary);
+            /* ▲▲▲ [추가 끝] ▲▲▲ */
             font-family: 'Inter', sans-serif;
             margin: 0;
             height: 100%;
@@ -229,8 +233,8 @@
         }
     </style>
 </head>
-<!-- ▼▼▼ [수정] body에 다크모드 클래스 추가 ▼▼▼ -->
-<body class="bg-white dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200">
+<!-- ▼▼▼ [수정] CSS 변수로 색상을 제어하므로, 직접적인 색상 클래스 제거 ▼▼▼ -->
+<body class="font-sans">
     <div id="app-container" class="h-screen flex flex-col">
 
         <!-- ▼▼▼ [수정] 상단 필터 컨테이너에 다크모드 클래스 추가 ▼▼▼ -->
@@ -739,7 +743,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.3";
+            const version = "v1.7.4";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1721,6 +1725,7 @@ const sendCompletionNotification = (item) => {
             if (!term || !formattedHawbNo.toLowerCase().includes(term.toLowerCase())) return formattedHawbNo;
             const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
+            // ▼▼▼ [수정] 다크모드용 하이라이트 배경색(dark:bg-yellow-500/50) 추가 ▼▼▼
             return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 dark:bg-yellow-500/50 rounded px-0.5">$1</span>`);
         };
         
@@ -1741,6 +1746,7 @@ const sendCompletionNotification = (item) => {
                 : baseData;
             
             if (dataToRender.length === 0) {
+                // ▼▼▼ [수정] 다크모드용 텍스트 색상(dark:text-gray-400) 추가 ▼▼▼
                 deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 dark:text-gray-400 px-4">해당하는 항목이 없습니다.</p>';
                 return;
             }
@@ -1752,20 +1758,25 @@ const sendCompletionNotification = (item) => {
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
                 const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전', '배송중'].includes(currentFilter);
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
+                    // ▼▼▼ [수정] 다크모드용 텍스트 색상(dark:text-purple-400) 추가 ▼▼▼
                     ? `<span class="block text-sm font-medium text-purple-600 dark:text-purple-400 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
                 
                 let cardClasses = '';
+                // ▼▼▼ [수정] 다크모드용 테두리 색상(dark:border-...) 추가 ▼▼▼
                 let headerBorder = 'border-gray-200 dark:border-gray-600';
                 let actionBorder = 'border-gray-200 dark:border-gray-600';
 
                 if (data.status === '배송전') {
+                    // ▼▼▼ [수정] 다크모드용 배경/테두리 색상 추가 ▼▼▼
                     cardClasses = 'bg-white dark:bg-gray-800 rounded-t-3xl rounded-bl-3xl border-2 border-gray-600 dark:border-gray-500';
                 } else if (data.status === '배송중') {
+                    // ▼▼▼ [수정] 다크모드용 배경/테두리 색상 추가 ▼▼▼
                     cardClasses = 'bg-blue-50 dark:bg-blue-900/30 rounded-t-3xl rounded-bl-3xl border-2 border-blue-600 dark:border-blue-500';
                     headerBorder = 'border-blue-200 dark:border-blue-700';
                     actionBorder = 'border-blue-200 dark:border-blue-700';
                 } else if (data.status === '완료') {
+                    // ▼▼▼ [수정] 다크모드용 배경/테두리 색상 추가 ▼▼▼
                     cardClasses = 'bg-gray-200 dark:bg-gray-700 rounded-t-3xl rounded-bl-3xl border-2 border-gray-300 dark:border-gray-600';
                 }
 
