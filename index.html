@@ -6,18 +6,43 @@
     <title>배송 시트</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ffffff">
+    <!-- ▼▼▼ [수정] theme-color에 id를 추가하여 JS로 제어할 수 있도록 함 ▼▼▼ -->
+    <meta name="theme-color" content="#ffffff" id="theme-color-meta">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ▼▼▼ [수정] CSS 변수 정의 (라이트/다크 모드) ▼▼▼ */
+        :root {
+            --page-bg: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --modal-bg: #ffffff;
+            --active-btn-bg: #ffffff;
+            --active-btn-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --search-bar-border: #2563eb;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
 
-.map-select-btn {
-            color: #4b5563; /* gray-600 */
+        html.dark {
+            color-scheme: dark;
+            --page-bg: #111827; /* gray-900 */
+            --text-primary: #f9fafb; /* gray-50 */
+            --text-secondary: #9ca3af; /* gray-400 */
+            --modal-bg: #1f2937; /* gray-800 */
+            --active-btn-bg: #374151; /* gray-700 */
+            --active-btn-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --search-bar-border: #3b82f6; /* blue-500 */
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+        }
+        /* ▲▲▲ [수정 끝] ▲▲▲ */
+
+        .map-select-btn {
+            color: var(--text-secondary);
         }
         .map-select-btn.active {
-            background-color: white;
-            color: #1f2937; /* gray-800 */
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background-color: var(--active-btn-bg);
+            color: var(--text-primary);
+            box-shadow: var(--active-btn-shadow);
         }
         .map-icon-button {
             width: 28px;
@@ -40,69 +65,65 @@
         #refresh-indicator {
             transform: translateY(-100%);
             transition: transform 0.3s, opacity 0.3s;
-            z-index: 10; /* 카드가 위로 올라오지 않도록 z-index 추가 */
+            z-index: 10;
         }
         #refresh-indicator.visible {
             opacity: 1;
-            transform: translateY(1rem); /* 보기 좋게 살짝 위에서 띄움 */
+            transform: translateY(1rem);
         }
         html {
-    scroll-behavior: smooth !important;
-    height: 100%;
-    /* ⚠️ html의 overflow: hidden을 반드시 제거하고 auto로 변경 */
-    overflow: auto; 
-}
-body {
-    font-family: 'Inter', sans-serif;
-    margin: 0;
-    height: 100%;
-    overflow-y: auto; /* body는 기본적으로 스크롤 가능하게 */
-    overscroll-behavior: contain; /* 스크롤 체이닝 방지 */
-}
+            scroll-behavior: smooth !important;
+            height: 100%;
+            overflow: auto; 
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            height: 100%;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
 
-/* 모달이 열렸을 때 body 스크롤을 잠그기 위한 스타일 (JS로 제어) */
-body.modal-open {
-    overflow: hidden;
-}
+        body.modal-open {
+            overflow: hidden;
+        }
 
-.signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal {
-    position: fixed;
-    inset: 0; /* top, right, bottom, left를 0으로 설정 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 50;
-}
+        .signature-modal, .confirmation-modal, .smart-edit-modal, .number-jump-modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
 
-.confirmation-modal { z-index: 51; }
+        .confirmation-modal { z-index: 51; }
 
-.signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content {
-    background-color: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 10px 15px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
-    padding: 1.5rem;
-    width: 100%;
-    max-width: 28rem; /* 카드 가로폭과 동일하게 */
-    max-height: calc(100vh - 3rem); /* 화면을 넘지 않도록 높이 제한 */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* 내부 스크롤은 별도 영역에서 처리하도록 기본은 숨김 */
-}
+        /* ▼▼▼ [수정] 모달 배경색에 CSS 변수 적용 ▼▼▼ */
+        .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content {
+            background-color: var(--modal-bg);
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 28rem;
+            max-height: calc(100vh - 3rem);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-/* 스크롤이 필요한 영역에만 스크롤 적용 */
-
-/* 모바일에서 모달 내부 스크롤을 부드럽게 하고 스크롤 체이닝을 방지 */
-#smart-edit-scroll-area, #number-jump-list {
-    -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
-    overscroll-behavior: contain; /* 스크롤 체이닝(배경으로 넘어가는 스크롤) 방지 */
-}
-#smart-edit-scroll-area, #number-jump-list {
-    flex: 1 1 auto; /* 남는 공간을 차지하고, 내용이 많으면 줄어들도록 설정 */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
-}
+        #smart-edit-scroll-area, #number-jump-list {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        #smart-edit-scroll-area, #number-jump-list {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
         
         .key-button { position: relative; overflow: visible !important; -webkit-tap-highlight-color: transparent; }
         .key-pop {
@@ -111,7 +132,7 @@ body.modal-open {
             left: 50%;
             transform: translateX(-50%) scale(0.8);
             transform-origin: bottom center;
-            background-color: #374151; /* gray-700 */
+            background-color: #374151;
             color: white;
             padding: 0.5rem 0.75rem;
             border-radius: 0.5rem;
@@ -138,7 +159,7 @@ body.modal-open {
             height: 20px;
             padding: 0 6px;
             border-radius: 9999px;
-            background-color: #2563eb; /* blue-600 */
+            background-color: #2563eb;
             color: white;
             font-size: 12px;
             font-weight: 600;
@@ -150,6 +171,9 @@ body.modal-open {
             transform: scale(1);
             opacity: 1;
         }
+        html.dark .filter-badge {
+            border-color: #1f2937; /* gray-800 */
+        }
         .filter-badge.hidden {
             transform: scale(0.5);
             opacity: 0;
@@ -158,6 +182,7 @@ body.modal-open {
         #address-pieces-container button { margin: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; transition: background-color 0.2s; }
 
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        html.dark .spinner { border-left-color: #60a5fa; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
         @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -166,19 +191,23 @@ body.modal-open {
         #delivery-cards-container { transition: transform 0.1s ease-out; will-change: transform; }
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
         .toast-message { background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(20px); }
+        html.dark .toast-message { background-color: rgba(240, 240, 240, 0.9); color: #111827; }
         .toast-message.show { opacity: 1; transform: translateY(0); }
         #number-jump-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; overflow-y: auto; padding: 0.5rem; margin: -0.5rem; max-height: 60vh; }
         .number-jump-item { min-width: 50px; padding: 0.75rem; border-radius: 0.5rem; font-weight: 600; text-align: center; transition: background-color 0.2s, color 0.2s; }
         .number-jump-item.active { background-color: #2563eb; color: white; cursor: pointer; }
         .number-jump-item.active:hover { background-color: #1d4ed8; }
         .number-jump-item.inactive { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+        html.dark .number-jump-item.inactive { background-color: #374151; color: #6b7280; }
         .number-jump-item.placeholder { background-color: transparent; }
         .bottom-bar { position: fixed; bottom: 0; left: 0; width: 100vw; z-index: 46; transition: transform 0.3s ease-out; background-color: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; }
+        html.dark .bottom-bar { background-color: rgba(31, 41, 55, 0.8); border-top-color: #4b5563; }
         .bottom-bar.hidden { transform: translateY(100%); }
         .completed-strikethrough {
             text-decoration: line-through;
             color: #6b7280; /* gray-500 */
         }
+        html.dark .completed-strikethrough { color: #9ca3af; }
         #fab-options button {
             width: 0;
             padding: 0;
@@ -187,45 +216,43 @@ body.modal-open {
             transition: all 0.3s ease-in-out;
         }
         #fab-options.expanded button {
-            width: 3rem; /* w-12 */
-            padding: 0.75rem; /* p-3 와 유사 */
+            width: 3rem;
+            padding: 0.75rem;
             opacity: 1;
             transform: scale(1);
         }
+        /* ▼▼▼ [수정] 검색창 그림자 및 테두리에 CSS 변수 적용 ▼▼▼ */
         #search-bar {
-    /* 카드와 유사한 느낌의 그림자 효과 */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    border: 2px solid #2563eb; /* blue-600 색상의 2px 테두리 추가 */
-    z-index: 45; /* [추가] 플로팅 버튼(z-40)보다 위에 있도록 z-index 추가 */
-}
+            box-shadow: var(--card-shadow);
+            border: 2px solid var(--search-bar-border);
+            z-index: 45;
+        }
     </style>
 </head>
-<body class="bg-white font-sans">
+<!-- ▼▼▼ [수정] body에 다크모드 클래스 추가 ▼▼▼ -->
+<body class="bg-white dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200">
     <div id="app-container" class="h-screen flex flex-col">
 
-        <div id="filter-buttons-container" class="z-20 flex-shrink-0 bg-white shadow-md">
+        <!-- ▼▼▼ [수정] 상단 필터 컨테이너에 다크모드 클래스 추가 ▼▼▼ -->
+        <div id="filter-buttons-container" class="z-20 flex-shrink-0 bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700">
             <div class="max-w-md mx-auto w-full min-w-[320px] p-2">
                 <div class="flex justify-around">
-                    <!-- 배송준비 버튼 -->
+                    <!-- 버튼들은 JS에서 동적으로 클래스가 제어됩니다 -->
                     <button data-filter="배송준비" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
                     </button>
-                    <!-- 전체 버튼 -->
                     <button data-filter="전체" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>
                         <span id="count-전체" class="filter-badge">0</span>
                     </button>
-                    <!-- 배송전 버튼 -->
                     <button data-filter="배송전" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/></svg>
                         <span id="count-배송전" class="filter-badge">0</span>
                     </button>
-                    <!-- 배송중 버튼 -->
                     <button data-filter="배송중" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
                         <span id="count-배송중" class="filter-badge">0</span>
                     </button>
-                    <!-- 완료 버튼 -->
                     <button data-filter="완료" class="relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
                         <span id="count-완료" class="filter-badge">0</span>
@@ -235,24 +262,31 @@ body.modal-open {
         </div>
 
         <div id="main-content-wrapper" class="flex-1 overflow-y-auto min-h-0 relative" style="overscroll-behavior: contain;">
-            <!-- ▼▼▼ [아래 div 추가] ▼▼▼ -->
             <div id="refresh-indicator" class="absolute top-0 left-0 right-0 flex justify-center items-center h-12 opacity-0 transition-opacity duration-300 pointer-events-none">
                 <div class="spinner"></div>
             </div>
-            <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
             <div class="max-w-md mx-auto p-4 sm:p-6 lg:p-8">
-                <div id="data-management-container" class="mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
-                    <!-- ▼▼▼ [이 블록 추가] ▼▼▼ -->
+                <!-- ▼▼▼ [수정] 설정 컨테이너에 다크모드 클래스 추가 ▼▼▼ -->
+                <div id="data-management-container" class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
+                    <!-- ▼▼▼ [추가] 테마 선택 UI ▼▼▼ -->
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-800 mb-2">지도 앱 선택</h3>
-                        <div id="map-selection-container" class="flex space-x-2 rounded-lg bg-gray-100 p-1">
-                            <button data-map="naver" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">네이버 지도</button>
-                            <button data-map="kakao" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">카카오맵</button>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">테마 선택</h3>
+                        <div id="theme-selection-container" class="flex space-x-2 rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
+                            <button data-theme="light" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">라이트</button>
+                            <button data-theme="dark" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">다크</button>
+                            <button data-theme="system" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">시스템</button>
                         </div>
                     </div>
                     <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-800 mb-2">데이터 내보내기/가져오기</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">지도 앱 선택</h3>
+                        <div id="map-selection-container" class="flex space-x-2 rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
+                            <button data-map="naver" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">네이버 지도</button>
+                            <button data-map="kakao" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">카카오맵</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">데이터 내보내기/가져오기</h3>
                         <div class="flex space-x-2">
                             <button id="exportDataButton" class="w-1/2 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500">데이터 파일로 저장</button>
                             <label for="importDataInput" class="w-1/2 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center cursor-pointer">파일에서 불러오기</label>
@@ -260,36 +294,36 @@ body.modal-open {
                         </div>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-800 mb-2">오류 로그 관리</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">오류 로그 관리</h3>
                         <div class="flex space-x-2">
                             <button id="viewLogsButton" class="w-1/2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500">로그 기록 보기</button>
                             <button id="clearLogsButton" class="w-1/2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">로그 기록 삭제</button>
                         </div>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-800 mb-2">카드 초기화</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">카드 초기화</h3>
                         <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
                     </div>
                 </div>
 
-                <div id="scan-section-container" class="mb-6 p-4 bg-white rounded-lg shadow-lg w-full min-w-[320px] hidden">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-3">송장 스캔하여 카드 생성</h3>
+                <div id="scan-section-container" class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full min-w-[320px] hidden">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">송장 스캔하여 카드 생성</h3>
                     <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
                         <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
-                        <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 py-2 px-4 rounded-md border border-blue-300 bg-blue-50 font-semibold cursor-pointer hover:bg-blue-100 text-center whitespace-nowrap">사진 선택</label>
+                        <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 dark:text-blue-300 py-2 px-4 rounded-md border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 font-semibold cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 text-center whitespace-nowrap">사진 선택</label>
                         <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
                     </div>
-                    <div id="selected-files-display" class="mt-2 text-sm text-gray-600 text-center">선택된 파일 없음</div>
-                    <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600">
+                    <div id="selected-files-display" class="mt-2 text-sm text-gray-600 dark:text-gray-400 text-center">선택된 파일 없음</div>
+                    <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600 dark:text-blue-400">
                         <div class="spinner mx-auto mb-2"></div>
                         <p id="scan-progress-text">송장 스캔 중...</p>
                     </div>
-                    <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600">스캔 실패: <span id="scan-error-text"></span></div>
+                    <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600 dark:text-red-400">스캔 실패: <span id="scan-error-text"></span></div>
                 </div>
                 
                 <div id="version-info-container" class="mb-6 text-center hidden">
-                    <p id="version-text" class="text-xs text-gray-600 font-mono"></p>
-                    <p id="version-changelog" class="text-xs text-gray-500"></p>
+                    <p id="version-text" class="text-xs text-gray-600 dark:text-gray-400 font-mono"></p>
+                    <p id="version-changelog" class="text-xs text-gray-500 dark:text-gray-500"></p>
                 </div>
 
                 <div id="delivery-cards-container" class="pb-14"></div>
@@ -300,23 +334,17 @@ body.modal-open {
     <div id="toast-container"></div>
 
     <div id="search-bar-container" class="fixed bottom-0 left-0 w-full z-40">
-        <!-- 카드 목록의 부모와 동일한 구조로 변경 -->
         <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8 pb-3">
-            <div id="search-bar" class="flex items-center w-full p-1.5 rounded-2xl bg-white/90 backdrop-blur-md border border-gray-200">
-                <!-- 검색 아이콘 -->
-                <div class="pl-2 pr-1 text-gray-400">
+            <!-- ▼▼▼ [수정] 검색창에 다크모드 클래스 추가 ▼▼▼ -->
+            <div id="search-bar" class="flex items-center w-full p-1.5 rounded-2xl bg-white/90 dark:bg-gray-800/80 backdrop-blur-md border dark:border-gray-600">
+                <div class="pl-2 pr-1 text-gray-400 dark:text-gray-500">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
-                <!-- 검색창 (수정: flex-shrink와 min-w-0 추가로 레이아웃 깨짐 방지) -->
-                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow flex-shrink min-w-0 px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base" inputmode="numeric" pattern="[0-9]*"/>
-                <!-- ▼▼▼ [바코드 스캔 버튼 추가] ▼▼▼ -->
-                <button id="barcode-scan-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
-                    <!-- [수정] class에 짙은 민트색(text-teal-600) 추가 -->
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-teal-600"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
+                <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow flex-shrink min-w-0 px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base placeholder:text-gray-500 dark:placeholder:text-gray-400" inputmode="numeric" pattern="[0-9]*"/>
+                <button id="barcode-scan-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-teal-600 dark:text-teal-400"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>
                 </button>
-                <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
-                <!-- 지움 버튼 -->
-                <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800">
+                <button id="resetButton" class="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>
                 </button>
             </div>
@@ -325,35 +353,34 @@ body.modal-open {
 
     <div id="action-bar-container" class="fixed bottom-0 left-0 w-full z-40 pointer-events-none">
         <div class="max-w-md mx-auto w-full min-w-[320px] p-4 flex justify-end">
-            <div id="fab-panel" class="flex items-center space-x-1 p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-lg border border-gray-200 pointer-events-auto">
+            <!-- ▼▼▼ [수정] FAB 패널에 다크모드 클래스 추가 ▼▼▼ -->
+            <div id="fab-panel" class="flex items-center space-x-1 p-1.5 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-lg border border-gray-200 dark:border-gray-600 pointer-events-auto">
                 <div id="fab-options" class="flex items-center space-x-1"></div>
                 <button id="fab-main-button" class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-200">
-                    <!-- 메인 아이콘은 JS가 여기에 동적으로 추가합니다. -->
                 </button>
             </div>
         </div>
     </div>
 
+    <!-- 모달들은 CSS 변수를 통해 배경색이 제어됩니다. 내부 텍스트/버튼 색상만 조정합니다. -->
     <div id="number-jump-modal" class="number-jump-modal" style="display: none;">
         <div class="number-jump-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">번호로 이동</h2>
-            <div id="number-jump-list">
-                <!-- 번호 버튼들이 여기에 동적으로 추가됩니다. -->
-            </div>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">번호로 이동</h2>
+            <div id="number-jump-list"></div>
             <div class="flex justify-end mt-6">
-                <button id="number-jump-close" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">닫기</button>
+                <button id="number-jump-close" class="px-4 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 text-sm font-medium">닫기</button>
             </div>
         </div>
     </div>
 
     <div id="signature-modal" class="signature-modal" style="display: none;">
         <div class="signature-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">서명 입력</h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">서명 입력</h2>
             <div class="signature-input-container">
-                <textarea id="signature-text-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="여기에 서명 내용을 입력하세요."></textarea>
+                <textarea id="signature-text-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200" rows="3" placeholder="여기에 서명 내용을 입력하세요."></textarea>
             </div>
             <div class="flex justify-end space-x-2 mt-4">
-                <button id="clearSignature" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">지우기</button>
+                <button id="clearSignature" class="px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">지우기</button>
                 <button id="cancelSignature" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium hover:bg-red-600">취소</button>
                 <button id="saveSignature" class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">저장</button>
             </div>
@@ -362,29 +389,28 @@ body.modal-open {
 
     <div id="confirmation-modal" class="confirmation-modal" style="display: none;">
         <div class="confirmation-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800" id="confirmation-modal-title">확인</h2>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200" id="confirmation-modal-title">확인</h2>
             <div id="confirmation-modal-body">
-                <p class="text-base text-gray-700 mb-6" id="confirmation-modal-message"></p>
+                <p class="text-base text-gray-700 dark:text-gray-300 mb-6" id="confirmation-modal-message"></p>
             </div>
             <div class="flex justify-between space-x-2 mt-4" id="confirmation-modal-buttons">
-                <button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
+                <button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">취소</button>
                 <button id="confirmOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">확인</button>
             </div>
         </div>
     </div>
 
-    <!-- 스마트 편집 모달 -->
     <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
         <div class="smart-edit-modal-content">
             <div id="smart-edit-scroll-area">
                 <div class="mb-4">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-1">AI 추출 원본 (참조용)</h3>
-                    <p id="original-address-display" class="p-2 bg-gray-100 rounded-md text-gray-800 text-sm font-mono break-all"></p>
+                    <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">AI 추출 원본 (참조용)</h3>
+                    <p id="original-address-display" class="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-800 dark:text-gray-300 text-sm font-mono break-all"></p>
                 </div>
 
                 <div class="mb-2">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-1">주소 조각 (클릭하여 추가)</h3>
-                    <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[40px]"></div>
+                    <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">주소 조각 (클릭하여 추가)</h3>
+                    <div id="address-pieces-container" class="flex flex-wrap p-2 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-600 min-h-[40px]"></div>
                 </div>
                 
                 <div id="fixed-buttons-container" class="mt-2 grid grid-cols-2 gap-4">
@@ -392,138 +418,143 @@ body.modal-open {
                     <div id="unit-keypad" class="grid grid-cols-2 gap-2"></div>
                 </div>
 
-                <hr class="my-4 border-gray-300"/>
+                <hr class="my-4 border-gray-300 dark:border-gray-600"/>
 
-                                <div class="mt-4">
+                <div class="mt-4">
                     <div class="flex justify-between items-center mb-2">
-                         <h3 class="text-lg font-semibold text-gray-800">주소 조각 편집</h3>
+                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">주소 조각 편집</h3>
                          <div class="flex items-center space-x-2">
-                            <button id="reset-pieces-btn" class="p-1.5 text-red-500 hover:bg-red-100 rounded-full">
+                            <button id="reset-pieces-btn" class="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                             <button id="apply-pieces-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
                          </div>
                     </div>
-                    <textarea id="pieces-address-input" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1" readonly></textarea>
+                    <textarea id="pieces-address-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1" readonly></textarea>
                 </div>
                 
                 <div class="mt-4">
                      <div class="flex justify-between items-center mb-2">
-                         <h3 class="text-lg font-semibold text-gray-800">직접 주소 편집</h3>
+                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">직접 주소 편집</h3>
                          <div class="flex items-center space-x-2">
-                             <button id="revert-direct-btn" class="p-1.5 text-blue-600 hover:bg-blue-100 rounded-full">
+                             <button id="revert-direct-btn" class="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
                             </button>
-                             <button id="reset-direct-btn" class="p-1.5 text-red-500 hover:bg-red-100 rounded-full">
+                             <button id="reset-direct-btn" class="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                             <button id="apply-direct-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
                          </div>
                     </div>
-                    <textarea id="direct-address-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
+                    <textarea id="direct-address-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
                 </div>
 
             </div>
-            <div class="flex justify-end mt-auto pt-4 border-t border-gray-200">
-                <button id="smart-edit-exit" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">나가기</button>
+            <div class="flex justify-end mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="smart-edit-exit" class="px-4 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 text-sm font-medium">나가기</button>
             </div>
         </div>
     </div>
 
     <div id="completion-options-modal" class="confirmation-modal" style="display: none;">
         <div class="confirmation-modal-content">
-            <h2 class="text-xl font-semibold mb-6 text-gray-800" id="completion-options-title">완료 옵션 선택</h2>
-            <div id="completion-options-list" class="space-y-3">
-                <!-- 옵션 버튼들이 여기에 동적으로 추가됩니다. -->
-            </div>
+            <h2 class="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200" id="completion-options-title">완료 옵션 선택</h2>
+            <div id="completion-options-list" class="space-y-3"></div>
             <div class="flex justify-end mt-8">
-                <button id="completion-options-cancel" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">취소</button>
+                <button id="completion-options-cancel" class="px-4 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 text-sm font-medium">취소</button>
             </div>
         </div>
     </div>
 
     <div id="log-viewer-modal" class="confirmation-modal" style="display: none;">
-        <div class="confirmation-modal-content" style="max-width: 42rem;"> <!-- 너비를 조금 더 넓게 -->
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">오류 로그 기록</h2>
+        <div class="confirmation-modal-content" style="max-width: 42rem;">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">오류 로그 기록</h2>
             <div class="flex-1 bg-gray-800 text-white font-mono text-xs p-4 rounded-md overflow-auto" style="min-height: 200px; max-height: 60vh;">
                 <pre id="log-content-display"></pre>
             </div>
             <div class="flex justify-between mt-6 space-x-2">
-                <button id="log-viewer-close" class="px-4 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500 text-sm font-medium">닫기</button>
+                <button id="log-viewer-close" class="px-4 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 text-sm font-medium">닫기</button>
                 <button id="exportLogsButton" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 text-sm font-medium">로그 파일로 저장</button>
             </div>
         </div>
     </div>
 
-<div id="delivery-location-modal" class="confirmation-modal" style="display: none;">
+    <div id="delivery-location-modal" class="confirmation-modal" style="display: none;">
         <div class="confirmation-modal-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800" id="delivery-location-title">배송 위치 선택</h2>
-            <div id="delivery-location-card-info" class="mb-4">
-                <!-- 카드 정보가 여기에 동적으로 추가됩니다 -->
-            </div>
-            <div id="delivery-location-options" class="space-y-1">
-                <!-- 라디오 버튼 옵션들이 여기에 동적으로 추가됩니다. -->
-            </div>
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200" id="delivery-location-title">배송 위치 선택</h2>
+            <div id="delivery-location-card-info" class="mb-4"></div>
+            <div id="delivery-location-options" class="space-y-1"></div>
             <div class="flex justify-between space-x-2 mt-6">
-                <button id="location-modal-cancel" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 text-gray-800 text-sm font-medium hover:bg-gray-400">취소</button>
+                <button id="location-modal-cancel" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">취소</button>
                 <button id="location-modal-confirm" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">배송 완료</button>
             </div>
         </div>
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼ [추가 시작] 이 코드 블록을 추가하세요 ▼▼▼▼▼
-        
+        // ▼▼▼▼▼ [추가 시작] 다크모드 테마 제어 로직 ▼▼▼▼▼
+        const themeColorMeta = document.getElementById('theme-color-meta');
+
+        const applyTheme = (theme) => {
+            const themeButtonsContainer = document.getElementById('theme-selection-container');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                if (themeColorMeta) themeColorMeta.setAttribute('content', '#111827'); // gray-900
+            } else if (theme === 'light') {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                if (themeColorMeta) themeColorMeta.setAttribute('content', '#ffffff'); // white
+            } else { // 'system'
+                localStorage.setItem('theme', 'system');
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                    if (themeColorMeta) themeColorMeta.setAttribute('content', '#111827');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    if (themeColorMeta) themeColorMeta.setAttribute('content', '#ffffff');
+                }
+            }
+
+            // UI 버튼 활성 상태 업데이트
+            if (themeButtonsContainer) {
+                themeButtonsContainer.querySelectorAll('button').forEach(button => {
+                    button.classList.toggle('active', button.dataset.theme === theme);
+                });
+            }
+        };
+
+        const initializeTheme = () => {
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            applyTheme(savedTheme);
+        };
+
+        // 시스템 테마 변경 감지
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (localStorage.getItem('theme') === 'system') {
+                applyTheme('system');
+            }
+        });
+        // ▲▲▲▲▲ [추가 끝] 다크모드 테마 제어 로직 ▲▲▲▲▲
+
         // --- 전역 오류 로깅 시스템 ---
         const LOG_STORAGE_KEY = 'appErrorLogs';
 
-        // 페이지에서 발생하는 모든 자바스크립트 오류를 가로채는 핸들러
         window.onerror = function(message, source, lineno, colno, error) {
             const now = new Date();
             const timestamp = now.toLocaleString('ko-KR', { hour12: false });
-
-            const logEntry = {
-                timestamp: timestamp,
-                message: message, // 오류 메시지
-                source: source.substring(source.lastIndexOf('/') + 1), // 파일 이름만 추출
-                line: lineno, // 줄 번호
-                column: colno, // 열 번호
-                stack: error ? error.stack : 'N/A' // 스택 트레이스 (더 상세한 정보)
-            };
-
+            const logEntry = { timestamp, message, source: source.substring(source.lastIndexOf('/') + 1), line: lineno, column: colno, stack: error ? error.stack : 'N/A' };
             try {
                 let logs = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY)) || [];
-                logs.unshift(logEntry); // 최신 로그를 맨 앞에 추가
-                
-                // 로그는 최대 100개까지만 저장하여 용량 문제 방지
-                if (logs.length > 100) {
-                    logs = logs.slice(0, 100);
-                }
-
+                logs.unshift(logEntry);
+                if (logs.length > 100) logs = logs.slice(0, 100);
                 localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logs));
-            } catch (e) {
-                console.error("로깅 시스템 자체 오류:", e);
-            }
-
-            // true를 반환하면 브라우저 콘솔에 오류가 표시되지 않음 (선택사항)
-            // return true; 
+            } catch (e) { console.error("로깅 시스템 자체 오류:", e); }
         };
 
-        // Promise에서 처리되지 않은 rejection (예: async/await 오류)을 가로채는 핸들러
         window.addEventListener('unhandledrejection', function(event) {
-            // event.reason에 오류 정보가 담겨 있음
-            window.onerror(
-                `Unhandled Promise Rejection: ${event.reason.message || event.reason}`,
-                event.reason.fileName || 'unknown',
-                event.reason.lineNumber || 0,
-                event.reason.columnNumber || 0,
-                event.reason
-            );
+            window.onerror(`Unhandled Promise Rejection: ${event.reason.message || event.reason}`, event.reason.fileName || 'unknown', event.reason.lineNumber || 0, event.reason.columnNumber || 0, event.reason);
         });
-
-        // --- 로깅 시스템 끝 ---
-
-        // ▲▲▲▲▲ [추가 끝] 여기까지 추가하세요 ▲▲▲▲▲
 
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
@@ -608,7 +639,7 @@ body.modal-open {
     confirmationModalBody.innerHTML = `
         <div class="flex flex-col items-center justify-center p-4">
             <div class="spinner mb-4"></div>
-            <p class="text-base text-gray-700">${message}</p>
+            <p class="text-base text-gray-700 dark:text-gray-300">${message}</p>
         </div>
     `;
     // 확인/취소 버튼 숨기기
@@ -616,8 +647,6 @@ body.modal-open {
     document.body.classList.add('modal-open');
     confirmationModal.style.display = 'flex';
 };
-
-// ▼▼▼▼▼ [추가 시작] 이 아래 두 함수를 추가하세요 ▼▼▼▼▼
 
 const showToastMessage = (message, duration = 2000) => {
     const toast = document.createElement('div');
@@ -643,7 +672,7 @@ const showToastMessage = (message, duration = 2000) => {
 
 const showMessage = (message, title = '알림') => {
     confirmationModalTitle.textContent = title;
-    confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6">${message}</p>`;
+    confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 dark:text-gray-300 mb-6">${message}</p>`;
     confirmOkButton.textContent = '확인';
     // 취소 버튼은 숨깁니다.
     confirmCancelButton.style.display = 'none';
@@ -654,7 +683,6 @@ const showMessage = (message, title = '알림') => {
     confirmationModal.style.display = 'flex';
 };
 
-// ▼▼▼ [새로운 함수 추가] ▼▼▼
 const sendCompletionNotification = (item) => {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         const fullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
@@ -673,9 +701,6 @@ const sendCompletionNotification = (item) => {
         });
     }
 };
-// ▲▲▲ [추가 끝] ▲▲▲
-
-// ▲▲▲▲▲ [추가 끝] 여기까지 추가하세요 ▲▲▲▲▲
 
         const resizeAppContainer = () => {
             const appContainer = document.getElementById('app-container');
@@ -688,43 +713,33 @@ const sendCompletionNotification = (item) => {
                 return true; // 번호가 없으면 유효한 것으로 간주 (수정 대상이 아님)
             }
             
-            // 모든 비숫자 문자를 제거하여 순수한 숫자 문자열로 만듭니다.
             let cleaned = phoneNumber.replace(/\D/g, '');
 
-            // 국제 번호 형식(+82)을 국내 형식(0)으로 정규화합니다.
             if (cleaned.startsWith('82')) {
                 cleaned = '0' + cleaned.substring(2);
             }
 
-            // 1. 010으로 시작하는 휴대폰 번호 검사
             if (cleaned.startsWith('010')) {
                 return cleaned.length === 11;
             }
             
-            // 2. 02로 시작하는 서울 지역번호 검사
             if (cleaned.startsWith('02')) {
                 return cleaned.length === 9 || cleaned.length === 10;
             }
 
-            // 3. 070으로 시작하는 인터넷 전화 검사
             if (cleaned.startsWith('070')) {
                 return cleaned.length === 11;
             }
 
-            // 4. 그 외 0으로 시작하는 지역번호 및 식별번호 검사 (예: 031, 051 등)
             if (cleaned.startsWith('0')) {
-                // 일반적으로 지역번호(3자리) + 국번(3~4자리) + 번호(4자리) = 10~11자리
-                // 또는 식별번호(4자리) + 국번(3~4자리) + 번호(4자리) = 11~12자리 (1588 등)
-                // 여기서는 일반적인 유선전화 규칙인 10~11자리를 기준으로 합니다.
                 return cleaned.length === 10 || cleaned.length === 11;
             }
 
-            // 위의 모든 규칙에 해당하지 않으면 유효하지 않은 번호로 간주합니다.
             return false;
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.2";
+            const version = "v1.7.3";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -733,10 +748,9 @@ const sendCompletionNotification = (item) => {
                 const setupDelegatedEventListeners = () => {
             let touchTarget = null;
 
-            // 롱프레스(길게 누르기) 이벤트 처리
             deliveryCardsContainer.addEventListener('touchstart', (event) => {
                 const target = event.target.closest('button[data-action="front-door-delivery"]');
-                if (!target) return; // '문앞배송' 버튼이 아니면 무시
+                if (!target) return;
 
                 isLongPress = false;
                 touchTarget = target;
@@ -746,7 +760,7 @@ const sendCompletionNotification = (item) => {
                 
                     const itemNo = parseInt(target.dataset.no, 10);
                     openCompletionOptionsModal(itemNo);
-                }, 300); // 0.3초
+                }, 300);
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchmove', () => {
@@ -755,34 +769,27 @@ const sendCompletionNotification = (item) => {
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchend', (event) => {
-                // 타이머를 먼저 클리어합니다.
                 clearTimeout(longPressTimer);
                 
-                // 만약 롱프레스가 발동되었다면,
                 if (isLongPress) {
-                    // 뒤따라올 'click' 이벤트를 막기 위해 preventDefault()를 호출합니다.
                     event.preventDefault();
-                    // 플래그를 리셋합니다.
                     isLongPress = false;
                 }
             });
 
-            // 일반 클릭 이벤트 처리
             deliveryCardsContainer.addEventListener('click', (event) => {
-                // 롱프레스였다면 touchend에서 이미 preventDefault로 막혔겠지만,
-                // 만약을 대비한 방어 코드입니다.
                 if (isLongPress) {
-                    isLongPress = false; // 플래그 리셋
+                    isLongPress = false;
                     return;
                 }
                 
                 const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], span[data-action="copy-completion"], span[data-action="edit-completion-detail"], span[data-action="copy-hawb"], button[data-action="swap-name"], span[data-action="edit-completion-time"]');
-                                // ▼▼▼ [수정] 완료 카드 클릭 시 복사 기능 추가 ▼▼▼
+                if (!target) return;
+
                 const action = target.dataset.action;
                 const itemNo = parseInt(target.dataset.no, 10);
 
                 switch (action) {
-                    // ▼▼▼ [새로운 case 추가] ▼▼▼
                     case 'copy-completion':
                         {
                             const item = deliveryItems.find(i => i.no === itemNo);
@@ -808,20 +815,14 @@ const sendCompletionNotification = (item) => {
                             if (item) {
                                 const isEditableText = ['본인전달', '직접입력'].includes(item.completionType);
                                 if (isEditableText) {
-                                    // '본인전달'이나 '직접입력'은 텍스트 입력 모달을 엽니다.
-                                    // (기존 서명 모달을 재활용하거나, 비슷한 텍스트 입력 모달을 열도록 수정 필요)
-                                    // 여기서는 임시로 서명 모달을 열도록 하겠습니다.
                                     openSignatureModal(item.no); 
                                 } else {
-                                    // 그 외 위치는 배송 위치 선택 모달을 엽니다.
                                     openDeliveryLocationModal(item.no);
                                 }
                             }
                         }
                         break;
-                    // ▲▲▲ [추가 끝] ▲▲▲
 
-                    case 'toggle-hawb-confirm':
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
                         break;
@@ -1078,24 +1079,22 @@ const sendCompletionNotification = (item) => {
             }
 
             if (baseAddress) {
-    const addressParts = baseAddress.split(' ');
-    // 'specialCities' 배열을 확장하여 축약형 도 이름까지 포함하고, 이름을 'adminNames'로 변경
-    const adminNames = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
-    const adminSuffixes = ['도', '시', '구', '군', '읍', '면'];
-    
-    while (addressParts.length > 0) {
-        const firstPart = addressParts[0];
-        // 확장된 'adminNames' 배열을 사용하여 조건을 확인
-        if (adminNames.includes(firstPart) || adminSuffixes.some(suffix => firstPart.endsWith(suffix))) {
-            addressParts.shift();
-        } else {
-            break;
-        }
-    }
-    
-    const resultAddress = addressParts.join(' ');
-    return resultAddress.length > 0 ? resultAddress : baseAddress;
-}
+                const addressParts = baseAddress.split(' ');
+                const adminNames = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
+                const adminSuffixes = ['도', '시', '구', '군', '읍', '면'];
+                
+                while (addressParts.length > 0) {
+                    const firstPart = addressParts[0];
+                    if (adminNames.includes(firstPart) || adminSuffixes.some(suffix => firstPart.endsWith(suffix))) {
+                        addressParts.shift();
+                    } else {
+                        break;
+                    }
+                }
+                
+                const resultAddress = addressParts.join(' ');
+                return resultAddress.length > 0 ? resultAddress : baseAddress;
+            }
 
             return baseAddress || '';
         };
@@ -1117,14 +1116,11 @@ const sendCompletionNotification = (item) => {
                 if (data.documents && data.documents.length > 0) {
                     const doc = data.documents[0];
                     const kakaoBaseAddress = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
-                    // 검증 성공 상태와 함께 반환
                     return { baseAddress: kakaoBaseAddress, detailAddress: detailAddress || '', validated: true };
                 }
-                // 주소를 찾지 못한 경우, 검증 실패 상태와 함께 원본 반환
                 return { baseAddress, detailAddress: detailAddress || '', validated: false };
             } catch (error) {
                 console.error('Error validating address with Kakao API:', error);
-                // 에러 발생 시, 검증 실패 상태와 함께 원본 반환
                 return { baseAddress, detailAddress: detailAddress || '', validated: false };
             }
         };
@@ -1140,14 +1136,14 @@ const sendCompletionNotification = (item) => {
         let currentSignatureItemNo = null;
         let onConfirmCallback = null;
         let currentEditItemNo = null; 
-        let currentSortOrder = 'no'; // 'no' or 'distance' or 'time'
+        let currentSortOrder = 'no';
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
         let backButtonPressedOnce = false;
         let justReturnedFromExternalApp = false;
         let deliveryInProgressSortOrder = 'no';
-        let completedSortOrder = 'no'; // 'no' 또는 'time'
+        let completedSortOrder = 'no';
         let longPressTimer = null;
         let isLongPress = false;
         let isRefreshing = false;
@@ -1155,10 +1151,8 @@ const sendCompletionNotification = (item) => {
         let refreshIndicator;
         let currentLocationEditItemNo = null;
         
-
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
-        const searchButton = document.getElementById('searchButton');
         const resetButton = document.getElementById('resetButton');
         const filterButtonsContainer = document.getElementById('filter-buttons-container');
         const deliveryCardsContainer = document.getElementById('delivery-cards-container');
@@ -1174,13 +1168,11 @@ const sendCompletionNotification = (item) => {
         const importDataInput = document.getElementById('importDataInput');
         const scanProgressText = document.getElementById('scan-progress-text');
         const selectedFilesDisplay = document.getElementById('selected-files-display');
-        
         const signatureModal = document.getElementById('signature-modal');
         const signatureTextInput = document.getElementById('signature-text-input');
         const clearSignatureBtn = document.getElementById('clearSignature');
         const cancelSignatureBtn = document.getElementById('cancelSignature');
         const saveSignatureBtn = document.getElementById('saveSignature');
-        
         const confirmationModal = document.getElementById('confirmation-modal');
         const confirmationModalTitle = document.getElementById('confirmation-modal-title');
         const confirmationModalMessage = document.getElementById('confirmation-modal-message');
@@ -1188,11 +1180,9 @@ const sendCompletionNotification = (item) => {
         const confirmationModalButtons = document.getElementById('confirmation-modal-buttons');
         const confirmOkButton = document.getElementById('confirmOkButton');
         const confirmCancelButton = document.getElementById('confirmCancelButton');
-        
         const versionInfoContainer = document.getElementById('version-info-container');
         const versionText = document.getElementById('version-text');
         const versionChangelog = document.getElementById('version-changelog');
-        
         const smartEditModal = document.getElementById('smart-edit-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
         const piecesAddressInput = document.getElementById('pieces-address-input');
@@ -1202,21 +1192,15 @@ const sendCompletionNotification = (item) => {
         const applyDirectBtn = document.getElementById('apply-direct-btn');
         const revertDirectBtn = document.getElementById('revert-direct-btn');
         const smartEditExitBtn = document.getElementById('smart-edit-exit');
-        
         const toastContainer = document.getElementById('toast-container');
-        
         const numberJumpModal = document.getElementById('number-jump-modal');
         const numberJumpList = document.getElementById('number-jump-list');
         const numberJumpClose = document.getElementById('number-jump-close');
-
         const actionBarContainer = document.getElementById('action-bar-container');
-        const actionButtons = document.getElementById('action-buttons');
-        
         const completionOptionsModal = document.getElementById('completion-options-modal');
         const completionOptionsTitle = document.getElementById('completion-options-title');
         const completionOptionsList = document.getElementById('completion-options-list');
         const completionOptionsCancelBtn = document.getElementById('completion-options-cancel');
-
         const deliveryLocationModal = document.getElementById('delivery-location-modal');
         const deliveryLocationTitle = document.getElementById('delivery-location-title');
         const deliveryLocationOptions = document.getElementById('delivery-location-options');
@@ -1226,10 +1210,10 @@ const sendCompletionNotification = (item) => {
         // --- Modal & Core Logic Functions ---
 
         function autoResizeTextarea(event) {
-const textarea = event.target;
+            const textarea = event.target;
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
-}
+        }
 
         const openDeliveryLocationModal = (itemNo) => {
             currentLocationEditItemNo = itemNo;
@@ -1238,35 +1222,32 @@ const textarea = event.target;
 
             deliveryLocationTitle.textContent = `${item.no}번 배송 위치 선택`;
 
-            // 카드 정보 표시
             const deliveryLocationCardInfo = document.getElementById('delivery-location-card-info');
             deliveryLocationCardInfo.innerHTML = `
-                <div class="p-2.5 bg-gray-100 border border-gray-200 rounded-md space-y-1">
-                    <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">주소:</span> ${item.baseAddress}${item.detailAddress ? ', ' + item.detailAddress : ''}</p>
-                    <p class="text-xs text-gray-600 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">받는분:</span> ${item.receiverNameKorean || item.receiverNameOriginal}</p>
+                <div class="p-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md space-y-1">
+                    <p class="text-xs text-gray-600 dark:text-gray-300 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">주소:</span> ${item.baseAddress}${item.detailAddress ? ', ' + item.detailAddress : ''}</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-300 truncate"><span class="font-semibold w-11 inline-block flex-shrink-0">받는분:</span> ${item.receiverNameKorean || item.receiverNameOriginal}</p>
                 </div>
             `;
 
             const locations = ['문앞', '택배보관소', '택배함', '문서수발실', '경비실', '안내데스크'];
             let radioOptionsHtml = locations.map((location, index) => `
-                <label for="loc-${index}" class="flex items-center p-2.5 rounded-lg hover:bg-gray-100 cursor-pointer">
+                <label for="loc-${index}" class="flex items-center p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
                     <input type="radio" id="loc-${index}" name="delivery-location" value="${location}" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500" ${index === 0 ? 'checked' : ''}>
-                    <span class="ml-3 text-sm font-medium text-gray-800">${location}</span>
+                    <span class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200">${location}</span>
                 </label>
             `).join('');
 
-            // "기타" 옵션 및 입력창 추가
             radioOptionsHtml += `
-                <div class="flex items-center p-2.5 rounded-lg hover:bg-gray-100">
+                <div class="flex items-center p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600">
                     <input type="radio" id="loc-other" name="delivery-location" value="기타" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500">
-                    <label for="loc-other" class="ml-3 text-sm font-medium text-gray-800 mr-2 cursor-pointer">기타:</label>
+                    <label for="loc-other" class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200 mr-2 cursor-pointer">기타:</label>
                     <input type="text" id="other-location-input" class="flex-1 bg-transparent border-b border-gray-400 focus:border-blue-500 focus:outline-none text-sm p-1 hidden" placeholder="직접 입력...">
                 </div>
             `;
             
             deliveryLocationOptions.innerHTML = radioOptionsHtml;
 
-            // "기타" 라디오 버튼 선택 시 입력창을 보여주는 이벤트 리스너 추가
             const radioButtons = document.querySelectorAll('input[name="delivery-location"]');
             const otherInput = document.getElementById('other-location-input');
             radioButtons.forEach(radio => {
@@ -1289,58 +1270,58 @@ const textarea = event.target;
         };
 
         const openPhoneEditModal = (itemNo) => {
-    const item = deliveryItems.find(i => i.no === itemNo);
-    if (!item) return;
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) return;
 
-    confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
-    
-    confirmationModalBody.innerHTML = `
-        <p class="text-sm text-gray-600 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
-        <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="" inputmode="numeric" pattern="[0-9]*" maxlength="13">
-    `;
-    
-    confirmOkButton.textContent = '수정 완료';
-    confirmCancelButton.textContent = '취소';
-    confirmCancelButton.style.display = '';
-    confirmationModalButtons.style.display = 'flex';
+            confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
+            
+            confirmationModalBody.innerHTML = `
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
+                <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg bg-white dark:bg-gray-700" value="" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+            `;
+            
+            confirmOkButton.textContent = '수정 완료';
+            confirmCancelButton.textContent = '취소';
+            confirmCancelButton.style.display = '';
+            confirmationModalButtons.style.display = 'flex';
 
-    const phoneInput = document.getElementById('phone-edit-input');
-    
-    const autoHyphenOnInput = (target) => {
-        target.value = target.value
-            .replace(/[^0-9]/g, '')
-            .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3")
-            .replace(/(\-{1,2})$/g, "");
-    }
-    phoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
-    
-    onConfirmCallback = () => {
-        const newPhoneNumber = phoneInput.value;
-        const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
-        if (itemIndex > -1) {
-            deliveryItems[itemIndex].receiverTelephoneNo = newPhoneNumber;
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            showToastMessage(`${item.no}번 전화번호가 수정되었습니다.`);
-        }
-    };
+            const phoneInput = document.getElementById('phone-edit-input');
+            
+            const autoHyphenOnInput = (target) => {
+                target.value = target.value
+                    .replace(/[^0-9]/g, '')
+                    .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3")
+                    .replace(/(\-{1,2})$/g, "");
+            }
+            phoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
+            
+            onConfirmCallback = () => {
+                const newPhoneNumber = phoneInput.value;
+                const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
+                if (itemIndex > -1) {
+                    deliveryItems[itemIndex].receiverTelephoneNo = newPhoneNumber;
+                    saveDeliveryItemsToLocalStorage();
+                    renderDeliveryCards(activeFilter);
+                    showToastMessage(`${item.no}번 전화번호가 수정되었습니다.`);
+                }
+            };
 
-    document.body.classList.add('modal-open'); // body 스크롤 잠금
-    confirmationModal.style.display = 'flex';
-    phoneInput.focus();
-};
+            document.body.classList.add('modal-open');
+            confirmationModal.style.display = 'flex';
+            phoneInput.focus();
+        };
+
         const openTimeEditModal = (itemNo) => {
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item || !item.deliveryCompletionTime) return;
 
-            // 'HH:mm' 형식으로 현재 시간 추출
             const currentTime = item.deliveryCompletionTime.split(' ')[3].substring(0, 5);
 
             confirmationModalTitle.textContent = `${item.no}번 완료 시간 수정`;
             
             confirmationModalBody.innerHTML = `
-                <p class="text-sm text-gray-600 mb-2">변경할 완료 시간을 선택하세요.</p>
-                <input type="time" id="time-edit-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg" value="${currentTime}">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">변경할 완료 시간을 선택하세요.</p>
+                <input type="time" id="time-edit-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg bg-white dark:bg-gray-700" value="${currentTime}">
             `;
             
             confirmOkButton.textContent = '수정 완료';
@@ -1350,16 +1331,13 @@ const textarea = event.target;
             
             onConfirmCallback = () => {
                 const timeInput = document.getElementById('time-edit-input');
-                const newTime = timeInput.value; // "HH:mm" 형식
+                const newTime = timeInput.value;
 
                 if (newTime) {
                     const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
                     if (itemIndex > -1) {
-                        // 기존 날짜 부분(예: "2025. 09. 30.")은 유지하고 시간만 교체
                         const originalDateTime = deliveryItems[itemIndex].deliveryCompletionTime;
                         const datePart = originalDateTime.split(' ').slice(0, 3).join(' ');
-                        
-                        // 새 시간으로 전체 날짜/시간 문자열 재구성 (초는 '00'으로 고정)
                         const newCompletionTime = `${datePart} ${newTime}:00`;
 
                         deliveryItems[itemIndex].deliveryCompletionTime = newCompletionTime;
@@ -1373,237 +1351,205 @@ const textarea = event.target;
             document.body.classList.add('modal-open');
             confirmationModal.style.display = 'flex';
         };
-const openSignatureModal = (itemNo) => { 
-    currentSignatureItemNo = itemNo; 
-    document.body.classList.add('modal-open'); // body 스크롤 잠금
-    signatureModal.style.display = 'flex'; 
-    signatureTextInput.value = ''; 
-    signatureTextInput.focus(); 
-};
-const closeSignatureModal = () => { 
-    document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
-    signatureModal.style.display = 'none'; 
-    currentSignatureItemNo = null; 
-};
 
-const saveSignature = () => {
-    const signatureText = signatureTextInput.value.trim();
-    if (!signatureText) {
-        showMessage('서명 내용을 입력해주세요.');
-        return;
-    }
-
-    if (currentSignatureItemNo !== null) {
-        const item = deliveryItems.find(i => i.no === currentSignatureItemNo);
-        if (item) {
-            let completionTime = null;
-            let completionType = item.completionType; // 기본적으로 기존 타입을 유지
-
-            // 만약 새로 완료 처리하는 카드라면, 현재 시간을 기록하고 타입을 '직접입력'으로 설정
-            if (item.status !== '완료') {
-                completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                completionType = '직접입력'; 
-            }
-            
-            // '본인전달' 건의 이름을 수정하는 경우, 타입은 그대로 두고 내용(이름)만 변경
-            if (item.completionType === '본인전달') {
-                deliveryItems = deliveryItems.map(i => i.no === currentSignatureItemNo ? { ...i, receiverNameKorean: signatureText } : i);
-            }
-
-            handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText);
-        }
-        sortItemsByDistanceSilent();
-        closeSignatureModal();
-    }
-};
-
-const openCompletionOptionsModal = (itemNo) => {
-    completionOptionsTitle.textContent = `${itemNo}번 완료 옵션 선택`;
-    completionOptionsList.innerHTML = '';
-
-    const options = [
-        { text: '경비실', type: '경비실', detail: '경비실 전달' },
-        { text: '택배함', type: '택배함', detail: '택배함 보관' },
-        { text: '택배보관소', type: '택배보관소', detail: '택배보관소 보관' },
-        { text: '문서수발실', type: '문서수발실', detail: '문서수발실 전달' }
-    ];
-
-    options.forEach(option => {
-        const button = document.createElement('button');
-        button.className = 'w-full px-4 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-base font-semibold';
-        button.textContent = option.text;
-        button.onclick = () => {
-            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-            handleStatusChange(itemNo, '완료', currentTime, option.type, option.detail);
-            sortItemsByDistanceSilent();
-            document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
-            completionOptionsModal.style.display = 'none';
+        const openSignatureModal = (itemNo) => { 
+            currentSignatureItemNo = itemNo; 
+            document.body.classList.add('modal-open');
+            signatureModal.style.display = 'flex'; 
+            signatureTextInput.value = ''; 
+            signatureTextInput.focus(); 
         };
-        completionOptionsList.appendChild(button);
-    });
 
-    document.body.classList.add('modal-open'); // body 스크롤 잠금
-    completionOptionsModal.style.display = 'flex';
-};
+        const closeSignatureModal = () => { 
+            document.body.classList.remove('modal-open');
+            signatureModal.style.display = 'none'; 
+            currentSignatureItemNo = null; 
+        };
 
-const openConfirmationModal = (message, onOk, okText = '확인', cancelText = '취소') => {
-    confirmationModalTitle.textContent = '확인';
-    confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 mb-6" id="confirmation-modal-message">${message}</p>`;
-    confirmOkButton.textContent = okText;
-    confirmCancelButton.textContent = cancelText;
-    confirmCancelButton.style.display = '';
-    confirmationModalButtons.style.display = 'flex';
-    onConfirmCallback = onOk;
-    document.body.classList.add('modal-open'); // body 스크롤 잠금
-    confirmationModal.style.display = 'flex';
-};
-
-const closeConfirmationModal = () => { 
-    document.body.classList.remove('modal-open'); // body 스크롤 잠금 해제
-    confirmationModal.style.display = 'none'; 
-    onConfirmCallback = null; 
-};
-
-const openSmartEditModal = (itemNo) => {
-    currentEditItemNo = itemNo;
-    const item = deliveryItems.find(i => i.no === itemNo);
-    if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
-    
-    const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
-    
-    originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-    piecesAddressInput.value = '';
-    directAddressInput.value = originalFullAddress;
-    setTimeout(() => {
-        autoResizeTextarea({target: piecesAddressInput});
-        autoResizeTextarea({target: directAddressInput});
-    }, 0);
-
-    const addressPiecesContainer = document.getElementById('address-pieces-container');
-    const numberKeypad = document.getElementById('number-keypad');
-    const unitKeypad = document.getElementById('unit-keypad');
-    [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
-    
-        const createKeyButton = (text, colorClass, value, action = 'add') => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
-    button.dataset.value = value !== undefined ? value : text;
-    button.dataset.action = action;
-    
-    const buttonText = document.createElement('span');
-    buttonText.textContent = text;
-    button.appendChild(buttonText);
-
-    const keyPop = document.createElement('span');
-    keyPop.className = 'key-pop';
-    keyPop.textContent = text;
-    button.appendChild(keyPop);
-
-    // **직접 클릭 핸들러 추가** — 이벤트 위임이 먹지 않을 때도 동작하도록 보완
-    button.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            // piecesAddressInput은 openSmartEditModal 안에서 이미 선언/참조 가능한 변수여야 합니다.
-            const input = piecesAddressInput;
-            let currentValue = input ? input.value : '';
-
-            const act = button.dataset.action;
-            const val = button.dataset.value;
-
-            switch (act) {
-                case 'add':
-                    input.value = currentValue + val;
-                    break;
-                case 'add-space':
-                    // [수정] 하이픈(-) 뒤에는 띄어쓰기를 추가하지 않도록 조건 변경
-                    input.value = currentValue + (currentValue.length > 0 && !/[-\s]$/.test(currentValue) ? ' ' : '') + val;
-                    break;
-                case 'add-unit':
-                    input.value = currentValue + val + ' ';
-                    break;
-                case 'add-comma':
-                    input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', ';
-                    break;
-                case 'add-hyphen':
-                    input.value = currentValue + '-';
-                    break;
-                case 'backspace-char':
-                    input.value = currentValue.slice(0, -1);
-                    break;
-                case 'backspace-word':
-                    const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
-                    if (lastSpaceIndex > -1) {
-                        input.value = currentValue.substring(0, lastSpaceIndex).trimEnd();
-                    } else {
-                        input.value = '';
-                    }
-                    break;
-                default:
-                    // 숫자키 등 기본 추가 동작
-                    input.value = currentValue + (val !== undefined ? val : act);
-                    break;
+        const saveSignature = () => {
+            const signatureText = signatureTextInput.value.trim();
+            if (!signatureText) {
+                showMessage('서명 내용을 입력해주세요.');
+                return;
             }
 
-            // textarea 자동 사이즈 조정 (함수는 이미 정의되어야 함)
-            try { autoResizeTextarea({ target: input }); } catch (err) { /* 무시 */ }
-        });
-        return button;
-    };
-        // AI가 최초 생성한 주소를 기준으로 조각 생성
-    const basePieces = (item.baseAddress_AI || item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
-    basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
+            if (currentSignatureItemNo !== null) {
+                const item = deliveryItems.find(i => i.no === currentSignatureItemNo);
+                if (item) {
+                    let completionTime = null;
+                    let completionType = item.completionType;
 
-    const detailAddressSource = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
-    if (detailAddressSource) {
-        addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 px-3 !py-1.5 rounded-full', undefined, 'add-comma'));
-        const detailPieces = (detailAddressSource || '').split(/[\s,]+/).filter(Boolean);
-        detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
-    }
+                    if (item.status !== '완료') {
+                        completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                        completionType = '직접입력'; 
+                    }
+                    
+                    if (item.completionType === '본인전달') {
+                        deliveryItems = deliveryItems.map(i => i.no === currentSignatureItemNo ? { ...i, receiverNameKorean: signatureText } : i);
+                    }
 
-    // Number Keypad
-    ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
-        let action = 'add';
-        let colorClass = 'bg-gray-200 hover:bg-gray-300';
-        if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
-            colorClass = 'bg-green-100 text-green-800 hover:bg-green-200';
-        }
-        if (key === ',') action = 'add-comma';
-        if (key === '-') action = 'add-hyphen';
-        numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
-    });
+                    handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText);
+                }
+                sortItemsByDistanceSilent();
+                closeSignatureModal();
+            }
+        };
 
-    // Unit Keypad
-    unitKeypad.appendChild(createKeyButton('길', 'bg-blue-100 hover:bg-blue-200', '길', 'add-unit'));
-    unitKeypad.appendChild(createKeyButton('번길', 'bg-blue-100 hover:bg-blue-200', '번길', 'add-unit'));
-    unitKeypad.appendChild(createKeyButton('동', 'bg-blue-100 hover:bg-blue-200', '동', 'add-unit'));
-    unitKeypad.appendChild(createKeyButton('리', 'bg-blue-100 hover:bg-blue-200', '리', 'add-unit'));
-    unitKeypad.appendChild(createKeyButton('\u00A0', 'bg-gray-200 hover:bg-gray-300', ' ', 'add')); // 공백
-    unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
-    const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
-    backspaceWordBtn.classList.add('col-span-2');
-    unitKeypad.appendChild(backspaceWordBtn);
+        const openCompletionOptionsModal = (itemNo) => {
+            completionOptionsTitle.textContent = `${itemNo}번 완료 옵션 선택`;
+            completionOptionsList.innerHTML = '';
 
-    document.body.classList.add('modal-open'); // body 스크롤 잠금
-    smartEditModal.style.display = 'flex';
-    history.pushState({ smartEditModalOpen: true }, "");
-};
+            const options = [
+                { text: '경비실', type: '경비실', detail: '경비실 전달' },
+                { text: '택배함', type: '택배함', detail: '택배함 보관' },
+                { text: '택배보관소', type: '택배보관소', detail: '택배보관소 보관' },
+                { text: '문서수발실', type: '문서수발실', detail: '문서수발실 전달' }
+            ];
 
-const closeSmartEditModal = () => {
-    // history 상태가 있을 경우, history.back()을 호출하여 popstate 이벤트를 트리거합니다.
-    // popstate 리스너가 모달을 닫는 실제 동작을 처리할 것입니다.
-    if (history.state && history.state.smartEditModalOpen) {
-        history.back();
-    } else {
-        // 만약 history 상태가 없는 예외적인 경우, 직접 모달을 닫습니다.
-        document.body.classList.remove('modal-open');
-        smartEditModal.style.display = 'none';
-        currentEditItemNo = null;
-    }
-};
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'w-full px-4 py-3 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-base font-semibold';
+                button.textContent = option.text;
+                button.onclick = () => {
+                    const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                    handleStatusChange(itemNo, '완료', currentTime, option.type, option.detail);
+                    sortItemsByDistanceSilent();
+                    document.body.classList.remove('modal-open');
+                    completionOptionsModal.style.display = 'none';
+                };
+                completionOptionsList.appendChild(button);
+            });
+
+            document.body.classList.add('modal-open');
+            completionOptionsModal.style.display = 'flex';
+        };
+
+        const openConfirmationModal = (message, onOk, okText = '확인', cancelText = '취소') => {
+            confirmationModalTitle.textContent = '확인';
+            confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 dark:text-gray-300 mb-6" id="confirmation-modal-message">${message}</p>`;
+            confirmOkButton.textContent = okText;
+            confirmCancelButton.textContent = cancelText;
+            confirmCancelButton.style.display = '';
+            confirmationModalButtons.style.display = 'flex';
+            onConfirmCallback = onOk;
+            document.body.classList.add('modal-open');
+            confirmationModal.style.display = 'flex';
+        };
+
+        const closeConfirmationModal = () => { 
+            document.body.classList.remove('modal-open');
+            confirmationModal.style.display = 'none'; 
+            onConfirmCallback = null; 
+        };
+
+        const openSmartEditModal = (itemNo) => {
+            currentEditItemNo = itemNo;
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
+            
+            const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
+            
+            originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
+            piecesAddressInput.value = '';
+            directAddressInput.value = originalFullAddress;
+            setTimeout(() => {
+                autoResizeTextarea({target: piecesAddressInput});
+                autoResizeTextarea({target: directAddressInput});
+            }, 0);
+
+            const addressPiecesContainer = document.getElementById('address-pieces-container');
+            const numberKeypad = document.getElementById('number-keypad');
+            const unitKeypad = document.getElementById('unit-keypad');
+            [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
+            
+            const createKeyButton = (text, colorClass, value, action = 'add') => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = `key-button flex-shrink-0 font-semibold m-1 text-sm rounded-md py-1.5 flex items-center justify-center ${colorClass}`;
+                button.dataset.value = value !== undefined ? value : text;
+                button.dataset.action = action;
+                
+                const buttonText = document.createElement('span');
+                buttonText.textContent = text;
+                button.appendChild(buttonText);
+
+                const keyPop = document.createElement('span');
+                keyPop.className = 'key-pop';
+                keyPop.textContent = text;
+                button.appendChild(keyPop);
+
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const input = piecesAddressInput;
+                    let currentValue = input ? input.value : '';
+                    const act = button.dataset.action;
+                    const val = button.dataset.value;
+
+                    switch (act) {
+                        case 'add': input.value = currentValue + val; break;
+                        case 'add-space': input.value = currentValue + (currentValue.length > 0 && !/[-\s]$/.test(currentValue) ? ' ' : '') + val; break;
+                        case 'add-unit': input.value = currentValue + val + ' '; break;
+                        case 'add-comma': input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', '; break;
+                        case 'add-hyphen': input.value = currentValue + '-'; break;
+                        case 'backspace-char': input.value = currentValue.slice(0, -1); break;
+                        case 'backspace-word':
+                            const lastSpaceIndex = currentValue.trimEnd().lastIndexOf(' ');
+                            input.value = lastSpaceIndex > -1 ? currentValue.substring(0, lastSpaceIndex).trimEnd() : '';
+                            break;
+                        default: input.value = currentValue + (val !== undefined ? val : act); break;
+                    }
+                    try { autoResizeTextarea({ target: input }); } catch (err) {}
+                });
+                return button;
+            };
+
+            const basePieces = (item.baseAddress_AI || item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
+            basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
+
+            const detailAddressSource = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
+            if (detailAddressSource) {
+                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 px-3 !py-1.5 rounded-full', undefined, 'add-comma'));
+                const detailPieces = (detailAddressSource || '').split(/[\s,]+/).filter(Boolean);
+                detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
+            }
+
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
+                let action = 'add';
+                let colorClass = 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500';
+                if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
+                    colorClass = 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900';
+                }
+                if (key === ',') action = 'add-comma';
+                if (key === '-') action = 'add-hyphen';
+                numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
+            });
+
+            ['길', '번길', '동', '리'].forEach(unit => {
+                unitKeypad.appendChild(createKeyButton(unit, 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900', unit, 'add-unit'));
+            });
+            unitKeypad.appendChild(createKeyButton('\u00A0', 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500', ' ', 'add'));
+            unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
+            const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
+            backspaceWordBtn.classList.add('col-span-2');
+            unitKeypad.appendChild(backspaceWordBtn);
+
+            document.body.classList.add('modal-open');
+            smartEditModal.style.display = 'flex';
+            history.pushState({ smartEditModalOpen: true }, "");
+        };
+
+        const closeSmartEditModal = () => {
+            if (history.state && history.state.smartEditModalOpen) {
+                history.back();
+            } else {
+                document.body.classList.remove('modal-open');
+                smartEditModal.style.display = 'none';
+                currentEditItemNo = null;
+            }
+        };
         
-
         const applyAddressEdit = async (fullAddress) => {
             if (currentEditItemNo === null) return;
             
@@ -1630,26 +1576,26 @@ const closeSmartEditModal = () => {
             const validationResult = await validateAddressWithKakao(tempBaseAddress, tempDetailAddress);
             closeConfirmationModal();
 
-            const saveAddress = (base, detail, isValidated) => { // <-- isValidated 파라미터 추가
-    deliveryItems[itemIndex].baseAddress = base;
-    deliveryItems[itemIndex].detailAddress = detail;
-    deliveryItems[itemIndex].addressLocation = null;
-    deliveryItems[itemIndex].isAddressValidated = isValidated; // <-- 검증 상태 업데이트
-    saveDeliveryItemsToLocalStorage();
-    renderDeliveryCards(activeFilter);
-    closeSmartEditModal();
-};
+            const saveAddress = (base, detail, isValidated) => {
+                deliveryItems[itemIndex].baseAddress = base;
+                deliveryItems[itemIndex].detailAddress = detail;
+                deliveryItems[itemIndex].addressLocation = null;
+                deliveryItems[itemIndex].isAddressValidated = isValidated;
+                saveDeliveryItemsToLocalStorage();
+                renderDeliveryCards(activeFilter);
+                closeSmartEditModal();
+            };
 
-if (validationResult.validated) {
-    saveAddress(validationResult.baseAddress, validationResult.detailAddress, true); // <-- true 전달
-    showToastMessage('주소가 검증 및 저장되었습니다.');
-} else {
-    const message = `카카오맵에서 주소를 찾을 수 없습니다. 입력하신 '${fullAddress}' 주소 그대로 저장하시겠습니까?`;
-    openConfirmationModal(message, () => {
-        saveAddress(tempBaseAddress, tempDetailAddress, false); // <-- false 전달
-        showToastMessage('입력한 주소 그대로 저장되었습니다.');
-    });
-}
+            if (validationResult.validated) {
+                saveAddress(validationResult.baseAddress, validationResult.detailAddress, true);
+                showToastMessage('주소가 검증 및 저장되었습니다.');
+            } else {
+                const message = `카카오맵에서 주소를 찾을 수 없습니다. 입력하신 '${fullAddress}' 주소 그대로 저장하시겠습니까?`;
+                openConfirmationModal(message, () => {
+                    saveAddress(tempBaseAddress, tempDetailAddress, false);
+                    showToastMessage('입력한 주소 그대로 저장되었습니다.');
+                });
+            }
         };
         
         applyPiecesBtn.addEventListener('click', async () => await applyAddressEdit(piecesAddressInput.value.trim()));
@@ -1660,10 +1606,9 @@ if (validationResult.validated) {
             autoResizeTextarea({target: piecesAddressInput});
         });
         
-                revertDirectBtn.addEventListener('click', () => {
+        revertDirectBtn.addEventListener('click', () => {
             const item = deliveryItems.find(i => i.no === currentEditItemNo);
             if(item) {
-                // AI 최초 생성 주소로 복원
                 const originalBase = typeof item.baseAddress_AI !== 'undefined' ? item.baseAddress_AI : item.baseAddress;
                 const originalDetail = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
                 directAddressInput.value = originalBase + (originalDetail ? `, ${originalDetail}` : '');
@@ -1671,7 +1616,6 @@ if (validationResult.validated) {
             }
         });
 
-        // [새로 추가] 직접 주소 편집 입력창 비우기 버튼
         const resetDirectBtn = document.getElementById('reset-direct-btn');
         resetDirectBtn.addEventListener('click', () => {
             directAddressInput.value = '';
@@ -1679,10 +1623,8 @@ if (validationResult.validated) {
         });
         
         smartEditExitBtn.addEventListener('click', closeSmartEditModal);
-
         piecesAddressInput.addEventListener('input', autoResizeTextarea);
         directAddressInput.addEventListener('input', autoResizeTextarea);
-        
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
         clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
@@ -1693,19 +1635,14 @@ if (validationResult.validated) {
             localStorage.setItem('deliveryItems', JSON.stringify(deliveryItems));
             localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
         };
+
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
             deliveryItems = deliveryItems.map(item => {
                 if (item.no === itemNo) {
                     const updatedItem = { ...item, status: newStatus, isHawbConfirmed: newStatus !== '배송전' };
-                    if (completionTime !== null) {
-                        updatedItem.deliveryCompletionTime = completionTime;
-                    }
-                    if (completionType !== null) {
-                        updatedItem.completionType = completionType;
-                    }
-                    if (completionDetail !== null) {
-                        updatedItem.completionDetail = completionDetail;
-                    }
+                    if (completionTime !== null) updatedItem.deliveryCompletionTime = completionTime;
+                    if (completionType !== null) updatedItem.completionType = completionType;
+                    if (completionDetail !== null) updatedItem.completionDetail = completionDetail;
                     return updatedItem;
                 }
                 return item;
@@ -1713,7 +1650,6 @@ if (validationResult.validated) {
             saveDeliveryItemsToLocalStorage();
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
-            saveDeliveryItemsToLocalStorage();
         };
 
         const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
@@ -1723,36 +1659,32 @@ if (validationResult.validated) {
             const itemIndex = deliveryItems.findIndex(item => item.no === itemNo);
             if (itemIndex === -1) return;
 
-            if (newCheckboxState) { // 체크박스를 켤 때 (체크인)
-                // 1. 가장 먼저 상태 변경과 UI 업데이트를 실행합니다.
+            if (newCheckboxState) {
                 deliveryItems[itemIndex].isHawbConfirmed = true;
                 deliveryItems[itemIndex].status = '배송중';
                 
                 saveDeliveryItemsToLocalStorage();
                 searchTerm = '';
                 invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter); // 여기서 카드가 '배송전' 목록에서 사라집니다.
+                renderDeliveryCards(activeFilter);
                 updateFilterCounts();
                 collapseSearch();
 
-                // 2. 그 다음, 백그라운드에서 좌표 획득을 시도합니다.
-                // 이 과정이 실패해도 이미 상태 변경은 완료되었으므로 앱은 정상적으로 동작합니다.
                 if (!deliveryItems[itemIndex].addressLocation) {
                     try {
                         const coords = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
                         deliveryItems[itemIndex].addressLocation = coords;
-                        saveDeliveryItemsToLocalStorage(); // 좌표 획득 성공 시 다시 저장
+                        saveDeliveryItemsToLocalStorage();
                         showToastMessage(`${itemNo}번 체크인 완료 (좌표 저장 성공)`);
                     } catch (error) {
                         console.error(`좌표 획득 실패 (항목 ${itemNo}):`, error.message);
-                        // 사용자에게는 간단한 알림만 주고, 앱 흐름을 막지 않습니다.
                         showToastMessage(`${itemNo}번 체크인 완료 (좌표 저장 실패)`, 2500);
                     }
                 } else {
                     showToastMessage(`${itemNo}번 체크인 완료 (좌표 이미 존재)`);
                 }
 
-            } else { // 체크박스를 끌 때 (체크인 취소)
+            } else {
                 deliveryItems[itemIndex].isHawbConfirmed = false;
                 deliveryItems[itemIndex].status = '배송전';
                 deliveryItems[itemIndex].addressLocation = null;
@@ -1777,12 +1709,9 @@ if (validationResult.validated) {
                 showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
             });
 
-            let mapUrl;
-            if (selectedMap === 'naver') {
-                mapUrl = `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`;
-            } else { // kakao
-                mapUrl = `kakaomap://search?q=${encodeURIComponent(addressForMapSearch)}`;
-            }
+            let mapUrl = selectedMap === 'naver'
+                ? `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`
+                : `kakaomap://search?q=${encodeURIComponent(addressForMapSearch)}`;
             window.location.href = mapUrl;
         };
 
@@ -1792,63 +1721,53 @@ if (validationResult.validated) {
             if (!term || !formattedHawbNo.toLowerCase().includes(term.toLowerCase())) return formattedHawbNo;
             const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedTerm})`, 'gi');
-            return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 rounded px-0.5">$1</span>`);
+            return formattedHawbNo.replace(regex, `<span class="bg-yellow-200 dark:bg-yellow-500/50 rounded px-0.5">$1</span>`);
         };
         
-                // --- Render function ---
-                const renderDeliveryCards = (currentFilter, animationClass = '') => {
+        const renderDeliveryCards = (currentFilter, animationClass = '') => {
             if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
 
-            let baseData = [];
-            if (currentFilter !== '전체') {
-                baseData = deliveryItems.filter(item => item.status === currentFilter);
-            } else {
-                baseData = [...deliveryItems];
-            }
+            let baseData = currentFilter !== '전체'
+                ? deliveryItems.filter(item => item.status === currentFilter)
+                : [...deliveryItems];
 
-            let dataToRender = [];
-            if (searchTerm) {
-                const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
-                dataToRender = baseData.filter(item => {
+            let dataToRender = searchTerm
+                ? baseData.filter(item => {
+                    const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
                     const hawbMatch = item.hawbNo?.replace(/[\s-]/g, '').toLowerCase().includes(cleanedSearchTerm);
                     const phoneMatch = item.receiverTelephoneNo?.includes(cleanedSearchTerm);
                     return hawbMatch || phoneMatch;
-                });
-            } else {
-                dataToRender = baseData;
-            }
+                })
+                : baseData;
             
             if (dataToRender.length === 0) {
-                deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 px-4">해당하는 항목이 없습니다.</p>';
+                deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 dark:text-gray-400 px-4">해당하는 항목이 없습니다.</p>';
                 return;
             }
 
             deliveryCardsContainer.innerHTML = dataToRender.map(data => {
-                const selectedMap = localStorage.getItem('selectedMap') || 'naver'; // [이 줄 추가]
-                const mapButtonClass = selectedMap === 'naver' ? 'naver' : 'kakao'; // [이 줄 추가]
+                const selectedMap = localStorage.getItem('selectedMap') || 'naver';
+                const mapButtonClass = selectedMap === 'naver' ? 'naver' : 'kakao';
                 const isPhoneNumberInvalid = !isValidPhoneNumber(data.receiverTelephoneNo);
                 const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
                 const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전', '배송중'].includes(currentFilter);
                 const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
-                    ? `<span class="block text-sm font-medium text-purple-600 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
+                    ? `<span class="block text-sm font-medium text-purple-600 dark:text-purple-400 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
                     : '';
                 
-                // ▼▼▼▼▼ [수정] 클래스 정의 로직을 map 루프 안으로 이동 및 수정 ▼▼▼▼▼
                 let cardClasses = '';
-                let headerBorder = 'border-gray-200';
-                let actionBorder = 'border-gray-200';
+                let headerBorder = 'border-gray-200 dark:border-gray-600';
+                let actionBorder = 'border-gray-200 dark:border-gray-600';
 
                 if (data.status === '배송전') {
-                    cardClasses = 'bg-white rounded-t-3xl rounded-bl-3xl border-2 border-gray-600';
+                    cardClasses = 'bg-white dark:bg-gray-800 rounded-t-3xl rounded-bl-3xl border-2 border-gray-600 dark:border-gray-500';
                 } else if (data.status === '배송중') {
-                    cardClasses = 'bg-blue-50 rounded-t-3xl rounded-bl-3xl border-2 border-blue-600';
-                    headerBorder = 'border-blue-200';
-                    actionBorder = 'border-blue-200';
+                    cardClasses = 'bg-blue-50 dark:bg-blue-900/30 rounded-t-3xl rounded-bl-3xl border-2 border-blue-600 dark:border-blue-500';
+                    headerBorder = 'border-blue-200 dark:border-blue-700';
+                    actionBorder = 'border-blue-200 dark:border-blue-700';
                 } else if (data.status === '완료') {
-                    // '전체' 필터에서도 완료 카드가 이 스타일을 따르도록 여기에 정의
-                    cardClasses = 'bg-gray-200 rounded-t-3xl rounded-bl-3xl border-2 border-gray-300';
+                    cardClasses = 'bg-gray-200 dark:bg-gray-700 rounded-t-3xl rounded-bl-3xl border-2 border-gray-300 dark:border-gray-600';
                 }
-                // ▲▲▲▲▲ [수정] ▲▲▲▲▲
 
                 const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
                 const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
@@ -1859,78 +1778,77 @@ if (validationResult.validated) {
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                         </button>
                         <div class="pt-0.5">
-    <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500' : 'text-blue-600'}"
-       ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
-        ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
-    </p>
-    ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500">(${data.receiverAddressOriginal})</p>` : ''}
-</div>
+                            <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}"
+                               ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
+                                ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
+                            </p>
+                            ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.receiverAddressOriginal})</p>` : ''}
+                        </div>
                     </div>
                     <div class="flex items-start space-x-2.5">
-                        <div class="flex-shrink-0 pt-1 text-gray-600">
+                        <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
                         </div>
                         <div>
-                            <p class="text-base text-blue-600 font-semibold">${data.companyNameKorean || 'N/A'}</p>
-                            ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500">(${data.companyNameOriginal})</p>` : ''}
+                            <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.companyNameKorean || 'N/A'}</p>
+                            ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.companyNameOriginal})</p>` : ''}
                         </div>
                     </div>
                     <div class="flex items-start space-x-2.5">
-                        <div class="flex-shrink-0 pt-1 text-gray-600">
+                        <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
                         </div>
                         <div>
                             <div class="flex items-center space-x-2">
-                                <p class="text-base text-blue-600 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
-                                <button data-action="swap-name" data-no="${data.no}" class="p-1 text-gray-400 rounded-full">
+                                <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
+                                <button data-action="swap-name" data-no="${data.no}" class="p-1 text-gray-400 dark:text-gray-500 rounded-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
                                 </button>
                             </div>
-                            ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500">(${data.receiverNameOriginal})</p>` : ''}
+                            ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.receiverNameOriginal})</p>` : ''}
                         </div>
                     </div>
                     <div class="flex items-start space-x-2.5">
-                        <div class="flex-shrink-0 pt-1 text-gray-600">
+                        <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
                         </div>
                         <div class="flex items-center space-x-2">
-    <span 
-        class="text-base font-semibold cursor-pointer ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 underline' : 'text-blue-600'}"
-        data-action="edit-phone" data-no="${data.no}"
-    >
-        ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
-    </span>
-                            <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 text-sm font-medium hover:bg-orange-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
-                            <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 text-sm font-medium hover:bg-blue-100 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
+                            <span class="text-base font-semibold cursor-pointer ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 dark:text-red-400 underline' : 'text-blue-600 dark:text-blue-400'}"
+                                  data-action="edit-phone" data-no="${data.no}">
+                                ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
+                            </span>
+                            <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 hover:bg-orange-100 dark:text-orange-400 dark:border-orange-400 dark:hover:bg-orange-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
+                            <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-blue-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
                         </div>
                     </div>
-                    ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
+                    ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 `;
 
-                                                if (showCompletedCard) {
+                if (showCompletedCard) {
                     const isEditableText = ['본인전달', '직접입력'].includes(data.completionType);
                     const isSelectableLocation = !isEditableText && data.completionType !== '서명';
 
                     const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
-                        ? `<span class="text-lg font-semibold text-gray-800 p-1 border border-dashed border-gray-400 rounded-md bg-gray-50 inline-block">${data.completionDetail}</span>`
+                        ? `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200 p-1 border border-dashed border-gray-400 dark:border-gray-500 rounded-md bg-gray-50 dark:bg-gray-600 inline-block">${data.completionDetail}</span>`
                         : (isEditableText || isSelectableLocation)
-                            ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 cursor-pointer">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`                            : `<span class="text-lg font-semibold text-gray-800">${data.completionDetail || data.completionType}</span>`;
+                            ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 dark:text-gray-200 cursor-pointer">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`
+                            : `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200">${data.completionDetail || data.completionType}</span>`;
 
                     return `
                         <div class="${cardClasses} p-4 mb-4" data-no="${data.no}">
                             <div class="flex justify-between items-center">
-                                <div class="text-xl font-semibold text-gray-700 text-left flex items-center ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
-                                    <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 text-2xl mr-4 cursor-pointer">${data.no}</span>
+                                <div class="text-xl font-semibold text-gray-700 dark:text-gray-300 text-left flex items-center ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
+                                    <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 dark:text-red-400 text-2xl mr-4 cursor-pointer">${data.no}</span>
                                     ${completionDisplayHtml}
                                     <span data-action="edit-completion-time" data-no="${data.no}" class="ml-2 cursor-pointer">${formatCompletionTime(data.deliveryCompletionTime)}</span>
                                 </div>
-                                <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-200 flex-shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
                             </div>
-                            <div class="space-y-3 mt-4 pt-4 border-t border-gray-300" data-details-container="${data.no}" style="display:none;">
+                            <div class="space-y-3 mt-4 pt-4 border-t border-gray-300 dark:border-gray-500" data-details-container="${data.no}" style="display:none;">
                                 ${detailsHtml}
                             </div>
                         </div>
@@ -1942,15 +1860,15 @@ if (validationResult.validated) {
                                 <div class="flex justify-between items-start w-full">
                                     <div class="flex items-start space-x-4">
                                         <div>
-                                            <h3 class="text-3xl font-semibold text-red-500">${data.no}</h3>
+                                            <h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no}</h3>
                                             ${distanceInfo}
                                         </div>
-                                    <div class="pt-1.5">
-                                            <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
+                                        <div class="pt-1.5">
+                                            <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
                                         </div>
                                     </div>
                                     <div class="pt-1.5">
-                                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2"/>
+                                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-500 rounded ml-2"/>
                                     </div>
                                 </div>
                             </div>
@@ -1958,7 +1876,7 @@ if (validationResult.validated) {
                                 ${detailsHtml}
                             </div>
                             ${showInProgressButtons ? `
-                                                                <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
+                                <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
                                     <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인전달</button>
                                     <button data-action="open-location-modal" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">배송위치</button>
                                     <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">직접입력</button>
@@ -1971,12 +1889,11 @@ if (validationResult.validated) {
         
             if (animationClass) {
                 deliveryCardsContainer.classList.remove('animate-slide-in-left', 'animate-slide-in-right');
-                void deliveryCardsContainer.offsetWidth; // Reflow to restart animation
+                void deliveryCardsContainer.offsetWidth;
                 deliveryCardsContainer.classList.add(animationClass);
             }
         };
 
-    // --- UI Update & Event Listener Setup ---
     const updateFilterCounts = () => {
         const counts = {
             '전체': deliveryItems.length,
@@ -2002,7 +1919,6 @@ if (validationResult.validated) {
             dataManagementContainer.classList.toggle('hidden', !isScanVisible);
             versionInfoContainer.classList.toggle('hidden', !isScanVisible); 
 
-            // ▼▼▼ [핵심 수정] 하단 바 제어 로직 강화 ▼▼▼
             if (['전체', '배송전'].includes(activeFilter)) {
                 searchBarContainer.style.display = 'block';
                 actionBarContainer.style.display = 'none';
@@ -2010,19 +1926,15 @@ if (validationResult.validated) {
                 searchBarContainer.style.display = 'none';
                 actionBarContainer.style.display = 'block';
                 setupFab();
-            } else { // '배송준비' 필터의 경우
+            } else {
                 searchBarContainer.style.display = 'none';
                 actionBarContainer.style.display = 'none';
             }
-            // ▲▲▲ [수정 끝] ▲▲▲
         });
     };
     
     const setupFab = () => {
-
-if (activeFilter !== '배송중' && activeFilter !== '완료') {
-            return; 
-        }
+        if (activeFilter !== '배송중' && activeFilter !== '완료') return;
 
         const fabMainButton = document.getElementById('fab-main-button');
         const fabOptions = document.getElementById('fab-options');
@@ -2035,19 +1947,19 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
 
         if (activeFilter === '배송중') {
             menuItems = [
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>`, action: 'jump-no' },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, action: 'sort-no', sortType: 'no' },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`, action: 'sort-distance', sortType: 'distance' }
+                { icon: `<svg ...>...</svg>`, action: 'jump-no' },
+                { icon: `<svg ...>...</svg>`, action: 'sort-no', sortType: 'no' },
+                { icon: `<svg ...>...</svg>`, action: 'sort-distance', sortType: 'distance' }
             ];
             currentSortType = deliveryInProgressSortOrder;
             activeColorClass = 'bg-blue-600 text-white';
         } else if (activeFilter === '완료') {
             menuItems = [
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`, action: 'sort-no-completed', sortType: 'no' },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`, action: 'sort-time', sortType: 'time' }
+                { icon: `<svg ...>...</svg>`, action: 'sort-no-completed', sortType: 'no' },
+                { icon: `<svg ...>...</svg>`, action: 'sort-time', sortType: 'time' }
             ];
             currentSortType = completedSortOrder;
-            activeColorClass = 'bg-gray-800 text-white';
+            activeColorClass = 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800';
         }
 
         const activeItem = menuItems.find(item => item.sortType === currentSortType) || menuItems.find(item => item.sortType);
@@ -2057,9 +1969,8 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
 
         menuItems.forEach(item => {
             if (item.sortType === currentSortType) return;
-
             const button = document.createElement('button');
-            button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white text-gray-600 hover:bg-gray-100 shadow-md';
+            button.className = 'w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 shadow-md';
             button.innerHTML = item.icon;
             button.dataset.action = item.action;
             fabOptions.appendChild(button);
@@ -2071,14 +1982,11 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
         currentSortOrder = 'no';
         deliveryItems.sort((a, b) => a.no - b.no);
         renderDeliveryCards(activeFilter);
-        setupFab(); // updateSortButtonsUI() 대신 setupFab() 호출
+        setupFab();
     };
 
     const sortItemsByDistanceSilent = async () => {
-        if (activeFilter !== '배송중' || deliveryInProgressSortOrder !== 'distance') {
-            return;
-        }
-
+        if (activeFilter !== '배송중' || deliveryInProgressSortOrder !== 'distance') return;
         try {
             const myLocation = await getCurrentLocation(5000);
             const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
@@ -2086,25 +1994,19 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
             const itemsWithCoords = inProgressItems.filter(item => item.addressLocation);
             const itemsWithoutCoords = inProgressItems.filter(item => !item.addressLocation);
             
-            itemsWithCoords.forEach(item => {
-                item.distanceFromMe = calculateDistance(myLocation, item.addressLocation);
-            });
+            itemsWithCoords.forEach(item => { item.distanceFromMe = calculateDistance(myLocation, item.addressLocation); });
             itemsWithCoords.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
             
             deliveryItems = [...itemsWithCoords, ...itemsWithoutCoords, ...otherItems];
-            
             renderDeliveryCards(activeFilter);
             console.log('자동 거리순 정렬 완료.');
-
         } catch (error) {
             console.log('자동 정렬 실패 (GPS 신호 없음):', error.message);
         }
     };
 
     const sortItemsByDistance = async (silent = false) => {
-        if (!silent) {
-            showLoadingMessage('현재 위치 확인 중...');
-        }
+        if (!silent) showLoadingMessage('현재 위치 확인 중...');
         try {
             const myLocation = await getCurrentLocation();
             const inProgressItems = deliveryItems.filter(item => item.status === '배송중');
@@ -2116,9 +2018,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
                 showToastMessage(`${itemsWithoutCoords.length}개의 카드에 좌표 정보가 없어 정렬에서 제외됩니다.`);
             }
             
-            itemsWithCoords.forEach(item => {
-                item.distanceFromMe = calculateDistance(myLocation, item.addressLocation);
-            });
+            itemsWithCoords.forEach(item => { item.distanceFromMe = calculateDistance(myLocation, item.addressLocation); });
             itemsWithCoords.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
             
             deliveryItems = [...itemsWithCoords, ...itemsWithoutCoords, ...otherItems];
@@ -2128,7 +2028,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
             if (silent) {
                 if (activeFilter === '배송중') {
                     renderDeliveryCards(activeFilter);
-                    showToastMessage('위치 정보가 갱신되었습니다.'); // [이 줄 추가]
+                    showToastMessage('위치 정보가 갱신되었습니다.');
                 }
             } else {
                 renderDeliveryCards(activeFilter);
@@ -2142,7 +2042,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
             }
             console.error("위치 갱신 실패:", error.message);
         } finally {
-            setupFab(); // updateSortButtonsUI() 대신 setupFab() 호출
+            setupFab();
         }
     };
 
@@ -2151,10 +2051,7 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
 
         collapseSearch();
         const fabOptions = document.getElementById('fab-options');
-        if (fabOptions) {
-            fabOptions.classList.remove('expanded');
-        }
-
+        if (fabOptions) fabOptions.classList.remove('expanded');
         if (!isInitialLoad) {
             searchTerm = '';
             invoiceNumberInput.value = '';
@@ -2171,7 +2068,6 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
                 const itemsWithoutDistance = deliveryItems.filter(item => item.distanceFromMe === undefined);
                 itemsWithDistance.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
                 deliveryItems = [...itemsWithDistance, ...itemsWithoutDistance];
-                
             } else { 
                 deliveryItems.sort((a, b) => a.no - b.no);
             }
@@ -2196,26 +2092,21 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
 
         filterButtonsContainer.querySelectorAll('button[data-filter]').forEach(btn => {
             const svg = btn.querySelector('svg');
-            const isActive = btn.dataset.filter === newFilter; // activeFilter 대신 newFilter 사용
+            const isActive = btn.dataset.filter === newFilter;
             
             const baseClasses = 'relative w-16 h-12 flex items-center justify-center rounded-lg transition-colors';
-            const activeClasses = 'bg-blue-100 text-blue-600';
-            const inactiveClasses = 'bg-transparent text-gray-500';
+            const activeClasses = 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400';
+            const inactiveClasses = 'bg-transparent text-gray-500 dark:text-gray-400';
 
-            if (isActive) {
-                btn.className = `${baseClasses} ${activeClasses}`;
-                svg.classList.remove('text-gray-500');
-                svg.classList.add('text-blue-600');
-            } else {
-                btn.className = `${baseClasses} ${inactiveClasses}`;
-                svg.classList.remove('text-blue-600');
-                svg.classList.add('text-gray-500');
-            }
+            btn.className = `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`;
+            svg.classList.toggle('text-blue-600', isActive);
+            svg.classList.toggle('dark:text-blue-400', isActive);
+            svg.classList.toggle('text-gray-500', !isActive);
+            svg.classList.toggle('dark:text-gray-400', !isActive);
         });
         
-        renderDeliveryCards(newFilter, animationClass); // activeFilter 대신 newFilter 사용
-        
-        updateStickyHeaderPositions(); // [수정] 이 함수를 다시 호출합니다.
+        renderDeliveryCards(newFilter, animationClass);
+        updateStickyHeaderPositions();
 
         const button = filterButtonsContainer.querySelector(`button[data-filter="${newFilter}"]`);
         if (button) button.scrollIntoView({ behavior: 'smooth', inline: 'center' });
@@ -2237,36 +2128,27 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
         changeFilter(newFilter, animation);
     });
 
-    // 검색창 입력 시 실시간으로 검색 결과 필터링
     invoiceNumberInput.addEventListener('input', (event) => {
         searchTerm = event.target.value.trim();
         renderDeliveryCards(activeFilter);
-        // 검색 시 스크롤을 맨 위로 이동
         document.getElementById('main-content-wrapper').scrollTo({ top: 0, behavior: 'auto' });
         filterScrollPositions[activeFilter] = 0;
     });
 
-    // 지움 버튼 클릭 시 검색어 초기화
     resetButton.addEventListener('click', () => {
         searchTerm = '';
         invoiceNumberInput.value = '';
         renderDeliveryCards(activeFilter);
     });
 
-    // 필터 변경 시 검색창 초기화 (기존 collapseSearch() 호출 부분을 대체)
     const collapseSearch = () => {
-        // 이 함수는 이제 필터 변경 시 검색어를 초기화하는 역할만 합니다.
-        // 실제 UI를 접는 기능은 없어졌습니다.
         searchTerm = '';
         invoiceNumberInput.value = '';
     };
 
-    // document.addEventListener('click', ...) 부분에서 검색창 관련 로직 제거
     document.addEventListener('click', (event) => {
         const clickedElement = event.target;
         const fabPanel = document.getElementById('fab-panel');
-
-        // 클릭된 요소가 정렬 버튼 패널의 자식이 아닐 경우 정렬 버튼을 닫음
         if (!fabPanel.contains(clickedElement)) {
             document.getElementById('fab-options').classList.remove('expanded');
         }
@@ -2347,20 +2229,16 @@ if (activeFilter !== '배송중' && activeFilter !== '완료') {
                             const no = parseInt(geminiItem.no || '0', 10);
                             if (no === 0) continue;
                             
-                            // ▼▼▼ [추가] AI가 생성한 주소의 불필요한 쉼표를 정리하는 후처리 로직 ▼▼▼
                             if (geminiItem.baseAddressKorean && geminiItem.detailAddressKorean) {
-                                // 상세 주소 안에 있는 쉼표는 모두 띄어쓰기로 변경
-                                // 예: "신천동 더샵스타파크 512호, B동 10" -> "신천동 더샵스타파크 512호 B동 10"
                                 geminiItem.detailAddressKorean = geminiItem.detailAddressKorean.replace(/,/g, ' ');
                             }
-                            // ▲▲▲ [추가] 여기까지 ▲▲▲
 
                             const validationResult = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
-geminiItem.baseAddressKorean = validationResult.baseAddress;
-geminiItem.detailAddressKorean = validationResult.detailAddress;
-geminiItem.isAddressValidated = validationResult.validated; // <-- 검증 상태 저장
+                            geminiItem.baseAddressKorean = validationResult.baseAddress;
+                            geminiItem.detailAddressKorean = validationResult.detailAddress;
+                            geminiItem.isAddressValidated = validationResult.validated;
 
-tempMergedResults.set(no, geminiItem);
+                            tempMergedResults.set(no, geminiItem);
                         }
                     } catch (error) {
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
@@ -2385,8 +2263,8 @@ tempMergedResults.set(no, geminiItem);
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
-                baseAddress_AI: item.baseAddressKorean || '', // [이 줄 추가]
-                detailAddress_AI: item.detailAddressKorean || '', // [이 줄 추가]
+                baseAddress_AI: item.baseAddressKorean || '',
+                detailAddress_AI: item.detailAddressKorean || '',
                 receiverAddressOriginal: item.receiverAddress || '',
                 companyNameOriginal: item.receiverCompanyName || '',
                 receiverNameOriginal: item.receiverName || '',
@@ -2445,9 +2323,7 @@ tempMergedResults.set(no, geminiItem);
 
                 const onRetry = async () => {
                     scanLoadingIndicator.style.display = 'block';
-                    
                     const retryResult = await performScan(failedFileObjects);
-
                     scanLoadingIndicator.style.display = 'none';
 
                     if (retryResult.failedFiles.length === 0) {
@@ -2534,34 +2410,27 @@ tempMergedResults.set(no, geminiItem);
     });
 
         document.addEventListener('DOMContentLoaded', () => {
+            initializeTheme(); // <-- 테마 초기화 함수 호출
 
-        // ▼▼▼ PWA 서비스 워커 등록 ▼▼▼
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js').then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }).catch(err => {
-                    console.log('ServiceWorker registration failed: ', err);
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./service-worker.js').then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }).catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
                 });
-            });
-        }
-        
-        try {
-            // ▼▼▼ [이 블록을 새로 추가합니다] ▼▼▼
-            if ('Notification' in window && Notification.permission === 'default') {
-                // 페이지 로드 후 잠시 뒤에 권한을 요청하여 사용자 경험을 해치지 않도록 함
-                setTimeout(() => {
-                    Notification.requestPermission();
-                }, 3000);
             }
-            // ▲▲▲ [추가 끝] ▲▲▲
+            
+            if ('Notification' in window && Notification.permission === 'default') {
+                setTimeout(() => { Notification.requestPermission(); }, 3000);
+            }
+
             resizeAppContainer();
             window.addEventListener('resize', resizeAppContainer);
-
             setVersionInfo();
             setupDelegatedEventListeners();
 
-            // ▼▼▼ 지도 앱 선택 UI 및 이벤트 핸들러 ▼▼▼
             const mapSelectionContainer = document.getElementById('map-selection-container');
             const mapSelectButtons = mapSelectionContainer.querySelectorAll('.map-select-btn');
 
@@ -2583,30 +2452,32 @@ tempMergedResults.set(no, geminiItem);
                     updateMapSelectionUI();
                 }
             });
-
             updateMapSelectionUI();
 
-            // ▼▼▼ [네이티브 스캐너 직접 호출 이벤트 핸들러 추가] ▼▼▼
-            const barcodeScanButton = document.getElementById('barcode-scan-button');
-                if (barcodeScanButton) {
-                    barcodeScanButton.addEventListener('click', () => {
-                        // 1. 스캔 후 돌아올 우리 PWA의 URL 형식을 만듭니다.
-                        // {CODE}는 스캐너 앱이 스캔된 값으로 바꿔줄 약속된 기호입니다.
-                        const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
-                        
-                        // 2. URL을 ZXing 스킴에 맞게 인코딩합니다.
-                        const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
-
-                        // 3. 최종적으로 스캐너를 호출할 URL 스킴을 만듭니다.
-                        const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
-    
-                        showToastMessage('스캐너 앱을 실행합니다...', 1000);
-                        window.location.href = scannerUrl;
-                    });
-                }
+            // ▼▼▼ [추가] 테마 선택 버튼 이벤트 리스너 ▼▼▼
+            const themeSelectionContainer = document.getElementById('theme-selection-container');
+            if (themeSelectionContainer) {
+                themeSelectionContainer.addEventListener('click', (event) => {
+                    const button = event.target.closest('button[data-theme]');
+                    if (button) {
+                        const newTheme = button.dataset.theme;
+                        applyTheme(newTheme);
+                    }
+                });
+            }
             // ▲▲▲ [추가 끝] ▲▲▲
 
-            // ▼▼▼ 기타 버튼 이벤트 핸들러 ▼▼▼
+            const barcodeScanButton = document.getElementById('barcode-scan-button');
+            if (barcodeScanButton) {
+                barcodeScanButton.addEventListener('click', () => {
+                    const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
+                    const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
+                    const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
+                    showToastMessage('스캐너 앱을 실행합니다...', 1000);
+                    window.location.href = scannerUrl;
+                });
+            }
+
             clearAllCardsButton.addEventListener('click', () => {
                 openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
                     deliveryItems = [];
@@ -2617,23 +2488,16 @@ tempMergedResults.set(no, geminiItem);
                 });
             });
 
-                        locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
-
-                        locationModalConfirm.addEventListener('click', () => {
+            locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
+            locationModalConfirm.addEventListener('click', () => {
                 const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
-                if (!selectedOption) {
-                    showMessage('배송 위치를 선택해주세요.');
-                    return;
-                }
+                if (!selectedOption) { showMessage('배송 위치를 선택해주세요.'); return; }
 
                 let location = selectedOption.value;
                 if (location === '기타') {
                     const otherInput = document.getElementById('other-location-input');
                     location = otherInput.value.trim();
-                    if (!location) {
-                        showMessage('기타 배송 위치를 입력해주세요.');
-                        return;
-                    }
+                    if (!location) { showMessage('기타 배송 위치를 입력해주세요.'); return; }
                 }
 
                 const itemNo = currentLocationEditItemNo;
@@ -2642,64 +2506,42 @@ tempMergedResults.set(no, geminiItem);
 
                 let completionTime = null;
                 const isNewCompletion = item.status !== '완료';
-
-                if (isNewCompletion) {
-                    completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                }
+                if (isNewCompletion) completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                 
-                // [수정] 상태 변경을 먼저 처리합니다.
                 handleStatusChange(itemNo, '완료', completionTime, location, location);
                 sortItemsByDistanceSilent();
                 closeDeliveryLocationModal();
                 showToastMessage(`${itemNo}번: ${location} 완료`);
 
-                // [추가] 새로 완료된 건에 대해서만 알림과 문자를 처리합니다.
                 if (isNewCompletion) {
-                    // 알림을 보내기 위해 업데이트된 최신 item 정보를 다시 찾습니다.
                     const updatedItem = deliveryItems.find(i => i.no === itemNo);
-                    if (updatedItem) {
-                        // 1. 알림을 즉시 보냅니다.
-                        sendCompletionNotification(updatedItem);
-                    }
+                    if (updatedItem) sendCompletionNotification(updatedItem);
 
-                    // 2. 전화번호 확인 후 0.5초 뒤에 문자 앱을 엽니다.
                     const cleanPhoneNumber = getCleanPhoneNumber(item.receiverTelephoneNo);
                     if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
                         setTimeout(() => {
                             const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
                             window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
-                        }, 500); // 0.5초 지연
+                        }, 500);
                     }
                 }
             });
 
             invoiceNumberInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    invoiceNumberInput.blur(); 
-                }
+                if (event.key === 'Enter') { event.preventDefault(); invoiceNumberInput.blur(); }
             });
 
-            // ▼▼▼ [최종 수정] 외부 스캐너 앱 연동 로직 ▼▼▼
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const filterFromUrl = urlParams.get('filter');
 
                 if (hawbFromUrl) {
-                    // 1. 먼저 '전체' 필터로 확실하게 변경합니다.
-                    // 이렇게 하면 검색창이 나타나고, 플로팅 버튼은 확실하게 사라집니다.
                     changeFilter('전체', '', true);
-
-                    // 2. 그 다음에, 검색어(searchTerm)를 설정하고 검색창에 값을 입력합니다.
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
-
-                    // 3. 마지막으로, 설정된 검색어로 화면을 다시 한번 그려서 검색 결과를 표시합니다.
                     renderDeliveryCards('전체');
-                    
                 } else {
-                    // hawb 값이 없을 때만 기존 필터 로직을 실행합니다.
                     if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                         changeFilter(filterFromUrl, '', true);
                     } else {
@@ -2708,7 +2550,6 @@ tempMergedResults.set(no, geminiItem);
                 }
             }, 0);
 
-            // ▼▼▼ 당겨서 새로고침 및 브라우저 새로고침 방지 로직 ▼▼▼
             const mainContent = document.getElementById('main-content-wrapper');
             refreshIndicator = document.getElementById('refresh-indicator');
 
@@ -2752,55 +2593,35 @@ tempMergedResults.set(no, geminiItem);
                     resetIndicator();
                 }
             });
-// ▼▼▼ [브라우저의 기본 '당겨서 새로고침' 방지 최종 코드] ▼▼▼
+
             let pullDownStartY = 0;
             document.body.addEventListener('touchstart', (e) => {
-                // 터치가 시작될 때의 Y좌표를 기록
-                if (e.touches.length === 1) {
-                    pullDownStartY = e.touches[0].clientY;
-                }
+                if (e.touches.length === 1) pullDownStartY = e.touches[0].clientY;
             }, { passive: true });
 
             window.addEventListener('touchmove', (event) => {
                 const touchY = event.touches[0].clientY;
                 const isPullingDown = touchY > pullDownStartY;
+                if (!isPullingDown) return;
 
-                // 위로 스크롤하는 경우는 새로고침과 무관하므로, 아무것도 하지 않음
-                if (!isPullingDown) {
-                    return;
-                }
-
-                // 스크롤 가능한 모든 요소를 찾음
                 const mainContent = document.getElementById('main-content-wrapper');
                 const smartEditScroll = document.getElementById('smart-edit-scroll-area');
                 const numberJumpList = document.getElementById('number-jump-list');
 
                 let scrollableElement = null;
-                if (mainContent && mainContent.contains(event.target)) {
-                    scrollableElement = mainContent;
-                } else if (smartEditScroll && smartEditScroll.contains(event.target)) {
-                    scrollableElement = smartEditScroll;
-                } else if (numberJumpList && numberJumpList.contains(event.target)) {
-                    scrollableElement = numberJumpList;
-                }
+                if (mainContent && mainContent.contains(event.target)) scrollableElement = mainContent;
+                else if (smartEditScroll && smartEditScroll.contains(event.target)) scrollableElement = smartEditScroll;
+                else if (numberJumpList && numberJumpList.contains(event.target)) scrollableElement = numberJumpList;
 
-                // 조건: (스크롤 가능한 요소의 최상단에 있거나) 또는 (스크롤과 무관한 영역일 때)
-                // 이 두 가지 경우가 브라우저 새로고침이 발생할 수 있는 유일한 상황임
                 if ((scrollableElement && scrollableElement.scrollTop === 0) || !scrollableElement) {
-                    // 이 때만 브라우저의 기본 동작(새로고침)을 막음
                     event.preventDefault();
                 }
-                // 그 외의 경우 (스크롤이 중간에 있는 경우)는 아무것도 하지 않아 정상 스크롤이 가능함
-
             }, { passive: false });
-            // ▲▲▲ [추가 끝] ▲▲▲
-            // ▼▼▼ 기타 전역 이벤트 핸들러 ▼▼▼
+
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
                     justReturnedFromExternalApp = true;
-                    setTimeout(() => {
-                        justReturnedFromExternalApp = false;
-                    }, 500);
+                    setTimeout(() => { justReturnedFromExternalApp = false; }, 500);
                 }
             });
 
@@ -2823,9 +2644,7 @@ tempMergedResults.set(no, geminiItem);
                 }
                 backButtonPressedOnce = true;
                 showToastMessage('한 번 더 누르면 종료됩니다.', 2000);
-                setTimeout(() => {
-                    backButtonPressedOnce = false;
-                }, 2000);
+                setTimeout(() => { backButtonPressedOnce = false; }, 2000);
                 history.pushState(null, '', location.href);
             });
 
@@ -2895,13 +2714,8 @@ tempMergedResults.set(no, geminiItem);
                     else if (action === 'sort-no-completed') completedSortOrder = 'no';
                 }
                 switch (action) {
-                    case 'sort-distance':
-                        sortItemsByDistance();
-                        break;
-                    case 'sort-no':
-                        sortItemsByNumber();
-                        showToastMessage('순번순으로 정렬되었습니다.');
-                        break;
+                    case 'sort-distance': sortItemsByDistance(); break;
+                    case 'sort-no': sortItemsByNumber(); showToastMessage('순번순으로 정렬되었습니다.'); break;
                     case 'sort-no-completed':
                         completedSortOrder = 'no';
                         currentSortOrder = 'no';
@@ -2912,7 +2726,7 @@ tempMergedResults.set(no, geminiItem);
                     case 'jump-no':
                         numberJumpList.innerHTML = '';
                         if (deliveryItems.length === 0) {
-                            numberJumpList.innerHTML = '<p class="text-gray-500 col-span-5 text-center">카드가 없습니다.</p>';
+                            numberJumpList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 col-span-5 text-center">카드가 없습니다.</p>';
                         } else {
                             const maxNo = Math.max(0, ...deliveryItems.map(item => item.no));
                             const itemsMap = new Map(deliveryItems.map(item => [item.no, item.status]));
@@ -2925,9 +2739,7 @@ tempMergedResults.set(no, geminiItem);
                                     btn.dataset.no = i;
                                     btn.onclick = () => {
                                         const targetCard = document.querySelector(`[data-no="${i}"]`);
-                                        if (targetCard) {
-                                            targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                        }
+                                        if (targetCard) targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                         numberJumpModal.style.display = 'none';
                                     };
                                 } else if (status) {
@@ -2961,7 +2773,6 @@ tempMergedResults.set(no, geminiItem);
                 }
             });
 
-            // --- 모달 닫기 이벤트 핸들러 ---
             numberJumpClose.addEventListener('click', () => numberJumpModal.style.display = 'none');
             numberJumpModal.addEventListener('click', (event) => { if (event.target === numberJumpModal) numberJumpModal.style.display = 'none'; });
             smartEditExitBtn.addEventListener('click', closeSmartEditModal);
@@ -2969,7 +2780,6 @@ tempMergedResults.set(no, geminiItem);
             cancelSignatureBtn.addEventListener('click', closeSignatureModal);
             signatureModal.addEventListener('click', (event) => { if (event.target === signatureModal) closeSignatureModal(); });
 
-            // --- 로그 뷰어 이벤트 핸들러 ---
             const viewLogsButton = document.getElementById('viewLogsButton');
             const clearLogsButton = document.getElementById('clearLogsButton');
             const logViewerModal = document.getElementById('log-viewer-modal');
@@ -3010,7 +2820,6 @@ tempMergedResults.set(no, geminiItem);
                 showToastMessage(`로그가 '${fileName}' 파일로 저장되었습니다.`);
             });
 
-            // --- 앱 데이터 로딩 ---
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
@@ -3030,43 +2839,31 @@ tempMergedResults.set(no, geminiItem);
                 changeFilter('배송준비', '', true);
             }
 
-        } catch (error) {
-            console.error("초기화 오류:", error);
-            document.body.innerHTML = `<div class="p-4 text-red-500">앱 로딩 중 오류가 발생했습니다. 오류: ${error.message}</div>`;
-        }
-        // === [추가 시작] launchQueue 및 URL 파라미터 처리 ===
-    const handleUrlParams = (url) => {
-        const urlParams = new URLSearchParams(url.search);
-        const hawbFromUrl = urlParams.get('hawb');
-        if (hawbFromUrl) {
-            // 1. 전체 필터로 전환
-            changeFilter('전체', '', true);
-            // 2. 검색어 세팅
-            searchTerm = hawbFromUrl;
-            invoiceNumberInput.value = hawbFromUrl;
-            // 3. 결과 렌더링
-            renderDeliveryCards('전체');
-            // 4. URL 정리
-            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-            window.history.replaceState({}, '', cleanUrl);
-        }
-    };
+            const handleUrlParams = (url) => {
+                const urlParams = new URLSearchParams(url.search);
+                const hawbFromUrl = urlParams.get('hawb');
+                if (hawbFromUrl) {
+                    changeFilter('전체', '', true);
+                    searchTerm = hawbFromUrl;
+                    invoiceNumberInput.value = hawbFromUrl;
+                    renderDeliveryCards('전체');
+                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                    window.history.replaceState({}, '', cleanUrl);
+                }
+            };
 
-    // launchQueue 지원 브라우저
-    if ('launchQueue' in window) {
-        window.launchQueue.setConsumer(launchParams => {
-            if (launchParams.targetURL) {
-                const url = new URL(launchParams.targetURL);
+            if ('launchQueue' in window) {
+                window.launchQueue.setConsumer(launchParams => {
+                    if (launchParams.targetURL) {
+                        const url = new URL(launchParams.targetURL);
+                        handleUrlParams(url);
+                    }
+                });
+            } else {
+                const url = new URL(window.location.href);
                 handleUrlParams(url);
             }
         });
-    } else {
-        // fallback (일반 URL 접근 시)
-        const url = new URL(window.location.href);
-        handleUrlParams(url);
-    }
-    // === [추가 끝] ===
-    });
     </script>
 </body>
 </html>
