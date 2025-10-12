@@ -2532,6 +2532,19 @@ const sendCompletionNotification = (item) => {
             setVersionInfo();
             setupDelegatedEventListeners();
 
+            // ▼▼▼ [추가] 스캔 모달 버튼 이벤트 리스너 ▼▼▼
+            scanCancelButton.addEventListener('click', () => {
+                if (scanAbortController) {
+                    scanAbortController.abort();
+                }
+            });
+
+            scanCloseButton.addEventListener('click', () => {
+                document.body.classList.remove('modal-open');
+                scanProgressModal.style.display = 'none';
+            });
+            // ▲▲▲ [추가 끝] ▲▲▲
+
             const mapSelectionContainer = document.getElementById('map-selection-container');
             const mapSelectButtons = mapSelectionContainer.querySelectorAll('.map-select-btn');
 
@@ -2555,29 +2568,26 @@ const sendCompletionNotification = (item) => {
             });
             updateMapSelectionUI();
 
-            // ▼▼▼ [수정] 새로운 테마 UI를 위한 이벤트 리스너 설정 ▼▼▼
-    const lightBtn = document.getElementById('light-theme-btn');
-    const darkBtn = document.getElementById('dark-theme-btn');
-    const systemThemeToggle = document.getElementById('system-theme-toggle');
+            const lightBtn = document.getElementById('light-theme-btn');
+            const darkBtn = document.getElementById('dark-theme-btn');
+            const systemThemeToggle = document.getElementById('system-theme-toggle');
 
-    if (lightBtn) {
-        lightBtn.addEventListener('click', () => applyTheme('light'));
-    }
-    if (darkBtn) {
-        darkBtn.addEventListener('click', () => applyTheme('dark'));
-    }
-    if (systemThemeToggle) {
-        systemThemeToggle.addEventListener('change', (event) => {
-            if (event.target.checked) {
-                applyTheme('system');
-            } else {
-                // 시스템 모드를 끌 때, 현재 보이는 테마를 수동 선택한 것으로 간주
-                const currentEffectiveTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-                applyTheme(currentEffectiveTheme);
+            if (lightBtn) {
+                lightBtn.addEventListener('click', () => applyTheme('light'));
             }
-        });
-    }
-    // ▲▲▲ [수정 끝] ▲▲▲
+            if (darkBtn) {
+                darkBtn.addEventListener('click', () => applyTheme('dark'));
+            }
+            if (systemThemeToggle) {
+                systemThemeToggle.addEventListener('change', (event) => {
+                    if (event.target.checked) {
+                        applyTheme('system');
+                    } else {
+                        const currentEffectiveTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+                        applyTheme(currentEffectiveTheme);
+                    }
+                });
+            }
 
             const barcodeScanButton = document.getElementById('barcode-scan-button');
             if (barcodeScanButton) {
@@ -2725,7 +2735,6 @@ const sendCompletionNotification = (item) => {
                 else if (smartEditScroll && smartEditScroll.contains(event.target)) scrollableElement = smartEditScroll;
                 else if (numberJumpList && numberJumpList.contains(event.target)) scrollableElement = numberJumpList;
 
-                // ▼▼▼ [수정] 이벤트가 취소 가능한 경우에만 preventDefault()를 호출하도록 변경 ▼▼▼
                 if ((scrollableElement && scrollableElement.scrollTop === 0) || !scrollableElement) {
                     if (event.cancelable) {
                         event.preventDefault();
