@@ -832,19 +832,18 @@ const sendCompletionNotification = (item) => {
                 const setupDelegatedEventListeners = () => {
             let touchTarget = null;
 
-            let mapIconTouchTimer = null;
-            let lastMapIconTap = 0;
-            let longPressMapIconTimer = null;
+            // 지도 아이콘 터치 관련 변수
+            let mapIconTapCount = 0;
+            let mapIconTapTimer = null;
+            let mapIconLongPressTimer = null;
 
             deliveryCardsContainer.addEventListener('touchstart', (event) => {
                 const frontDoorButton = event.target.closest('button[data-action="front-door-delivery"]');
                 if (frontDoorButton) {
                     isLongPress = false;
                     touchTarget = frontDoorButton;
-                    
                     longPressTimer = setTimeout(() => {
                         isLongPress = true;
-                    
                         const itemNo = parseInt(frontDoorButton.dataset.no, 10);
                         openCompletionOptionsModal(itemNo);
                     }, 300);
@@ -852,25 +851,27 @@ const sendCompletionNotification = (item) => {
 
                 const mapButton = event.target.closest('button[data-action="open-map"]');
                 if (mapButton) {
-                    longPressMapIconTimer = setTimeout(() => {
-                        longPressMapIconTimer = null; 
+                    // 길게 누르기 감지 시작
+                    mapIconLongPressTimer = setTimeout(() => {
                         const itemNo = parseInt(mapButton.dataset.no, 10);
                         const item = deliveryItems.find(i => i.no === itemNo);
                         if (item) {
                             const textToCopy = `**${item.no}. ${extractClipboardAddressPart(item)}`;
-                            navigator.clipboard.writeText(textToCopy).then(() => {
-                                showToastMessage(`'${textToCopy}' 복사 완료 (길게 누르기)`);
-                            });
+                            navigator.clipboard.writeText(textToCopy); // 토스트 메시지 없이 복사
+                            openMap(item, true); // 길게 누르기 플래그와 함께 지도 열기
                         }
-                    }, 400);
+                        mapIconLongPressTimer = null; // 실행 후 초기화
+                        mapIconTapCount = 0; // 탭 카운트 초기화
+                    }, 400); // 400ms
                 }
             }, { passive: true });
 
-            deliveryCardsContainer.addEventListener('touchmove', () => {
+            deliveryCardsContainer.addEventListener('touchmove', (event) => {
+                // 스크롤 시 모든 타이머 취소
                 clearTimeout(longPressTimer);
                 touchTarget = null;
-                clearTimeout(longPressMapIconTimer);
-                longPressMapIconTimer = null;
+                clearTimeout(mapIconLongPressTimer);
+                mapIconLongPressTimer = null;
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchend', (event) => {
@@ -883,42 +884,36 @@ const sendCompletionNotification = (item) => {
                     touchTarget = null;
                 }
 
-                if (longPressMapIconTimer) {
-                    clearTimeout(longPressMapIconTimer);
-                    longPressMapIconTimer = null;
-                } else {
-                    const mapButtonCheck = event.target.closest('button[data-action="open-map"]');
-                    if(mapButtonCheck) return;
-                }
-
                 const mapButton = event.target.closest('button[data-action="open-map"]');
-                if (!mapButton) return;
-
-                const currentTime = new Date().getTime();
-                const tapLength = currentTime - lastMapIconTap;
-
-                clearTimeout(mapIconTouchTimer);
-
-                if (tapLength < 300 && tapLength > 0) {
-                    const itemNo = parseInt(mapButton.dataset.no, 10);
-                    const item = deliveryItems.find(i => i.no === itemNo);
-                    if (item) {
-                        const textToCopy = `*${item.no}. ${extractClipboardAddressPart(item)}`;
-                        navigator.clipboard.writeText(textToCopy).then(() => {
-                            showToastMessage(`'${textToCopy}' 복사 완료 (더블 탭)`);
-                        });
-                        openMap(item);
+                if (mapButton) {
+                    clearTimeout(mapIconLongPressTimer); // 길게 누르기 타이머 취소
+                    if (!mapIconLongPressTimer) { // 이미 길게 누르기가 실행되었다면 아무것도 안함
+                        return;
                     }
-                    lastMapIconTap = 0;
-                } else {
-                    mapIconTouchTimer = setTimeout(() => {
+                    
+                    mapIconTapCount++; // 탭 횟수 증가
+
+                    if (mapIconTapCount === 1) { // 첫 번째 탭
+                        mapIconTapTimer = setTimeout(() => {
+                            // 300ms 후에도 두 번째 탭이 없으면 싱글 탭으로 처리
+                            const itemNo = parseInt(mapButton.dataset.no, 10);
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                openMap(item); // 일반 복사 및 지도 열기
+                            }
+                            mapIconTapCount = 0; // 초기화
+                        }, 300);
+                    } else if (mapIconTapCount === 2) { // 두 번째 탭 (더블 탭)
+                        clearTimeout(mapIconTapTimer); // 싱글 탭 타이머 취소
                         const itemNo = parseInt(mapButton.dataset.no, 10);
                         const item = deliveryItems.find(i => i.no === itemNo);
                         if (item) {
-                            openMap(item);
+                            const textToCopy = `*${item.no}. ${extractClipboardAddressPart(item)}`;
+                            navigator.clipboard.writeText(textToCopy); // 토스트 메시지 없이 복사
+                            openMap(item, true); // 더블 탭 플래그와 함께 지도 열기
                         }
-                    }, 300);
-                    lastMapIconTap = currentTime;
+                        mapIconTapCount = 0; // 초기화
+                    }
                 }
             });
 
@@ -932,7 +927,10 @@ const sendCompletionNotification = (item) => {
                 if (!target) return;
 
                 const action = target.dataset.action;
-                if (action === 'open-map') return; // 지도 아이콘 클릭은 touchend에서 처리하므로 여기서 무시
+                if (action === 'open-map') {
+                    event.preventDefault(); // touchend에서 처리하므로 기본 click 이벤트 방지
+                    return;
+                }
                 const itemNo = parseInt(target.dataset.no, 10);
 
                 switch (action) {
@@ -1874,17 +1872,20 @@ const sendCompletionNotification = (item) => {
             }
         };
         
-        const openMap = (item) => {
+        const openMap = (item, noToast = false) => {
             const selectedMap = localStorage.getItem('selectedMap') || 'naver';
             const addressForMapSearch = item.baseAddress || '';
-            const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
-
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                showToastMessage(`'${textToCopy}' 복사 완료`);
-            }).catch(err => {
-                console.error('클립보드 복사 실패:', err);
-                showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
-            });
+            
+            // 싱글 탭일 때만 기본 텍스트를 복사하고 토스트 메시지를 띄움
+            if (!noToast) {
+                const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    showToastMessage(`'${textToCopy}' 복사 완료`);
+                }).catch(err => {
+                    console.error('클립보드 복사 실패:', err);
+                    showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
+                });
+            }
 
             let mapUrl = selectedMap === 'naver'
                 ? `nmap://search?query=${encodeURIComponent(addressForMapSearch)}&appname=DeliveryApp`
