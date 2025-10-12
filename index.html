@@ -2216,23 +2216,20 @@ const sendCompletionNotification = (item) => {
         selectedFilesDisplay.textContent = currentFileToScan.length > 0 ? `선택된 파일: ${Array.from(currentFileToScan).map(f => f.name).join(', ')}` : '선택된 파일 없음';
     });
 
-    // ▼▼▼ [수정] AbortSignal을 받도록 performScan 함수 수정 ▼▼▼
-    async function performScan(filesToScan, abortSignal, onProgress) {
+    async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 4;
         const totalFiles = filesToScan.length;
         let completedCount = 0;
 
-        onProgress(`이미지 리사이징 중 (0/${totalFiles})...`);
-        const resizePromises = filesToScan.map((file, index) => {
-            if (abortSignal.aborted) throw new DOMException('Scan aborted by user', 'AbortError');
-            return resizeImage(file).then(resizedObject => {
-                onProgress(`이미지 리사이징 중 (${index + 1}/${totalFiles})...`);
+        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+        const resizePromises = filesToScan.map((file, index) => 
+            resizeImage(file).then(resizedObject => {
+                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
                 return resizedObject;
-            });
-        });
+            })
+        );
         const resizedImageObjects = await Promise.all(resizePromises);
-        
-        onProgress(`리사이징 완료, API 요청 시작...`);
+        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
         
         const tempMergedResults = new Map();
         const failedFileObjectsForRetry = [];
@@ -2240,7 +2237,7 @@ const sendCompletionNotification = (item) => {
 
         const updateApiProgress = () => {
             completedCount++;
-            onProgress(`API 처리 중 (${completedCount}/${totalFiles})...`);
+            scanProgressText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
         };
 
         const processApiRequest = async (resizedObject) => {
@@ -2248,7 +2245,6 @@ const sendCompletionNotification = (item) => {
             let lastError = null;
 
             for (let attempt = 1; attempt <= 3; attempt++) {
-                if (abortSignal.aborted) throw new DOMException('Scan aborted by user', 'AbortError');
                 try {
                     const payload = {
                         contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
@@ -2257,12 +2253,7 @@ const sendCompletionNotification = (item) => {
                     const tempApiKeyForLocalTest = "AIzaSyD8ZGE4WyIGatmPzRkJijnOt8PqtnLFyds";
                     const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
-                    const response = await fetch(directApiUrl, { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify(payload),
-                        signal: abortSignal // fetch에 AbortSignal 전달
-                    });
+                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
                     
                     const result = await response.json();
@@ -2275,7 +2266,6 @@ const sendCompletionNotification = (item) => {
                     }
                     throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
                 } catch (error) {
-                    if (error.name === 'AbortError') throw error; // 취소 에러는 즉시 전파
                     lastError = error;
                     console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
                     if (attempt < 3) {
@@ -2288,13 +2278,11 @@ const sendCompletionNotification = (item) => {
         
         const worker = async () => {
             while (requestQueue.length > 0) {
-                if (abortSignal.aborted) return;
                 const requestObject = requestQueue.shift(); 
                 if (requestObject) {
                     try {
                         const apiResultArray = await processApiRequest(requestObject);
                         for (const geminiItem of apiResultArray) {
-                            if (abortSignal.aborted) return;
                             const no = parseInt(geminiItem.no || '0', 10);
                             if (no === 0) continue;
                             
@@ -2310,7 +2298,6 @@ const sendCompletionNotification = (item) => {
                             tempMergedResults.set(no, geminiItem);
                         }
                     } catch (error) {
-                        if (error.name === 'AbortError') throw error;
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
                         failedFileObjectsForRetry.push(requestObject.file);
                     } finally {
@@ -2322,8 +2309,6 @@ const sendCompletionNotification = (item) => {
 
         const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
-
-        if (abortSignal.aborted) throw new DOMException('Scan aborted by user', 'AbortError');
 
         let newCount = 0;
         let updateCount = 0;
@@ -2367,90 +2352,61 @@ const sendCompletionNotification = (item) => {
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
     
-    // ▼▼▼ [수정] 모달을 사용하는 새로운 scanAndGenerateButton 이벤트 리스너 ▼▼▼
     scanAndGenerateButton.addEventListener('click', async () => {
-        if (!currentFileToScan || currentFileToScan.length === 0) {
-            showMessage('스캔할 이미지를 선택해주세요.');
-            return;
-        }
-
-        scanAbortController = new AbortController();
-        const abortSignal = scanAbortController.signal;
-
-        // 모달 초기화 및 표시
-        scanModalTitle.textContent = '카드 생성 중...';
-        scanModalBody.innerHTML = `
-            <div class="flex flex-col items-center justify-center p-4">
-                <div class="spinner mb-4"></div>
-                <p id="scan-progress-text-modal" class="text-base text-gray-700 dark:text-gray-300">준비 중...</p>
-            </div>
-        `;
-        scanCancelButton.style.display = 'block';
-        scanCloseButton.style.display = 'none';
-        document.body.classList.add('modal-open');
-        scanProgressModal.style.display = 'flex';
-
-        const onProgress = (message) => {
-            const progressTextElement = document.getElementById('scan-progress-text-modal');
-            if (progressTextElement) {
-                progressTextElement.textContent = message;
-            }
-        };
-
-        const startTime = Date.now();
+        if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
         
+        const startTime = Date.now();
+        scanLoadingIndicator.style.display = 'block';
+        scanErrorMessage.style.display = 'none';
+        failedFileObjects = []; 
+
         try {
             const initialFiles = Array.from(currentFileToScan);
-            const result = await performScan(initialFiles, abortSignal, onProgress);
-            
+            const result = await performScan(initialFiles);
             const endTime = Date.now();
             const elapsedTime = Math.round((endTime - startTime) / 1000);
             const minutes = Math.floor(elapsedTime / 60);
             const seconds = elapsedTime % 60;
-            const timeString = `${minutes > 0 ? `${minutes}분 ` : ''}${seconds}초`;
+            const timeString = `(소요 시간: ${minutes}분 ${seconds}초)`;
 
-            scanModalTitle.textContent = '스캔 완료';
-            scanModalBody.innerHTML = `
-                <div class="text-left space-y-2">
-                    <p>✓ <strong>${result.newCount}개</strong>의 카드가 새로 생성되었습니다.</p>
-                    <p>✓ <strong>${result.updateCount}개</strong>의 카드가 업데이트되었습니다.</p>
-                    ${result.failedFiles.length > 0 ? `<p class="text-red-500">✗ <strong>${result.failedFiles.length}개</strong>의 파일 스캔에 실패했습니다.</p>` : ''}
-                    <p class="pt-2 text-sm text-gray-500 dark:text-gray-400">소요 시간: ${timeString}</p>
-                </div>
-            `;
-            
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                scanModalTitle.textContent = '작업 취소됨';
-                scanModalBody.innerHTML = '<p>사용자에 의해 스캔 작업이 취소되었습니다.</p>';
+            if (result.failedFiles.length === 0) {
+                showMessage(`${result.updateCount}개의 카드가 업데이트되고 ${result.newCount}개의 카드가 새로 생성되었습니다. ${timeString}`);
             } else {
-                console.error("전체 스캔 프로세스 오류:", error);
-                scanModalTitle.textContent = '스캔 오류';
-                scanModalBody.innerHTML = `<p class="text-red-500">오류가 발생했습니다: ${error.message}</p>`;
+                failedFileObjects = result.failedFiles;
+                const successCount = initialFiles.length - failedFileObjects.length;
+                const failedFileNames = failedFileObjects.map(f => f.name);
+                
+                const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공. ${timeString}\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
+
+                const onRetry = async () => {
+                    scanLoadingIndicator.style.display = 'block';
+                    const retryResult = await performScan(failedFileObjects);
+                    scanLoadingIndicator.style.display = 'none';
+
+                    if (retryResult.failedFiles.length === 0) {
+                        showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
+                    } else {
+                        const stillFailingNames = retryResult.failedFiles.map(f => f.name);
+                        showMessage(`재시도 후에도 아래 ${stillFailingNames.length}개 파일이 실패했습니다.\n- ${stillFailingNames.join('\n- ')}`, '재시도 일부 실패');
+                    }
+                    renderDeliveryCards(activeFilter);
+                    updateFilterCounts();
+                };
+                openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
             }
+        } catch (error) {
+            console.error("전체 스캔 프로세스 오류:", error);
+            scanErrorText.textContent = error.message;
+            scanErrorMessage.style.display = 'block';
         } finally {
-            // UI 정리
-            scanCancelButton.style.display = 'none';
-            scanCloseButton.style.display = 'block';
+            scanLoadingIndicator.style.display = 'none';
             deliverySheetImageInput.value = '';
             currentFileToScan = null;
             selectedFilesDisplay.textContent = '선택된 파일 없음';
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
-            scanAbortController = null;
+            updateStickyHeaderPositions();
         }
-    });
-
-    // ▼▼▼ [추가] 스캔 모달 버튼 이벤트 리스너 ▼▼▼
-    scanCancelButton.addEventListener('click', () => {
-        if (scanAbortController) {
-            scanAbortController.abort();
-        }
-    });
-
-    scanCloseButton.addEventListener('click', () => {
-        document.body.classList.remove('modal-open');
-        scanProgressModal.style.display = 'none';
     });
     
     exportDataButton.addEventListener('click', () => {
@@ -2532,19 +2488,6 @@ const sendCompletionNotification = (item) => {
             setVersionInfo();
             setupDelegatedEventListeners();
 
-            // ▼▼▼ [추가] 스캔 모달 버튼 이벤트 리스너 ▼▼▼
-            scanCancelButton.addEventListener('click', () => {
-                if (scanAbortController) {
-                    scanAbortController.abort();
-                }
-            });
-
-            scanCloseButton.addEventListener('click', () => {
-                document.body.classList.remove('modal-open');
-                scanProgressModal.style.display = 'none';
-            });
-            // ▲▲▲ [추가 끝] ▲▲▲
-
             const mapSelectionContainer = document.getElementById('map-selection-container');
             const mapSelectButtons = mapSelectionContainer.querySelectorAll('.map-select-btn');
 
@@ -2568,26 +2511,29 @@ const sendCompletionNotification = (item) => {
             });
             updateMapSelectionUI();
 
-            const lightBtn = document.getElementById('light-theme-btn');
-            const darkBtn = document.getElementById('dark-theme-btn');
-            const systemThemeToggle = document.getElementById('system-theme-toggle');
+            // ▼▼▼ [수정] 새로운 테마 UI를 위한 이벤트 리스너 설정 ▼▼▼
+    const lightBtn = document.getElementById('light-theme-btn');
+    const darkBtn = document.getElementById('dark-theme-btn');
+    const systemThemeToggle = document.getElementById('system-theme-toggle');
 
-            if (lightBtn) {
-                lightBtn.addEventListener('click', () => applyTheme('light'));
+    if (lightBtn) {
+        lightBtn.addEventListener('click', () => applyTheme('light'));
+    }
+    if (darkBtn) {
+        darkBtn.addEventListener('click', () => applyTheme('dark'));
+    }
+    if (systemThemeToggle) {
+        systemThemeToggle.addEventListener('change', (event) => {
+            if (event.target.checked) {
+                applyTheme('system');
+            } else {
+                // 시스템 모드를 끌 때, 현재 보이는 테마를 수동 선택한 것으로 간주
+                const currentEffectiveTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+                applyTheme(currentEffectiveTheme);
             }
-            if (darkBtn) {
-                darkBtn.addEventListener('click', () => applyTheme('dark'));
-            }
-            if (systemThemeToggle) {
-                systemThemeToggle.addEventListener('change', (event) => {
-                    if (event.target.checked) {
-                        applyTheme('system');
-                    } else {
-                        const currentEffectiveTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-                        applyTheme(currentEffectiveTheme);
-                    }
-                });
-            }
+        });
+    }
+    // ▲▲▲ [수정 끝] ▲▲▲
 
             const barcodeScanButton = document.getElementById('barcode-scan-button');
             if (barcodeScanButton) {
@@ -2735,6 +2681,7 @@ const sendCompletionNotification = (item) => {
                 else if (smartEditScroll && smartEditScroll.contains(event.target)) scrollableElement = smartEditScroll;
                 else if (numberJumpList && numberJumpList.contains(event.target)) scrollableElement = numberJumpList;
 
+                // ▼▼▼ [수정] 이벤트가 취소 가능한 경우에만 preventDefault()를 호출하도록 변경 ▼▼▼
                 if ((scrollableElement && scrollableElement.scrollTop === 0) || !scrollableElement) {
                     if (event.cancelable) {
                         event.preventDefault();
