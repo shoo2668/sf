@@ -108,6 +108,23 @@
             stroke: #0085FF;
         }
 
+        /* ▼▼▼ [추가] 바코드 스캔 버튼 터치 영역 확장 ▼▼▼ */
+        #barcode-scan-button {
+            position: relative; /* 가상 요소의 기준점이 됨 */
+        }
+        #barcode-scan-button::before {
+            content: ''; /* 가상 요소 필수 속성 */
+            position: absolute;
+            /* 버튼의 상하좌우로 10px씩 영역을 확장 */
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            /* 터치 영역을 시각적으로 둥글게 (버튼 모양과 맞춤) */
+            border-radius: 50%; 
+        }
+        /* ▲▲▲ [추가 끝] ▲▲▲ */
+
         #refresh-indicator {
             transform: translateY(-100%);
             transition: transform 0.3s, opacity 0.3s;
