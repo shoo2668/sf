@@ -517,7 +517,7 @@
 
                 <hr class="my-4 border-gray-300 dark:border-gray-600"/>
 
-                <div class="mt-4">
+                    <div id="editable-address-container" class="mt-4">
                     <div class="flex justify-between items-center mb-2">
                          <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">주소 편집</h3>
                          <div class="flex items-center space-x-2">
@@ -1724,6 +1724,26 @@ const sendCompletionNotification = (item) => {
         
         smartEditExitBtn.addEventListener('click', closeSmartEditModal);
         editableAddressInput.addEventListener('input', autoResizeTextarea);
+        // ▼▼▼ [추가] 주소 편집창 포커스에 따른 참조용 주소 위치 변경 로직 ▼▼▼
+        editableAddressInput.addEventListener('focus', () => {
+            const originalAddressContainer = document.getElementById('original-address-container');
+            const editableAddressContainer = document.getElementById('editable-address-container');
+            
+            // 참조용 주소를 주소 편집 영역 바로 앞에 삽입
+            if (originalAddressContainer && editableAddressContainer) {
+                editableAddressContainer.before(originalAddressContainer);
+            }
+        });
+
+        editableAddressInput.addEventListener('blur', () => {
+            const originalAddressContainer = document.getElementById('original-address-container');
+            const scrollArea = document.getElementById('smart-edit-scroll-area');
+
+            // 참조용 주소를 스크롤 영역의 맨 처음으로 되돌림
+            if (originalAddressContainer && scrollArea) {
+                scrollArea.prepend(originalAddressContainer);
+            }
+        });
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
         clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
