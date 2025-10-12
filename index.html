@@ -2594,7 +2594,8 @@ const sendCompletionNotification = (item) => {
             const barcodeScanButton = document.getElementById('barcode-scan-button');
             if (barcodeScanButton) {
                 barcodeScanButton.addEventListener('click', () => {
-                    const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
+                    const intentUrl = 'intent://shoo2668.github.io/sf/?hawb={CODE}&filter=전체#Intent;scheme=https;package=com.android.chrome;end';
+                    const returnUrlFormat = intentUrl;
                     const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
                     const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
                     showToastMessage('스캐너 앱을 실행합니다...', 1000);
