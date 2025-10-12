@@ -832,32 +832,93 @@ const sendCompletionNotification = (item) => {
                 const setupDelegatedEventListeners = () => {
             let touchTarget = null;
 
-            deliveryCardsContainer.addEventListener('touchstart', (event) => {
-                const target = event.target.closest('button[data-action="front-door-delivery"]');
-                if (!target) return;
+            let mapIconTouchTimer = null;
+            let lastMapIconTap = 0;
+            let longPressMapIconTimer = null;
 
-                isLongPress = false;
-                touchTarget = target;
-                
-                longPressTimer = setTimeout(() => {
-                    isLongPress = true;
-                
-                    const itemNo = parseInt(target.dataset.no, 10);
-                    openCompletionOptionsModal(itemNo);
-                }, 300);
+            deliveryCardsContainer.addEventListener('touchstart', (event) => {
+                const frontDoorButton = event.target.closest('button[data-action="front-door-delivery"]');
+                if (frontDoorButton) {
+                    isLongPress = false;
+                    touchTarget = frontDoorButton;
+                    
+                    longPressTimer = setTimeout(() => {
+                        isLongPress = true;
+                    
+                        const itemNo = parseInt(frontDoorButton.dataset.no, 10);
+                        openCompletionOptionsModal(itemNo);
+                    }, 300);
+                }
+
+                const mapButton = event.target.closest('button[data-action="open-map"]');
+                if (mapButton) {
+                    longPressMapIconTimer = setTimeout(() => {
+                        longPressMapIconTimer = null; 
+                        const itemNo = parseInt(mapButton.dataset.no, 10);
+                        const item = deliveryItems.find(i => i.no === itemNo);
+                        if (item) {
+                            const textToCopy = `**${item.no}. ${extractClipboardAddressPart(item)}`;
+                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                showToastMessage(`'${textToCopy}' 복사 완료 (길게 누르기)`);
+                            });
+                        }
+                    }, 400);
+                }
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchmove', () => {
                 clearTimeout(longPressTimer);
                 touchTarget = null;
+                clearTimeout(longPressMapIconTimer);
+                longPressMapIconTimer = null;
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchend', (event) => {
-                clearTimeout(longPressTimer);
-                
-                if (isLongPress) {
-                    event.preventDefault();
-                    isLongPress = false;
+                if (touchTarget) {
+                    clearTimeout(longPressTimer);
+                    if (isLongPress) {
+                        event.preventDefault();
+                        isLongPress = false;
+                    }
+                    touchTarget = null;
+                }
+
+                if (longPressMapIconTimer) {
+                    clearTimeout(longPressMapIconTimer);
+                    longPressMapIconTimer = null;
+                } else {
+                    const mapButtonCheck = event.target.closest('button[data-action="open-map"]');
+                    if(mapButtonCheck) return;
+                }
+
+                const mapButton = event.target.closest('button[data-action="open-map"]');
+                if (!mapButton) return;
+
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastMapIconTap;
+
+                clearTimeout(mapIconTouchTimer);
+
+                if (tapLength < 300 && tapLength > 0) {
+                    const itemNo = parseInt(mapButton.dataset.no, 10);
+                    const item = deliveryItems.find(i => i.no === itemNo);
+                    if (item) {
+                        const textToCopy = `*${item.no}. ${extractClipboardAddressPart(item)}`;
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            showToastMessage(`'${textToCopy}' 복사 완료 (더블 탭)`);
+                        });
+                        openMap(item);
+                    }
+                    lastMapIconTap = 0;
+                } else {
+                    mapIconTouchTimer = setTimeout(() => {
+                        const itemNo = parseInt(mapButton.dataset.no, 10);
+                        const item = deliveryItems.find(i => i.no === itemNo);
+                        if (item) {
+                            openMap(item);
+                        }
+                    }, 300);
+                    lastMapIconTap = currentTime;
                 }
             });
 
@@ -871,6 +932,7 @@ const sendCompletionNotification = (item) => {
                 if (!target) return;
 
                 const action = target.dataset.action;
+                if (action === 'open-map') return; // 지도 아이콘 클릭은 touchend에서 처리하므로 여기서 무시
                 const itemNo = parseInt(target.dataset.no, 10);
 
                 switch (action) {
@@ -909,12 +971,6 @@ const sendCompletionNotification = (item) => {
 
                     case 'toggle-hawb-confirm':
                         handleCheckboxToggleAndResetSearch(itemNo, target.checked);
-                        break;
-                    case 'open-map':
-                        {
-                            const item = deliveryItems.find(i => i.no === itemNo);
-                            if (item) openMap(item);
-                        }
                         break;
                     case 'swap-name':
                         {
@@ -1823,7 +1879,9 @@ const sendCompletionNotification = (item) => {
             const addressForMapSearch = item.baseAddress || '';
             const textToCopy = `${item.no}. ${extractClipboardAddressPart(item)}`;
 
-            navigator.clipboard.writeText(textToCopy).catch(err => {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToastMessage(`'${textToCopy}' 복사 완료`);
+            }).catch(err => {
                 console.error('클립보드 복사 실패:', err);
                 showMessage('클립보드 복사에 실패했습니다.', '복사 실패');
             });
