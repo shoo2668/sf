@@ -757,7 +757,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.10";
+            const version = "v1.7.11";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1965,6 +1965,7 @@ const sendCompletionNotification = (item) => {
         const fabOptions = document.getElementById('fab-options');
 
         // 1. [수정] 더 안정적인 방식으로 기존 아이콘들을 확실하게 제거합니다.
+        // innerHTML = '' 보다 이 방식이 SVG 겹침 오류를 더 확실히 방지합니다.
         while (fabOptions.firstChild) {
             fabOptions.removeChild(fabOptions.firstChild);
         }
@@ -1976,14 +1977,15 @@ const sendCompletionNotification = (item) => {
         let currentSortType = '';
         let activeColorClass = '';
 
+        // viewBox="0 0 24 24" 로 모두 수정된 SVG 코드
         const iconJump = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m16 14-4-4-4 4"/><path d="M12 14V6"/></svg>`;
-        const iconSortNo = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5V19M12 5l-4 4M12 5l4 4M4 13h6M4 17h10M4 9h2"/></svg>`;
+        const iconSortNo = `<svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5V19M12 5l-4 4M12 5l4 4M4 13h6M4 17h10M4 9h2"/></svg>`;
         const iconSortDistance = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/><path d="M19.1 12.5a7.1 7.1 0 0 0-1.4-2.9l-1.2 1.2a5 5 0 1 1-7 0l-1.2-1.2a7.1 7.1 0 0 0-1.4 2.9"/></svg>`;
         const iconSortTime = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 
         if (activeFilter === '배송중') {
             allMenuItems = [
-                { icon: iconJump, action: 'jump-no', type: 'action' }, // type 속성 추가
+                { icon: iconJump, action: 'jump-no', type: 'action' }, // type 속성으로 역할 구분
                 { icon: iconSortNo, action: 'sort-no', sortType: 'no', type: 'sort' },
                 { icon: iconSortDistance, action: 'sort-distance', sortType: 'distance', type: 'sort' }
             ];
@@ -2021,7 +2023,6 @@ const sendCompletionNotification = (item) => {
             fabOptions.appendChild(button);
         });
     };
-
     const sortItemsByNumber = () => {
         deliveryInProgressSortOrder = 'no';
         currentSortOrder = 'no';
