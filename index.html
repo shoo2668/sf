@@ -512,31 +512,18 @@
 
                 <div class="mt-4">
                     <div class="flex justify-between items-center mb-2">
-                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">주소 조각 편집</h3>
+                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">주소 편집</h3>
                          <div class="flex items-center space-x-2">
-                            <button id="reset-pieces-btn" class="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                            </button>
-                            <button id="apply-pieces-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
-                         </div>
-                    </div>
-                    <textarea id="pieces-address-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="1" readonly></textarea>
-                </div>
-                
-                <div class="mt-4">
-                     <div class="flex justify-between items-center mb-2">
-                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">직접 주소 편집</h3>
-                         <div class="flex items-center space-x-2">
-                             <button id="revert-direct-btn" class="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full">
+                             <button id="revert-address-btn" class="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
                             </button>
-                             <button id="reset-direct-btn" class="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full">
+                             <button id="reset-address-btn" class="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
-                            <button id="apply-direct-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
+                            <button id="apply-address-btn" class="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">수정 완료</button>
                          </div>
                     </div>
-                    <textarea id="direct-address-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
+                    <textarea id="editable-address-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" rows="2"></textarea>
                 </div>
 
             </div>
@@ -829,7 +816,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.8.0";
+            const version = "v1.8.1";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1275,12 +1262,10 @@ const sendCompletionNotification = (item) => {
         const versionChangelog = document.getElementById('version-changelog');
         const smartEditModal = document.getElementById('smart-edit-modal');
         const originalAddressDisplay = document.getElementById('original-address-display');
-        const piecesAddressInput = document.getElementById('pieces-address-input');
-        const directAddressInput = document.getElementById('direct-address-input');
-        const applyPiecesBtn = document.getElementById('apply-pieces-btn');
-        const resetPiecesBtn = document.getElementById('reset-pieces-btn');
-        const applyDirectBtn = document.getElementById('apply-direct-btn');
-        const revertDirectBtn = document.getElementById('revert-direct-btn');
+        const editableAddressInput = document.getElementById('editable-address-input');
+        const applyAddressBtn = document.getElementById('apply-address-btn');
+        const resetAddressBtn = document.getElementById('reset-address-btn');
+        const revertAddressBtn = document.getElementById('revert-address-btn');
         const smartEditExitBtn = document.getElementById('smart-edit-exit');
         const toastContainer = document.getElementById('toast-container');
         const numberJumpModal = document.getElementById('number-jump-modal');
@@ -1540,11 +1525,9 @@ const sendCompletionNotification = (item) => {
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
-            piecesAddressInput.value = '';
-            directAddressInput.value = originalFullAddress;
+            editableAddressInput.value = originalFullAddress;
             setTimeout(() => {
-                autoResizeTextarea({target: piecesAddressInput});
-                autoResizeTextarea({target: directAddressInput});
+                autoResizeTextarea({target: editableAddressInput});
             }, 0);
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
@@ -1572,10 +1555,18 @@ const sendCompletionNotification = (item) => {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    const input = piecesAddressInput;
-                    let currentValue = input ? input.value : '';
+                    const input = editableAddressInput;
+                    let currentValue = input.value;
                     const act = button.dataset.action;
                     const val = button.dataset.value;
+
+                    // 주소 조각을 처음 클릭할 때만 기존 내용을 지움
+                    if (e.currentTarget.parentElement.id === 'address-pieces-container' && !e.currentTarget.dataset.clicked) {
+                        currentValue = '';
+                        // 형제 요소들의 클릭 상태 초기화
+                        e.currentTarget.parentElement.querySelectorAll('button').forEach(btn => delete btn.dataset.clicked);
+                        e.currentTarget.dataset.clicked = 'true';
+                    }
 
                     switch (act) {
                         case 'add': input.value = currentValue + val; break;
@@ -1625,18 +1616,29 @@ const sendCompletionNotification = (item) => {
             backspaceWordBtn.classList.add('col-span-2');
             unitKeypad.appendChild(backspaceWordBtn);
 
+            const modalContent = smartEditModal.querySelector('.smart-edit-modal-content');
+            // 키보드가 올라올 때 모달이 밀리는 것을 방지하기 위해 현재 높이로 고정
+            modalContent.style.maxHeight = `${window.innerHeight - 48}px`; // 48px은 상하 여백
+
             document.body.classList.add('modal-open');
             smartEditModal.style.display = 'flex';
             history.pushState({ smartEditModalOpen: true }, "");
         };
 
         const closeSmartEditModal = () => {
-            if (history.state && history.state.smartEditModalOpen) {
-                history.back();
-            } else {
+            const modalContent = smartEditModal.querySelector('.smart-edit-modal-content');
+            
+            const closeModal = () => {
                 document.body.classList.remove('modal-open');
                 smartEditModal.style.display = 'none';
+                modalContent.style.maxHeight = ''; // 고정했던 높이 제거
                 currentEditItemNo = null;
+            };
+
+            if (history.state && history.state.smartEditModalOpen) {
+                history.back(); // popstate 이벤트 리스너가 모달을 닫는 동작을 처리할 것임
+            } else {
+                closeModal();
             }
         };
         
@@ -1688,33 +1690,25 @@ const sendCompletionNotification = (item) => {
             }
         };
         
-        applyPiecesBtn.addEventListener('click', async () => await applyAddressEdit(piecesAddressInput.value.trim()));
-        applyDirectBtn.addEventListener('click', async () => await applyAddressEdit(directAddressInput.value.trim()));
+        applyAddressBtn.addEventListener('click', async () => await applyAddressEdit(editableAddressInput.value.trim()));
         
-        resetPiecesBtn.addEventListener('click', () => {
-            piecesAddressInput.value = '';
-            autoResizeTextarea({target: piecesAddressInput});
+        resetAddressBtn.addEventListener('click', () => {
+            editableAddressInput.value = '';
+            autoResizeTextarea({target: editableAddressInput});
         });
         
-        revertDirectBtn.addEventListener('click', () => {
+        revertAddressBtn.addEventListener('click', () => {
             const item = deliveryItems.find(i => i.no === currentEditItemNo);
             if(item) {
                 const originalBase = typeof item.baseAddress_AI !== 'undefined' ? item.baseAddress_AI : item.baseAddress;
                 const originalDetail = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
-                directAddressInput.value = originalBase + (originalDetail ? `, ${originalDetail}` : '');
-                autoResizeTextarea({target: directAddressInput});
+                editableAddressInput.value = originalBase + (originalDetail ? `, ${originalDetail}` : '');
+                autoResizeTextarea({target: editableAddressInput});
             }
-        });
-
-        const resetDirectBtn = document.getElementById('reset-direct-btn');
-        resetDirectBtn.addEventListener('click', () => {
-            directAddressInput.value = '';
-            autoResizeTextarea({target: directAddressInput});
         });
         
         smartEditExitBtn.addEventListener('click', closeSmartEditModal);
-        piecesAddressInput.addEventListener('input', autoResizeTextarea);
-        directAddressInput.addEventListener('input', autoResizeTextarea);
+        editableAddressInput.addEventListener('input', autoResizeTextarea);
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
         clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
@@ -2777,8 +2771,10 @@ const sendCompletionNotification = (item) => {
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', (event) => {
                 if (smartEditModal.style.display === 'flex') {
+                    const modalContent = smartEditModal.querySelector('.smart-edit-modal-content');
                     document.body.classList.remove('modal-open');
                     smartEditModal.style.display = 'none';
+                    modalContent.style.maxHeight = ''; // 고정했던 높이 제거
                     currentEditItemNo = null;
                     return;
                 }
