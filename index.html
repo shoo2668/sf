@@ -22,9 +22,9 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ▼▼▼ [추가] 설정 섹션을 카드 형태로 만들기 위한 스타일 ▼▼▼ */
+        /* ▼▼▼ [수정] 설정 섹션 배경색에 CSS 변수 적용 ▼▼▼ */
         .setting-section {
-            background-color: var(--page-bg);
+            background-color: var(--card-bg);
             padding: 1rem; /* 16px */
             border-radius: 0.5rem; /* 8px */
             box-shadow: var(--card-shadow);
@@ -45,6 +45,7 @@
         /* ▼▼▼ [수정] CSS 변수 정의 (라이트/다크 모드) ▼▼▼ */
         :root {
             --page-bg: #ffffff;
+            --card-bg: #ffffff; /* <-- [추가] 라이트 모드 카드 배경 변수 */
             --text-primary: #1f2937;
             --text-secondary: #6b7280;
             --modal-bg: #ffffff;
@@ -57,6 +58,7 @@
         html.dark {
             color-scheme: dark;
             --page-bg: #121212; /* 매우 어두운 회색 (거의 검정) */
+            --card-bg: #1e1e1e; /* <-- [추가] 다크 모드 카드 배경 변수 (페이지보다 약간 밝음) */
             --text-primary: #e0e0e0; /* 밝은 회색 텍스트 */
             --text-secondary: #a0a0a0; /* 중간 회색 텍스트 */
             --modal-bg: #1e1e1e; /* 모달 배경 (페이지보다 약간 밝음) */
@@ -305,7 +307,7 @@
             </div>
             <div class="max-w-md mx-auto p-4 sm:p-6 lg:p-8">
           <!-- ▼▼▼ [수정] 설정 항목들을 재구성 ▼▼▼ -->
-                <div id="scan-section-container" class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full min-w-[320px] hidden">
+                <div id="scan-section-container" class="mb-6 setting-section w-full min-w-[320px] hidden">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">송장 스캔하여 카드 생성</h3>
                     <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
                         <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
