@@ -305,6 +305,16 @@
             </div>
             <div class="max-w-md mx-auto p-4 sm:p-6 lg:p-8">
           <!-- ▼▼▼ [수정] 설정 항목들을 재구성 ▼▼▼ -->
+                <div id="scan-section-container" class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full min-w-[320px] hidden">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">송장 스캔하여 카드 생성</h3>
+                    <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                        <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
+                        <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 dark:text-blue-300 py-2 px-4 rounded-md border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 font-semibold cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 text-center whitespace-nowrap">사진 선택</label>
+                        <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
+                    </div>
+                    <div id="selected-files-display" class="mt-2 text-sm text-gray-600 dark:text-gray-400 text-center">선택된 파일 없음</div>
+                </div>
+
                 <div id="data-management-container" class="w-full min-w-[320px] space-y-4 hidden">
                     <!-- ▼▼▼ [수정] 환경설정 섹션 (테마, 지도, 데이터 통합) ▼▼▼ -->
                     <div class="setting-section">
@@ -368,22 +378,6 @@
                         <h3 class="setting-section-title">앱 초기화</h3>
                         <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
                     </div>
-                </div>
-                <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
-
-                <div id="scan-section-container" class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full min-w-[320px] hidden">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">송장 스캔하여 카드 생성</h3>
-                    <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
-                        <input type="file" id="deliverySheetImage" accept="image/*" multiple class="hidden"/>
-                        <label for="deliverySheetImage" class="flex-1 w-full text-sm text-blue-700 dark:text-blue-300 py-2 px-4 rounded-md border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 font-semibold cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 text-center whitespace-nowrap">사진 선택</label>
-                        <button id="scanAndGenerateButton" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">스캔하여 카드 생성</button>
-                    </div>
-                    <div id="selected-files-display" class="mt-2 text-sm text-gray-600 dark:text-gray-400 text-center">선택된 파일 없음</div>
-                    <div id="scan-loading-indicator" class="hidden mt-3 text-center text-sm text-blue-600 dark:text-blue-400">
-                        <div class="spinner mx-auto mb-2"></div>
-                        <p id="scan-progress-text">송장 스캔 중...</p>
-                    </div>
-                    <div id="scan-error-message" class="hidden mt-3 text-center text-sm text-red-600 dark:text-red-400">스캔 실패: <span id="scan-error-text"></span></div>
                 </div>
                 
                 <div id="version-info-container" class="mb-6 text-center hidden">
@@ -539,6 +533,19 @@
             <div class="flex justify-between space-x-2 mt-6">
                 <button id="location-modal-cancel" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">취소</button>
                 <button id="location-modal-confirm" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">배송 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scan-progress-modal" class="confirmation-modal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">송장 스캔 진행 중</h2>
+            <div class="flex flex-col items-center justify-center p-4">
+                <div class="spinner mb-4"></div>
+                <p id="scan-progress-modal-text" class="text-base text-gray-700 dark:text-gray-300 text-center">스캔을 준비 중입니다...</p>
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="scan-progress-cancel-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium">닫기</button>
             </div>
         </div>
     </div>
@@ -791,7 +798,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.13";
+            const version = "v1.8.0";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1202,6 +1209,7 @@ const sendCompletionNotification = (item) => {
         let pullStartY = 0;
         let refreshIndicator;
         let currentLocationEditItemNo = null;
+        let isScanCancelled = false;
         
         const searchBarContainer = document.getElementById('search-bar-container');
         const invoiceNumberInput = document.getElementById('invoiceNumber');
@@ -1210,16 +1218,15 @@ const sendCompletionNotification = (item) => {
         const deliveryCardsContainer = document.getElementById('delivery-cards-container');
         const deliverySheetImageInput = document.getElementById('deliverySheetImage');
         const scanAndGenerateButton = document.getElementById('scanAndGenerateButton');
-        const scanLoadingIndicator = document.getElementById('scan-loading-indicator');
-        const scanErrorMessage = document.getElementById('scan-error-message');
-        const scanErrorText = document.getElementById('scan-error-text');
         const scanSectionContainer = document.getElementById('scan-section-container');
         const clearAllCardsButton = document.getElementById('clearAllCardsButton');
         const dataManagementContainer = document.getElementById('data-management-container');
         const exportDataButton = document.getElementById('exportDataButton');
         const importDataInput = document.getElementById('importDataInput');
-        const scanProgressText = document.getElementById('scan-progress-text');
         const selectedFilesDisplay = document.getElementById('selected-files-display');
+        const scanProgressModal = document.getElementById('scan-progress-modal');
+        const scanProgressModalText = document.getElementById('scan-progress-modal-text');
+        const scanProgressCancelBtn = document.getElementById('scan-progress-cancel-btn');
         const signatureModal = document.getElementById('signature-modal');
         const signatureTextInput = document.getElementById('signature-text-input');
         const clearSignatureBtn = document.getElementById('clearSignature');
@@ -2221,15 +2228,20 @@ const sendCompletionNotification = (item) => {
         const totalFiles = filesToScan.length;
         let completedCount = 0;
 
-        scanProgressText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
-        const resizePromises = filesToScan.map((file, index) => 
-            resizeImage(file).then(resizedObject => {
-                scanProgressText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
+        scanProgressModalText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
+        const resizePromises = filesToScan.map((file, index) => {
+            if (isScanCancelled) return Promise.reject(new Error("Scan cancelled"));
+            return resizeImage(file).then(resizedObject => {
+                if (isScanCancelled) throw new Error("Scan cancelled");
+                scanProgressModalText.textContent = `이미지 리사이징 중 (${index + 1}/${totalFiles})...`;
                 return resizedObject;
-            })
-        );
+            });
+        });
+
         const resizedImageObjects = await Promise.all(resizePromises);
-        scanProgressText.textContent = `리사이징 완료, API 요청 시작...`;
+        if (isScanCancelled) return { cancelled: true };
+
+        scanProgressModalText.textContent = `리사이징 완료, API 요청 시작...`;
         
         const tempMergedResults = new Map();
         const failedFileObjectsForRetry = [];
@@ -2237,7 +2249,7 @@ const sendCompletionNotification = (item) => {
 
         const updateApiProgress = () => {
             completedCount++;
-            scanProgressText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
+            scanProgressModalText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
         };
 
         const processApiRequest = async (resizedObject) => {
@@ -2245,6 +2257,7 @@ const sendCompletionNotification = (item) => {
             let lastError = null;
 
             for (let attempt = 1; attempt <= 3; attempt++) {
+                if (isScanCancelled) throw new Error("Scan cancelled");
                 try {
                     const payload = {
                         contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
@@ -2266,6 +2279,7 @@ const sendCompletionNotification = (item) => {
                     }
                     throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
                 } catch (error) {
+                    if (isScanCancelled) throw error;
                     lastError = error;
                     console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
                     if (attempt < 3) {
@@ -2277,11 +2291,13 @@ const sendCompletionNotification = (item) => {
         };
         
         const worker = async () => {
-            while (requestQueue.length > 0) {
+            while (requestQueue.length > 0 && !isScanCancelled) {
                 const requestObject = requestQueue.shift(); 
                 if (requestObject) {
                     try {
                         const apiResultArray = await processApiRequest(requestObject);
+                        if (isScanCancelled) return;
+
                         for (const geminiItem of apiResultArray) {
                             const no = parseInt(geminiItem.no || '0', 10);
                             if (no === 0) continue;
@@ -2298,10 +2314,13 @@ const sendCompletionNotification = (item) => {
                             tempMergedResults.set(no, geminiItem);
                         }
                     } catch (error) {
+                        if (isScanCancelled) return;
                         console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
                         failedFileObjectsForRetry.push(requestObject.file);
                     } finally {
-                        updateApiProgress();
+                        if (!isScanCancelled) {
+                            updateApiProgress();
+                        }
                     }
                 }
             }
@@ -2309,6 +2328,8 @@ const sendCompletionNotification = (item) => {
 
         const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
         await Promise.all(workerPromises);
+
+        if (isScanCancelled) return { cancelled: true };
 
         let newCount = 0;
         let updateCount = 0;
@@ -2355,14 +2376,22 @@ const sendCompletionNotification = (item) => {
     scanAndGenerateButton.addEventListener('click', async () => {
         if (!currentFileToScan || currentFileToScan.length === 0) { showMessage('스캔할 이미지를 선택해주세요.'); return; }
         
+        isScanCancelled = false;
+        scanProgressModal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+
         const startTime = Date.now();
-        scanLoadingIndicator.style.display = 'block';
-        scanErrorMessage.style.display = 'none';
         failedFileObjects = []; 
 
         try {
             const initialFiles = Array.from(currentFileToScan);
             const result = await performScan(initialFiles);
+
+            if (result.cancelled) {
+                showToastMessage("스캔이 중단되었습니다.");
+                return;
+            }
+
             const endTime = Date.now();
             const elapsedTime = Math.round((endTime - startTime) / 1000);
             const minutes = Math.floor(elapsedTime / 60);
@@ -2379,9 +2408,19 @@ const sendCompletionNotification = (item) => {
                 const message = `총 ${initialFiles.length}개 중 ${successCount}개 파일 스캔 성공. ${timeString}\n\n실패한 ${failedFileObjects.length}개 파일을 다시 스캔하시겠습니까?\n- ${failedFileNames.join('\n- ')}`;
 
                 const onRetry = async () => {
-                    scanLoadingIndicator.style.display = 'block';
+                    isScanCancelled = false;
+                    scanProgressModal.style.display = 'flex';
+                    document.body.classList.add('modal-open');
+                    
                     const retryResult = await performScan(failedFileObjects);
-                    scanLoadingIndicator.style.display = 'none';
+                    
+                    scanProgressModal.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+
+                    if (retryResult.cancelled) {
+                        showToastMessage("재시도가 중단되었습니다.");
+                        return;
+                    }
 
                     if (retryResult.failedFiles.length === 0) {
                         showMessage(`재시도 성공: ${retryResult.updateCount + retryResult.newCount}개의 카드가 추가/업데이트되었습니다.`);
@@ -2395,11 +2434,15 @@ const sendCompletionNotification = (item) => {
                 openConfirmationModal(message, onRetry, '실패 파일 재시도', '나중에');
             }
         } catch (error) {
-            console.error("전체 스캔 프로세스 오류:", error);
-            scanErrorText.textContent = error.message;
-            scanErrorMessage.style.display = 'block';
+            if (error.message !== "Scan cancelled") {
+                console.error("전체 스캔 프로세스 오류:", error);
+                showMessage(`스캔 중 오류가 발생했습니다: ${error.message}`, "오류");
+            } else {
+                showToastMessage("스캔이 중단되었습니다.");
+            }
         } finally {
-            scanLoadingIndicator.style.display = 'none';
+            scanProgressModal.style.display = 'none';
+            document.body.classList.remove('modal-open');
             deliverySheetImageInput.value = '';
             currentFileToScan = null;
             selectedFilesDisplay.textContent = '선택된 파일 없음';
@@ -2554,6 +2597,12 @@ const sendCompletionNotification = (item) => {
                     updateFilterCounts();
                     showToastMessage("모든 카드가 삭제되었습니다.");
                 });
+            });
+
+            scanProgressCancelBtn.addEventListener('click', () => {
+                isScanCancelled = true;
+                scanProgressModal.style.display = 'none';
+                document.body.classList.remove('modal-open');
             });
 
             locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
