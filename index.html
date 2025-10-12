@@ -1695,6 +1695,10 @@ const sendCompletionNotification = (item) => {
         resetAddressBtn.addEventListener('click', () => {
             editableAddressInput.value = '';
             autoResizeTextarea({target: editableAddressInput});
+
+            // 주소 조각 클릭 상태를 초기화
+            const addressPiecesContainer = document.getElementById('address-pieces-container');
+            addressPiecesContainer.dataset.isPieceClicked = 'false';
         });
         
         revertAddressBtn.addEventListener('click', () => {
@@ -1704,6 +1708,10 @@ const sendCompletionNotification = (item) => {
                 const originalDetail = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
                 editableAddressInput.value = originalBase + (originalDetail ? `, ${originalDetail}` : '');
                 autoResizeTextarea({target: editableAddressInput});
+
+                // 주소 조각 클릭 상태를 초기화하여, 다음 조각 클릭 시 입력창이 비워지도록 함
+                const addressPiecesContainer = document.getElementById('address-pieces-container');
+                addressPiecesContainer.dataset.isPieceClicked = 'false';
             }
         });
         
