@@ -1535,6 +1535,8 @@ const sendCompletionNotification = (item) => {
             const unitKeypad = document.getElementById('unit-keypad');
             [addressPiecesContainer, numberKeypad, unitKeypad].forEach(c => c.innerHTML = '');
             
+            addressPiecesContainer.dataset.isPieceClicked = 'false';
+
             const createKeyButton = (text, colorClass, value, action = 'add') => {
                 const button = document.createElement('button');
                 button.type = 'button';
@@ -1560,12 +1562,10 @@ const sendCompletionNotification = (item) => {
                     const act = button.dataset.action;
                     const val = button.dataset.value;
 
-                    // 주소 조각을 처음 클릭할 때만 기존 내용을 지움
-                    if (e.currentTarget.parentElement.id === 'address-pieces-container' && !e.currentTarget.dataset.clicked) {
-                        currentValue = '';
-                        // 형제 요소들의 클릭 상태 초기화
-                        e.currentTarget.parentElement.querySelectorAll('button').forEach(btn => delete btn.dataset.clicked);
-                        e.currentTarget.dataset.clicked = 'true';
+                    const parentContainer = e.currentTarget.closest('#address-pieces-container');
+                    if (parentContainer && parentContainer.dataset.isPieceClicked === 'false') {
+                        currentValue = ''; // 입력창 비우기
+                        parentContainer.dataset.isPieceClicked = 'true'; // 상태를 '클릭됨'으로 변경
                     }
 
                     switch (act) {
