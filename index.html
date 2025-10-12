@@ -333,13 +333,6 @@
                         </div>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">오류 로그 관리</h3>
-                        <div class="flex space-x-2">
-                            <button id="viewLogsButton" class="w-1/2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500">로그 기록 보기</button>
-                            <button id="clearLogsButton" class="w-1/2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">로그 기록 삭제</button>
-                        </div>
-                    </div>
-                    <div>
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">카드 초기화</h3>
                         <button id="clearAllCardsButton" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">모든 카드 삭제</button>
                     </div>
@@ -505,19 +498,6 @@
         </div>
     </div>
 
-    <div id="log-viewer-modal" class="confirmation-modal" style="display: none;">
-        <div class="confirmation-modal-content" style="max-width: 42rem;">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">오류 로그 기록</h2>
-            <div class="flex-1 bg-gray-800 text-white font-mono text-xs p-4 rounded-md overflow-auto" style="min-height: 200px; max-height: 60vh;">
-                <pre id="log-content-display"></pre>
-            </div>
-            <div class="flex justify-between mt-6 space-x-2">
-                <button id="log-viewer-close" class="px-4 py-2 bg-gray-400 dark:bg-gray-600 text-white rounded-md hover:bg-gray-500 dark:hover:bg-gray-500 text-sm font-medium">닫기</button>
-                <button id="exportLogsButton" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 text-sm font-medium">로그 파일로 저장</button>
-            </div>
-        </div>
-    </div>
-
     <div id="delivery-location-modal" class="confirmation-modal" style="display: none;">
         <div class="confirmation-modal-content">
             <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200" id="delivery-location-title">배송 위치 선택</h2>
@@ -594,24 +574,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 });
 // ▲▲▲▲▲ [수정 끝] ▲▲▲▲▲
 
-        // --- 전역 오류 로깅 시스템 ---
-        const LOG_STORAGE_KEY = 'appErrorLogs';
-
-        window.onerror = function(message, source, lineno, colno, error) {
-            const now = new Date();
-            const timestamp = now.toLocaleString('ko-KR', { hour12: false });
-            const logEntry = { timestamp, message, source: source.substring(source.lastIndexOf('/') + 1), line: lineno, column: colno, stack: error ? error.stack : 'N/A' };
-            try {
-                let logs = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY)) || [];
-                logs.unshift(logEntry);
-                if (logs.length > 100) logs = logs.slice(0, 100);
-                localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logs));
-            } catch (e) { console.error("로깅 시스템 자체 오류:", e); }
-        };
-
-        window.addEventListener('unhandledrejection', function(event) {
-            window.onerror(`Unhandled Promise Rejection: ${event.reason.message || event.reason}`, event.reason.fileName || 'unknown', event.reason.lineNumber || 0, event.reason.columnNumber || 0, event.reason);
-        });
 
         const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
@@ -2855,46 +2817,6 @@ const sendCompletionNotification = (item) => {
             smartEditModal.addEventListener('click', (event) => { if (event.target === smartEditModal) closeSmartEditModal(); });
             cancelSignatureBtn.addEventListener('click', closeSignatureModal);
             signatureModal.addEventListener('click', (event) => { if (event.target === signatureModal) closeSignatureModal(); });
-
-            const viewLogsButton = document.getElementById('viewLogsButton');
-            const clearLogsButton = document.getElementById('clearLogsButton');
-            const logViewerModal = document.getElementById('log-viewer-modal');
-            const logContentDisplay = document.getElementById('log-content-display');
-            const logViewerClose = document.getElementById('log-viewer-close');
-            const exportLogsButton = document.getElementById('exportLogsButton');
-            viewLogsButton.addEventListener('click', () => {
-                const logs = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY)) || [];
-                logContentDisplay.textContent = logs.length === 0 ? '기록된 오류 로그가 없습니다.' : logs.map(log => `[${log.timestamp}] - ${log.message}\n  at ${log.source} (${log.line}:${log.column})\n  Stack: ${log.stack}\n--------------------------------------`).join('\n\n');
-                document.body.classList.add('modal-open');
-                logViewerModal.style.display = 'flex';
-            });
-            clearLogsButton.addEventListener('click', () => {
-                openConfirmationModal('모든 오류 로그 기록을 삭제하시겠습니까?', () => {
-                    localStorage.removeItem(LOG_STORAGE_KEY);
-                    showToastMessage('로그 기록이 삭제되었습니다.');
-                });
-            });
-            logViewerClose.addEventListener('click', () => {
-                document.body.classList.remove('modal-open');
-                logViewerModal.style.display = 'none';
-            });
-            exportLogsButton.addEventListener('click', () => {
-                const logs = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY)) || [];
-                if (logs.length === 0) { showMessage('저장할 로그가 없습니다.'); return; }
-                const dataStr = `[\n${logs.map(log => JSON.stringify(log, null, 2)).join(',\n')}\n]`;
-                const today = new Date();
-                const fileName = `SF-Error-Logs-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.txt`;
-                const blob = new Blob([dataStr], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showToastMessage(`로그가 '${fileName}' 파일로 저장되었습니다.`);
-            });
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
