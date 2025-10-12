@@ -22,6 +22,12 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ▼▼▼ [추가] 새로운 테마 스위치 UI를 위한 스타일 ▼▼▼ */
+#theme-switch-container.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+/* ▲▲▲ [추가 끝] ▲▲▲ */
         /* ▼▼▼ [수정] CSS 변수 정의 (라이트/다크 모드) ▼▼▼ */
         :root {
             --page-bg: #ffffff;
@@ -286,16 +292,31 @@
             <div class="max-w-md mx-auto p-4 sm:p-6 lg:p-8">
                 <!-- ▼▼▼ [수정] 설정 컨테이너에 다크모드 클래스 추가 ▼▼▼ -->
                 <div id="data-management-container" class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full min-w-[320px] space-y-4 hidden">
-                    <!-- ▼▼▼ [추가] 테마 선택 UI ▼▼▼ -->
-                    <div>
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">테마 선택</h3>
-                        <div id="theme-selection-container" class="flex space-x-2 rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
-                            <button data-theme="light" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">라이트</button>
-                            <button data-theme="dark" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">다크</button>
-                            <button data-theme="system" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">시스템</button>
-                        </div>
-                    </div>
-                    <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
+                    <!-- ▼▼▼ [수정] 테마 선택 UI 개선 ▼▼▼ -->
+<div>
+    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">테마 선택</h3>
+    <div class="flex items-center justify-between p-1 rounded-lg bg-gray-100 dark:bg-gray-700">
+        <!-- 라이트/다크 아이콘 스위치 -->
+        <div id="theme-switch-container" class="relative flex items-center p-1 rounded-md">
+            <div id="theme-glider" class="absolute h-8 w-8 bg-white dark:bg-gray-500 rounded-md shadow-sm transition-all duration-300 ease-in-out"></div>
+            <button id="light-theme-btn" data-theme="light" class="relative z-10 w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            </button>
+            <button id="dark-theme-btn" data-theme="dark" class="relative z-10 w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+            </button>
+        </div>
+        <!-- 시스템 테마 토글 스위치 -->
+        <div class="flex items-center space-x-2 px-2">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">시스템</span>
+            <label for="system-theme-toggle" class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="system-theme-toggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+        </div>
+    </div>
+</div>
+<!-- ▲▲▲ [수정 끝] ▲▲▲ -->
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">지도 앱 선택</h3>
                         <div id="map-selection-container" class="flex space-x-2 rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
@@ -510,50 +531,68 @@
     </div>
 
     <script type="text/javascript">
-        // ▼▼▼▼▼ [추가 시작] 다크모드 테마 제어 로직 ▼▼▼▼▼
-        const themeColorMeta = document.getElementById('theme-color-meta');
+        // ▼▼▼▼▼ [수정] 새로운 UI에 맞춘 다크모드 테마 제어 로직 ▼▼▼▼▼
+const themeColorMeta = document.getElementById('theme-color-meta');
 
-        const applyTheme = (theme) => {
-            const themeButtonsContainer = document.getElementById('theme-selection-container');
-            if (theme === 'dark') {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-                if (themeColorMeta) themeColorMeta.setAttribute('content', '#111827'); // gray-900
-            } else if (theme === 'light') {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-                if (themeColorMeta) themeColorMeta.setAttribute('content', '#ffffff'); // white
-            } else { // 'system'
-                localStorage.setItem('theme', 'system');
-                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.classList.add('dark');
-                    if (themeColorMeta) themeColorMeta.setAttribute('content', '#111827');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    if (themeColorMeta) themeColorMeta.setAttribute('content', '#ffffff');
-                }
-            }
+const applyTheme = (themePreference) => {
+    const systemThemeToggle = document.getElementById('system-theme-toggle');
+    const themeSwitchContainer = document.getElementById('theme-switch-container');
+    const themeGlider = document.getElementById('theme-glider');
+    const lightBtn = document.getElementById('light-theme-btn');
+    const darkBtn = document.getElementById('dark-theme-btn');
 
-            // UI 버튼 활성 상태 업데이트
-            if (themeButtonsContainer) {
-                themeButtonsContainer.querySelectorAll('button').forEach(button => {
-                    button.classList.toggle('active', button.dataset.theme === theme);
-                });
-            }
-        };
+    let effectiveTheme = themePreference;
+    const isSystemMode = themePreference === 'system';
 
-        const initializeTheme = () => {
-            const savedTheme = localStorage.getItem('theme') || 'system';
-            applyTheme(savedTheme);
-        };
+    if (isSystemMode) {
+        effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
 
-        // 시스템 테마 변경 감지
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-            if (localStorage.getItem('theme') === 'system') {
-                applyTheme('system');
-            }
-        });
-        // ▲▲▲▲▲ [추가 끝] 다크모드 테마 제어 로직 ▲▲▲▲▲
+    // 1. HTML 클래스 및 메타 태그 업데이트
+    if (effectiveTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        if (themeColorMeta) themeColorMeta.setAttribute('content', '#111827'); // gray-900
+    } else {
+        document.documentElement.classList.remove('dark');
+        if (themeColorMeta) themeColorMeta.setAttribute('content', '#ffffff'); // white
+    }
+    
+    // 2. UI 업데이트
+    if (systemThemeToggle && themeSwitchContainer && themeGlider && lightBtn && darkBtn) {
+        // 시스템 토글 상태 업데이트
+        systemThemeToggle.checked = isSystemMode;
+        
+        // 라이트/다크 스위치 비활성화/활성화
+        themeSwitchContainer.classList.toggle('disabled', isSystemMode);
+
+        // 글라이더 위치 이동
+        const targetButton = effectiveTheme === 'dark' ? darkBtn : lightBtn;
+        themeGlider.style.transform = `translateX(${targetButton.offsetLeft - lightBtn.offsetLeft}px)`;
+        
+        // 아이콘 색상 활성화
+        lightBtn.classList.toggle('text-yellow-500', effectiveTheme === 'light');
+        lightBtn.classList.toggle('text-gray-600', effectiveTheme !== 'light');
+        darkBtn.classList.toggle('text-blue-400', effectiveTheme === 'dark');
+        darkBtn.classList.toggle('text-gray-600', effectiveTheme !== 'dark');
+    }
+
+    // 3. 선택 사항 저장
+    localStorage.setItem('theme', themePreference);
+};
+
+const initializeTheme = () => {
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    applyTheme(savedTheme);
+};
+
+// 시스템 테마 변경 감지
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    // 시스템 모드가 활성화 되어 있을 때만 테마를 자동으로 변경
+    if (localStorage.getItem('theme') === 'system') {
+        applyTheme('system');
+    }
+});
+// ▲▲▲▲▲ [수정 끝] ▲▲▲▲▲
 
         // --- 전역 오류 로깅 시스템 ---
         const LOG_STORAGE_KEY = 'appErrorLogs';
@@ -757,7 +796,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.12";
+            const version = "v1.7.13";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -2477,18 +2516,29 @@ const sendCompletionNotification = (item) => {
             });
             updateMapSelectionUI();
 
-            // ▼▼▼ [추가] 테마 선택 버튼 이벤트 리스너 ▼▼▼
-            const themeSelectionContainer = document.getElementById('theme-selection-container');
-            if (themeSelectionContainer) {
-                themeSelectionContainer.addEventListener('click', (event) => {
-                    const button = event.target.closest('button[data-theme]');
-                    if (button) {
-                        const newTheme = button.dataset.theme;
-                        applyTheme(newTheme);
-                    }
-                });
+            // ▼▼▼ [수정] 새로운 테마 UI를 위한 이벤트 리스너 설정 ▼▼▼
+    const lightBtn = document.getElementById('light-theme-btn');
+    const darkBtn = document.getElementById('dark-theme-btn');
+    const systemThemeToggle = document.getElementById('system-theme-toggle');
+
+    if (lightBtn) {
+        lightBtn.addEventListener('click', () => applyTheme('light'));
+    }
+    if (darkBtn) {
+        darkBtn.addEventListener('click', () => applyTheme('dark'));
+    }
+    if (systemThemeToggle) {
+        systemThemeToggle.addEventListener('change', (event) => {
+            if (event.target.checked) {
+                applyTheme('system');
+            } else {
+                // 시스템 모드를 끌 때, 현재 보이는 테마를 수동 선택한 것으로 간주
+                const currentEffectiveTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+                applyTheme(currentEffectiveTheme);
             }
-            // ▲▲▲ [추가 끝] ▲▲▲
+        });
+    }
+    // ▲▲▲ [수정 끝] ▲▲▲
 
             const barcodeScanButton = document.getElementById('barcode-scan-button');
             if (barcodeScanButton) {
