@@ -317,13 +317,21 @@
     </div>
 </div>
 <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
+                    <!-- ▼▼▼ [수정] 지도 앱 선택 UI 개선 ▼▼▼ -->
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">지도 앱 선택</h3>
-                        <div id="map-selection-container" class="flex space-x-2 rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
-                            <button data-map="naver" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">네이버 지도</button>
-                            <button data-map="kakao" class="map-select-btn flex-1 py-2 text-sm font-semibold rounded-md transition-colors">카카오맵</button>
+                        <div id="map-selection-container" class="grid grid-cols-2 gap-2">
+                            <button data-map="naver" class="map-select-btn flex items-center justify-center space-x-2 py-2 text-sm font-semibold rounded-md transition-colors border border-gray-200 dark:border-gray-600">
+                                <svg class="w-5 h-5" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15.381 13.562L10.11 21.5h5.272l5.27-7.938v7.938h5.27V6.5H20.65l-5.27 7.938V6.5h-5.27l5.271 7.938-5.27 7.562z" fill="#fff"/><path d="M2.08 6.5h5.272v15H2.08z" fill="#fff"/></svg>
+                                <span>네이버</span>
+                            </button>
+                            <button data-map="kakao" class="map-select-btn flex items-center justify-center space-x-2 py-2 text-sm font-semibold rounded-md transition-colors border border-gray-200 dark:border-gray-600">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.7c-5.5 0-9.8 3.4-9.8 7.6 0 2.4 1.4 4.5 3.6 5.9-1.5 2.7-3.6 5.3-3.6 5.3s3.3-1.5 5.6-2.7c1.4.3 2.8.5 4.2.5 5.5 0 9.8-3.4 9.8-7.6S17.5 2.7 12 2.7z" fill="#000"/></svg>
+                                <span>카카오</span>
+                            </button>
                         </div>
                     </div>
+                    <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">데이터 내보내기/가져오기</h3>
                         <div class="flex space-x-2">
