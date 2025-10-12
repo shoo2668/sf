@@ -757,7 +757,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.7.11";
+            const version = "v1.7.12";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1964,8 +1964,7 @@ const sendCompletionNotification = (item) => {
         const fabMainButton = document.getElementById('fab-main-button');
         const fabOptions = document.getElementById('fab-options');
 
-        // 1. [수정] 더 안정적인 방식으로 기존 아이콘들을 확실하게 제거합니다.
-        // innerHTML = '' 보다 이 방식이 SVG 겹침 오류를 더 확실히 방지합니다.
+        // 1. 기존 아이콘들을 확실하게 제거하여 겹침 현상을 원천 방지합니다.
         while (fabOptions.firstChild) {
             fabOptions.removeChild(fabOptions.firstChild);
         }
@@ -1977,30 +1976,38 @@ const sendCompletionNotification = (item) => {
         let currentSortType = '';
         let activeColorClass = '';
 
-        // viewBox="0 0 24 24" 로 모두 수정된 SVG 코드
-        const iconJump = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m16 14-4-4-4 4"/><path d="M12 14V6"/></svg>`;
-        const iconSortNo = `<svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5V19M12 5l-4 4M12 5l4 4M4 13h6M4 17h10M4 9h2"/></svg>`;
-        const iconSortDistance = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/><path d="M19.1 12.5a7.1 7.1 0 0 0-1.4-2.9l-1.2 1.2a5 5 0 1 1-7 0l-1.2-1.2a7.1 7.1 0 0 0-1.4 2.9"/></svg>`;
-        const iconSortTime = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+        // ▼▼▼ [수정] 보내주신 새 아이콘 SVG 코드로 교체 ▼▼▼
+        // 배송중 필터 아이콘
+        const iconJump = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5h10"/><path d="M11 12h10"/><path d="M11 19h10"/><path d="M4 4h1v5"/><path d="M4 9h2"/><path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02"/></svg>`;
+        const iconSortDistance = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>`;
+        const iconSortNo = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><rect x="15" y="4" width="4" height="6" ry="2"/><path d="M17 20v-6h-2"/><path d="M15 20h4"/></svg>`;
+        
+        // 완료 필터 아이콘
+        const iconSortTime = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`;
 
         if (activeFilter === '배송중') {
             allMenuItems = [
-                { icon: iconJump, action: 'jump-no', type: 'action' }, // type 속성으로 역할 구분
+                // '카드선택(순번선택)'은 정렬 상태가 아니므로 'action' 타입으로 지정
+                { icon: iconJump, action: 'jump-no', type: 'action' }, 
+                // '순번순정렬'은 정렬 상태이므로 'sort' 타입으로 지정
                 { icon: iconSortNo, action: 'sort-no', sortType: 'no', type: 'sort' },
+                // '거리순정렬'은 정렬 상태이므로 'sort' 타입으로 지정
                 { icon: iconSortDistance, action: 'sort-distance', sortType: 'distance', type: 'sort' }
             ];
             currentSortType = deliveryInProgressSortOrder;
             activeColorClass = 'bg-blue-600 text-white';
         } else if (activeFilter === '완료') {
             allMenuItems = [
+                // '순번순정렬'은 정렬 상태이므로 'sort' 타입으로 지정
                 { icon: iconSortNo, action: 'sort-no-completed', sortType: 'no', type: 'sort' },
+                // '완료시간순 정렬'은 정렬 상태이므로 'sort' 타입으로 지정
                 { icon: iconSortTime, action: 'sort-time', sortType: 'time', type: 'sort' }
             ];
             currentSortType = completedSortOrder;
             activeColorClass = 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800';
         }
 
-        // 2. [수정] 메인 버튼에 표시할 '정렬 아이콘'을 명확하게 찾습니다.
+        // 2. 메인 버튼에 표시할 '정렬 아이콘'을 명확하게 찾습니다.
         // 'sort' 타입 중에서 현재 정렬 상태와 일치하는 것을 찾고, 없으면 첫 번째 'sort' 타입을 기본값으로 합니다.
         const sortItems = allMenuItems.filter(item => item.type === 'sort');
         let activeSortItem = sortItems.find(item => item.sortType === currentSortType) || sortItems[0];
