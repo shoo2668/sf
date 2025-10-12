@@ -2686,8 +2686,11 @@ const sendCompletionNotification = (item) => {
                 else if (smartEditScroll && smartEditScroll.contains(event.target)) scrollableElement = smartEditScroll;
                 else if (numberJumpList && numberJumpList.contains(event.target)) scrollableElement = numberJumpList;
 
+                // ▼▼▼ [수정] 이벤트가 취소 가능한 경우에만 preventDefault()를 호출하도록 변경 ▼▼▼
                 if ((scrollableElement && scrollableElement.scrollTop === 0) || !scrollableElement) {
-                    event.preventDefault();
+                    if (event.cancelable) {
+                        event.preventDefault();
+                    }
                 }
             }, { passive: false });
 
