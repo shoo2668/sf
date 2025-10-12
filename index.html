@@ -296,6 +296,13 @@
             border: 2px solid var(--search-bar-border);
             z-index: 45;
         }
+
+        /* ▼▼▼ [추가] 참조용 주소 위치 이동 애니메이션 ▼▼▼ */
+        #original-address-container {
+            transition: transform 0.3s ease-in-out;
+            will-change: transform;
+        }
+        /* ▲▲▲ [추가 끝] ▲▲▲ */
     </style>
 </head>
 <!-- ▼▼▼ [수정] CSS 변수로 색상을 제어하므로, 직접적인 색상 클래스 제거 ▼▼▼ -->
@@ -493,7 +500,7 @@
     <div id="smart-edit-modal" class="smart-edit-modal" style="display: none;">
         <div class="smart-edit-modal-content">
             <div id="smart-edit-scroll-area">
-                <div class="mb-4">
+                <div id="original-address-container" class="mb-4">
                     <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">AI 추출 원본 (참조용)</h3>
                     <p id="original-address-display" class="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-800 dark:text-gray-300 text-sm font-mono break-all"></p>
                 </div>
