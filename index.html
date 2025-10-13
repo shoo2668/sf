@@ -2303,6 +2303,8 @@ const sendCompletionNotification = (item) => {
     const changeFilter = (newFilter, animationClass = '', isInitialLoad = false) => {
         if (newFilter === activeFilter && !isInitialLoad) return;
 
+        localStorage.setItem('lastActiveFilter', newFilter);
+
         collapseSearch();
         const fabOptions = document.getElementById('fab-options');
         if (fabOptions) fabOptions.classList.remove('expanded');
@@ -2696,6 +2698,11 @@ const sendCompletionNotification = (item) => {
     });
 
         document.addEventListener('DOMContentLoaded', () => {
+            // ▼▼▼ [추가] 저장된 정렬 순서 불러오기 ▼▼▼
+            deliveryInProgressSortOrder = localStorage.getItem('deliveryInProgressSortOrder') || 'no';
+            completedSortOrder = localStorage.getItem('completedSortOrder') || 'no';
+            // ▲▲▲ [추가 끝] ▲▲▲
+
             initializeTheme(); // <-- 테마 초기화 함수 호출
 
             if ('serviceWorker' in navigator) {
@@ -3017,10 +3024,19 @@ const sendCompletionNotification = (item) => {
                 }
                 if (button.parentNode.id === 'fab-options') {
                     fabOptions.classList.remove('expanded');
-                    if (action === 'sort-distance') deliveryInProgressSortOrder = 'distance';
-                    else if (action === 'sort-no') deliveryInProgressSortOrder = 'no';
-                    else if (action === 'sort-time') completedSortOrder = 'time';
-                    else if (action === 'sort-no-completed') completedSortOrder = 'no';
+                    if (action === 'sort-distance') {
+                        deliveryInProgressSortOrder = 'distance';
+                        localStorage.setItem('deliveryInProgressSortOrder', 'distance'); // <-- [추가]
+                    } else if (action === 'sort-no') {
+                        deliveryInProgressSortOrder = 'no';
+                        localStorage.setItem('deliveryInProgressSortOrder', 'no'); // <-- [추가]
+                    } else if (action === 'sort-time') {
+                        completedSortOrder = 'time';
+                        localStorage.setItem('completedSortOrder', 'time'); // <-- [추가]
+                    } else if (action === 'sort-no-completed') {
+                        completedSortOrder = 'no';
+                        localStorage.setItem('completedSortOrder', 'no'); // <-- [추가]
+                    }
                 }
                 switch (action) {
                     case 'sort-distance': sortItemsByDistance(); break;
@@ -3105,7 +3121,8 @@ const sendCompletionNotification = (item) => {
             
             const urlParamsForCheck = new URLSearchParams(window.location.search);
             if (!urlParamsForCheck.has('hawb') && !urlParamsForCheck.has('filter')) {
-                changeFilter('배송준비', '', true);
+                const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
+                changeFilter(lastFilter, '', true);
             }
 
             const handleUrlParams = (url) => {
