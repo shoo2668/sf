@@ -125,6 +125,23 @@
         }
         /* ▲▲▲ [추가 끝] ▲▲▲ */
 
+        /* ▼▼▼ [추가] 돋보기 아이콘 터치 영역 확장 ▼▼▼ */
+        #search-scan-button {
+            position: relative; /* 가상 요소의 기준점이 됨 */
+            padding: 10px; /* 실제 터치 영역 확보를 위해 패딩 추가 */
+            margin: -10px; /* 추가된 패딩만큼 마이너스 마진으로 레이아웃 유지 */
+        }
+        #search-scan-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+        }
+        /* ▲▲▲ [추가 끝] ▲▲▲ */
+
         #refresh-indicator {
             transform: translateY(-100%);
             transition: transform 0.3s, opacity 0.3s;
@@ -434,7 +451,7 @@
         <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8 pb-3">
             <!-- ▼▼▼ [수정] 검색창에 다크모드 클래스 추가 ▼▼▼ -->
             <div id="search-bar" class="flex items-center w-full p-1.5 rounded-2xl bg-white/90 dark:bg-gray-800/80 backdrop-blur-md border dark:border-gray-600">
-                <div class="pl-2 pr-1 text-gray-400 dark:text-gray-500">
+                <div id="search-scan-button" class="pl-2 pr-1 text-gray-400 dark:text-gray-500 cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
                 <input type="tel" id="invoiceNumber" name="invoiceNumber" placeholder="송장번호 또는 전화번호 검색" class="flex-grow flex-shrink min-w-0 px-2 py-2 bg-transparent border-none focus:ring-0 outline-none text-base placeholder:text-gray-500 dark:placeholder:text-gray-400" inputmode="numeric" pattern="[0-9]*"/>
@@ -2771,16 +2788,25 @@ const sendCompletionNotification = (item) => {
     }
     // ▲▲▲ [수정 끝] ▲▲▲
 
+            // ▼▼▼ [수정] 바코드 스캐너 실행 로직을 함수로 분리하여 재사용 ▼▼▼
+            const openBarcodeScanner = () => {
+                const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
+                const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
+                const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
+                showToastMessage('스캐너 앱을 실행합니다...', 1000);
+                window.location.href = scannerUrl;
+            };
+
             const barcodeScanButton = document.getElementById('barcode-scan-button');
             if (barcodeScanButton) {
-                barcodeScanButton.addEventListener('click', () => {
-                    const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
-                    const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
-                    const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
-                    showToastMessage('스캐너 앱을 실행합니다...', 1000);
-                    window.location.href = scannerUrl;
-                });
+                barcodeScanButton.addEventListener('click', openBarcodeScanner);
             }
+
+            const searchScanButton = document.getElementById('search-scan-button');
+            if (searchScanButton) {
+                searchScanButton.addEventListener('click', openBarcodeScanner);
+            }
+            // ▲▲▲ [수정 끝] ▲▲▲
 
             clearAllCardsButton.addEventListener('click', () => {
                 openConfirmationModal("모든 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", () => {
