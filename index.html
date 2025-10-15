@@ -657,46 +657,32 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 // ▲▲▲▲▲ [수정 끝] ▲▲▲▲▲
 
 
-        const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
+        const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array by following the rules precisely.
 
 **CRITICAL INSTRUCTIONS:**
 
-1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
+1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" field is essential for each item.
 
 2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
 
 3.  **SEPARATE COMPANY AND PERSONAL NAME:**
-    *   **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
-    *   **Scenario B (Combined Field):** If the recipient information is in a single combined field, intelligently separate the company/organization name and the personal name.
-    *   **Handling Edge Cases:**
-        *   If only a personal name is found, put it in "receiverName" and omit "receiverCompanyName".
-        *   If only a company name is found (e.g., "ABC Mart", "(주)DEF"), put it in "receiverCompanyName" and repeat it in "receiverName".
-        *   If you cannot separate them, put the entire text into both "receiverCompanyName" and "receiverName".
+    *   Intelligently separate the company/organization name and the personal name from the recipient information.
+    *   If only a personal name is found, put it in "receiverName".
+    *   If only a company name is found, put it in both "receiverCompanyName" and "receiverName".
 
 4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
+    *   Translate "receiverName" and "receiverCompanyName" to Korean.
     *   **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
-        *   Translate every component EXACTLY as it appears.
-        *   **English Word Joining Rule:** If a single English word is broken across lines (e.g., 'OLYMPI' and 'CRO'), you MUST join them (e.g., 'OLYMPICRO').
-        *   **Korean Noun Joining Rule:** When processing Korean addresses, if two consecutive lines can form a natural compound noun (like an apartment name or a road name), you MUST join them without a space. However, do not merge numbers with units (like 동, 호) if they are on separate lines.
-            *   Example 1: '래미' on line 1 and '안' on line 2 MUST become '래미안'.
-            *   Example 2: '오금' on line 1 and '로' on line 2 MUST become '오금로'.
-            *   Example 3: '106동' on line 1 and '1302호' on line 2 MUST remain separate as '106동 1302호'.
-        *   **Default Rule:** If the lines do not form a natural single word, treat the line break as a space.
-        *   DO NOT reorder, correct, or omit any other characters (e.g., 'GAGIL' MUST become '가길').
-        *   If the original is already in Korean, just copy it.
+        *   **Your only job is to translate.** DO NOT infer, correct, add, omit, or reorder any words or numbers.
+        *   Join words broken across lines (e.g., 'Hyun' and 'dai' -> 'Hyundai').
+        *   Translate every English word to its Korean equivalent (e.g., 'daero' -> '대로', 'gil' -> '길', 'APT' -> '아파트').
+        *   Keep all numbers, symbols, and unrecognized words exactly as they are.
         *   Let's call this result the "Translated Full Address".
-    *   **STEP 2: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
-        *   **Rule A (Primary): Find the Address Anchor.** First, search for a Korean road name anchor ('로', '길') or a legal address anchor ('동', '리'). Prioritize road name anchors.
-        *   **Rule B (If Anchor Found): Extract the Base Address.** The base address consists of everything from the start of the address up to and including the number block that appears IMMEDIATELY BEFORE the anchor. This number is the building number or lot number.
-            *   Example 1: For "서울 송파구 1218 양재대로 245-501", the anchor is '대로'. The number block immediately before it is '1218'. So, "baseAddressKorean" is "서울 송파구 양재대로 1218".
-            *   Example 2: For "경기 성남시 분당구 판교역로 235", the anchor is '로'. The number block before it is '235'. So, "baseAddressKorean" is "경기 성남시 분당구 판교역로 235".
-            *   **Example 3 (Precedence Rule):** For "서울 송파구 135, 올림픽로 235-1301", the anchor is '로'. The number block before the anchor (135) has higher priority than the number after it (235). So, "baseAddressKorean" MUST be "서울 송파구 올림픽로 135".
-        *   **Rule C (If Anchor Found): Extract the Detail Address.** "detailAddressKorean" is everything that remains after the base address has been extracted.
-            *   From Example 1, "detailAddressKorean" would be "245-501".
-            *   From Example 3, "detailAddressKorean" would be "235-1301".
-        *   **Rule D (If No Anchor Found): Use Best Judgment.** If no clear anchor ('로', '길', '동', '리') can be identified (due to OCR errors or unusual formatting), analyze the structure and make a best-effort guess to separate the base and detail addresses as you did before.
-        *   **Address Hierarchy Rule:** If both a street address (e.g., '풍성로14길 19') and an administrative dong (e.g., '풍납2동') are present, the street address is the primary component for "baseAddressKorean". The administrative dong should be considered redundant information and **MUST be omitted** from the final output unless it is part of a building name.
+    *   **STEP 2: Separate the "Translated Full Address" into "baseAddressKorean" and "detailAddressKorean".**
+        *   **Find the Address Anchor:** First, search for a Korean road name anchor ('로', '길').
+        *   **Extract the Base Address:** The "baseAddressKorean" consists of everything from the start of the address up to and including the number block that appears IMMEDIATELY BEFORE the anchor.
+            *   **Example:** For "서울 송파구 135, 올림픽로 235-1301", the anchor is '로'. The number block before it is '135'. So, "baseAddressKorean" MUST be "서울 송파구 올림픽로 135".
+        *   **Extract the Detail Address:** The "detailAddressKorean" is EVERYTHING else from the "Translated Full Address" that was not included in the "baseAddressKorean". DO NOT omit any information.
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
