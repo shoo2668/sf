@@ -661,43 +661,43 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
 **CRITICAL INSTRUCTIONS:**
 
-1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
+1. **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" field is essential for each item.
 
-2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
+2. **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
 
-3.  **SEPARATE COMPANY AND PERSONAL NAME:**
-    *   **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
-    *   **Scenario B (Combined Field):** If the recipient information is in a single combined field, intelligently separate the company/organization name and the personal name.
-    *   **Handling Edge Cases:**
-        *   If only a personal name is found, put it in "receiverName" and omit "receiverCompanyName".
-        *   If only a company name is found (e.g., "ABC Mart", "(주)DEF"), put it in "receiverCompanyName" and repeat it in "receiverName".
-        *   If you cannot separate them, put the entire text into both "receiverCompanyName" and "receiverName".
+3. **SEPARATE COMPANY AND PERSONAL NAME:**
+   * **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
+   * **Scenario B (Combined Field):** If the recipient information is in a single combined field, intelligently separate the company/organization name and the personal name.
+   * **Handling Edge Cases:**
+     * If only a personal name is found, put it in "receiverName" and omit "receiverCompanyName".
+     * If only a company name is found (e.g., "ABC Mart", "(주)DEF"), put it in "receiverCompanyName" and repeat it in "receiverName".
+     * If you cannot separate them, put the entire text into both "receiverCompanyName" and "receiverName".
 
-4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
-    *   **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
-        *   Your role in this step is a simple translator. DO NOT infer, correct, or add any words.
-        *   Join words broken across lines (e.g., 'Hyun' and 'dai' -> 'Hyundai').
-        *   Translate every English word to its Korean equivalent (e.g., 'daero' -> '대로', 'gil' -> '길', 'APT' -> '아파트').
-        *   Keep all numbers and symbols exactly as they are.
-        *   Let's call this result the "Translated Full Address".
-    *   **STEP 2: Mechanically separate the "Translated Full Address" into "baseAddressKorean" and "detailAddressKorean".**
-        *   Your role in this step is a simple parser. Follow the algorithm below without any creative reasoning.
-        *   **The Algorithm to find "baseAddressKorean":**
-            1.  **Find Primary Anchor:** First, search for a primary anchor: '로' or '대로'.
-            2.  **Find Secondary Anchor:** Then, search for a secondary anchor: '길' or '번길'.
-            3.  **Determine Building Number:**
-                *   **Case 1 (Primary Anchor only):** If only a primary anchor ('로'/'대로') is found:
-                    *   The building number is the number block (e.g., `235` or `16-11`) located IMMEDIATELY BEFORE the primary anchor.
-                    *   If there is no number before it, the building number is the number block located IMMEDIATELY AFTER the primary anchor.
-                *   **Case 2 (Both Anchors found):** If both primary ('로'/'대로') and secondary ('길'/'번길') anchors are found:
-                    *   The building number is the number block located IMMEDIATELY BEFORE the primary anchor.
-                    *   If there is no number before the primary anchor, the building number is the number block located IMMEDIATELY AFTER the secondary anchor.
-            4.  **Acknowledge Building Number Format:** Building numbers can be a single number (e.g., `123`) or in a `xx-xx` format (e.g., `16-11`).
-            5.  **Construct "baseAddressKorean":** The "baseAddressKorean" consists ONLY of the city/district (e.g., '서울 송파구'), the street name, the anchors, and the determined building number.
-        *   **Rule for "detailAddressKorean":** "detailAddressKorean" is EVERYTHING else from the "Translated Full Address" that was not included in the "baseAddressKorean". Your only creative task is to arrange these remaining parts in a logical order if possible.
+4. **TRANSLATE AND SEPARATE ADDRESS:**
+   * Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
+   * **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
+     * Your role in this step is a simple translator. DO NOT infer, correct, or add any words.
+     * Join words broken across lines (e.g., 'Hyun' and 'dai' -> 'Hyundai').
+     * Translate every English word to its Korean equivalent (e.g., 'daero' -> '대로', 'gil' -> '길', 'APT' -> '아파트').
+     * Keep all numbers and symbols exactly as they are.
+     * Let's call this result the "Translated Full Address".
+   * **STEP 2: Mechanically separate the "Translated Full Address" into "baseAddressKorean" and "detailAddressKorean".**
+     * Your role in this step is a simple parser. Follow the algorithm below without any creative reasoning.
+     * **The Algorithm to find "baseAddressKorean":**
+       1. **Find Primary Anchor:** First, search for a primary anchor: '로' or '대로'.
+       2. **Find Secondary Anchor:** Then, search for a secondary anchor: '길' or '번길'.
+       3. **Determine Building Number:**
+          * **Case 1 (Primary Anchor only):** If only a primary anchor ('로'/'대로') is found:
+            * The building number is the number block (e.g., 235 or 16-11) located IMMEDIATELY BEFORE the primary anchor.
+            * If there is no number before it, the building number is the number block located IMMEDIATELY AFTER the primary anchor.
+          * **Case 2 (Both Anchors found):** If both primary ('로'/'대로') and secondary ('길'/'번길') anchors are found:
+            * The building number is the number block located IMMEDIATELY BEFORE the primary anchor.
+            * If there is no number before the primary anchor, the building number is the number block located IMMEDIATELY AFTER the secondary anchor.
+       4. **Acknowledge Building Number Format:** Building numbers can be a single number (e.g., 123) or in a xx-xx format (e.g., 16-11).
+       5. **Construct "baseAddressKorean":** The "baseAddressKorean" consists ONLY of the city/district (e.g., '서울 송파구'), the street name, the anchors, and the determined building number.
+     * **Rule for "detailAddressKorean":** "detailAddressKorean" is EVERYTHING else from the "Translated Full Address" that was not included in the "baseAddressKorean". Your only creative task is to arrange these remaining parts in a logical order if possible.
 
-5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+5. **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
@@ -725,8 +725,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
     "baseAddressKorean": "서울 송파구 올림픽로 135",
     "detailAddressKorean": "235-1301"
   }
-]
-`;
+]`;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
