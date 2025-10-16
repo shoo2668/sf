@@ -657,57 +657,76 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 // ▲▲▲▲▲ [수정 끝] ▲▲▲▲▲
 
 
-        const PROMPT_EXTRACT_TEXT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
+        const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
 **CRITICAL INSTRUCTIONS:**
 
-1.  **ROLE:** You are an Optical Character Recognition (OCR) engine. Your ONLY job is to read the text EXACTLY as you see it.
-2.  **DO NOT TRANSLATE, CORRECT, OR INFER:** Do not translate any language. Do not correct any typos. Do not guess any missing words. Preserve all original text, including errors.
-3.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
-4.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
+
+2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
+
+3.  **SEPARATE COMPANY AND PERSONAL NAME:**
+    *   **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
+    *   **Scenario B (Combined Field):** If the recipient information is in a single combined field, intelligently separate the company/organization name and the personal name.
+    *   **Handling Edge Cases:**
+        *   If only a personal name is found, put it in "receiverName" and omit "receiverCompanyName".
+        *   If only a company name is found (e.g., "ABC Mart", "(주)DEF"), put it in "receiverCompanyName" and repeat it in "receiverName".
+        *   If you cannot separate them, put the entire text into both "receiverCompanyName" and "receiverName".
+
+4.  **TRANSLATE AND SEPARATE ADDRESS:**
+    *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
+    *   **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
+        *   Translate every component EXACTLY as it appears.
+        *   **English Word Joining Rule:** If a single English word is broken across lines (e.g., 'OLYMPI' and 'CRO'), you MUST join them (e.g., 'OLYMPICRO').
+        *   **Korean Noun Joining Rule:** When processing Korean addresses, if two consecutive lines can form a natural compound noun (like an apartment name or a road name), you MUST join them without a space. However, do not merge numbers with units (like 동, 호) if they are on separate lines.
+            *   Example 1: '래미' on line 1 and '안' on line 2 MUST become '래미안'.
+            *   Example 2: '오금' on line 1 and '로' on line 2 MUST become '오금로'.
+            *   Example 3: '106동' on line 1 and '1302호' on line 2 MUST remain separate as '106동 1302호'.
+        *   **Default Rule:** If the lines do not form a natural single word, treat the line break as a space.
+        *   DO NOT reorder, correct, or omit any other characters (e.g., 'GAGIL' MUST become '가길').
+        *   If the original is already in Korean, just copy it.
+        *   Let's call this result the "Translated Full Address".
+    *   **STEP 2: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
+        *   **Rule A (Primary): Find the Address Anchor.** First, search for a Korean road name anchor ('로', '길') or a legal address anchor ('동', '리'). Prioritize road name anchors.
+        *   **Rule B (If Anchor Found): Extract the Base Address.** The base address consists of everything from the start of the address up to and including the number block that appears IMMEDIATELY BEFORE the anchor. This number is the building number or lot number.
+            *   Example 1: For "서울 송파구 1218 양재대로 245-501", the anchor is '대로'. The number block immediately before it is '1218'. So, "baseAddressKorean" is "서울 송파구 양재대로 1218".
+            *   Example 2: For "경기 성남시 분당구 판교역로 235", the anchor is '로'. The number block before it is '235'. So, "baseAddressKorean" is "경기 성남시 분당구 판교역로 235".
+            *   **Example 3 (Precedence Rule):** For "서울 송파구 135, 올림픽로 235-1301", the anchor is '로'. The number block before the anchor (135) has higher priority than the number after it (235). So, "baseAddressKorean" MUST be "서울 송파구 올림픽로 135".
+        *   **Rule C (If Anchor Found): Extract the Detail Address.** "detailAddressKorean" is everything that remains after the base address has been extracted.
+            *   From Example 1, "detailAddressKorean" would be "245-501".
+            *   From Example 3, "detailAddressKorean" would be "235-1301".
+        *   **Rule D (If No Anchor Found): Use Best Judgment.** If no clear anchor ('로', '길', '동', '리') can be identified (due to OCR errors or unusual formatting), analyze the structure and make a best-effort guess to separate the base and detail addresses as you did before.
+        *   **Address Hierarchy Rule:** If both a street address (e.g., '풍성로14길 19') and an administrative dong (e.g., '풍납2동') are present, the street address is the primary component for "baseAddressKorean". The administrative dong should be considered redundant information and **MUST be omitted** from the final output unless it is part of a building name.
+
+5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
   {
+    "no": "40",
+    "hawbNo": "SF028452891 8577",
+    "receiverCompanyName": "Techfiber.Co.,-Ltd",
+    "receiverCompanyNameKorean": "테크파이버",
+    "receiverName": "Richard Kim",
+    "receiverNameKorean": "김리차드",
+    "receiverPhone": "24080670",
+    "receiverAddress": "No.601, 422-dong, 1300, yangjae-daero",
+    "baseAddressKorean": "서울 강동구 양재대로 1300",
+    "detailAddressKorean": "601호 422동"
+  },
+  {
     "no": "1",
     "hawbNo": "SF319999130 4534",
     "receiverCompanyName": "Jiyoung Her",
+    "receiverCompanyNameKorean": "허지영",
     "receiverName": "Jiyoung Her",
+    "receiverNameKorean": "허지영",
     "receiverPhone": "01025190714",
-    "receiverAddress": "Seoul Songpa-gu 135, Olympic-ro 235-1301"
+    "receiverAddress": "Seoul Songpa-gu 135, Olympic-ro 235-1301",
+    "baseAddressKorean": "서울 송파구 올림픽로 135",
+    "detailAddressKorean": "235-1301"
   }
-]`;
-
-        const PROMPT_PROCESS_ADDRESS = `You are a Korean address processing expert. Your task is to take the provided "receiverAddress" text, translate it, and separate it into "baseAddressKorean" and "detailAddressKorean" in a JSON format.
-
-**CRITICAL INSTRUCTIONS:**
-
-1.  **INPUT:** You will receive a single string of address text.
-2.  **OUTPUT:** You MUST respond with a single, valid JSON object with two keys: "baseAddressKorean" and "detailAddressKorean". Do not add any other text or explanations.
-
-3.  **PROCESSING LOGIC:**
-    *   **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the input text.**
-        *   Your role in this step is a simple translator. DO NOT infer, correct, add, omit, or reorder any words or numbers that are not in the input text.
-        *   Join words broken across lines.
-        *   Translate every English word to its Korean equivalent (e.g., 'daero' -> '대로', 'gil' -> '길').
-        *   Let's call this result the "Translated Full Address".
-    *   **STEP 2: Mechanically separate the "Translated Full Address" into "baseAddressKorean" and "detailAddressKorean".**
-        *   **Core Principle:** A valid "baseAddressKorean" MUST contain a building number. A street name ending in '로' or '길' is NOT a complete address by itself.
-        *   **The Algorithm to find "baseAddressKorean":**
-            1.  Find the street name components (e.g., '마천로51길').
-            2.  Find the building number. A building number is a standalone number or a number in 'xx-xx' format (e.g., '16-11'). It is often located near the street name.
-            3.  Combine the street name and the building number to form the "baseAddressKorean".
-            *   **Crucial Example:** For "16-11, 마천로51길, 202호", the "baseAddressKorean" is "마천로51길 16-11".
-        *   **Rule for "detailAddressKorean":** "detailAddressKorean" is EVERYTHING else from the "Translated Full Address" that was not included in the "baseAddressKorean". NEVER discard any information.
-
-**Example Input:**
-"16-11, Macheon-ro 51-gil, 202ho"
-
-**Example Output:**
-{
-  "baseAddressKorean": "마천로51길 16-11",
-  "detailAddressKorean": "202호"
-}
+]
 `;
         
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
@@ -2412,8 +2431,8 @@ const sendCompletionNotification = (item) => {
     async function performScan(filesToScan) {
         const CONCURRENT_LIMIT = 4;
         const totalFiles = filesToScan.length;
-        
-        // --- 1단계: 이미지 리사이징 ---
+        let completedCount = 0;
+
         scanProgressModalText.textContent = `이미지 리사이징 중 (0/${totalFiles})...`;
         const resizePromises = filesToScan.map((file, index) => {
             if (isScanCancelled) return Promise.reject(new Error("Scan cancelled"));
@@ -2423,117 +2442,127 @@ const sendCompletionNotification = (item) => {
                 return resizedObject;
             });
         });
+
         const resizedImageObjects = await Promise.all(resizePromises);
         if (isScanCancelled) return { cancelled: true };
 
-        // --- 2단계: 1차 AI 호출 (텍스트 추출) ---
-        scanProgressModalText.textContent = `[1/2] 텍스트 추출 중 (0/${totalFiles})...`;
-        let extractedItems = [];
+        scanProgressModalText.textContent = `리사이징 완료, API 요청 시작...`;
+        
+        const tempMergedResults = new Map();
         const failedFileObjectsForRetry = [];
+        const requestQueue = [...resizedImageObjects]; 
 
-        const callApi = async (payload) => {
-            const tempApiKeyForLocalTest = "AIzaSyD8ZGE4WyIGatmPzRkJijnOt8PqtnLFyds";
-            const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
-            const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!response.ok) throw new Error(`API 요청 실패 (상태: ${response.status})`);
-            const result = await response.json();
-            if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                return JSON.parse(result.candidates[0].content.parts[0].text);
-            }
-            throw new Error("AI가 유효한 JSON 형식으로 응답하지 않았습니다.");
+        const updateApiProgress = () => {
+            completedCount++;
+            scanProgressModalText.textContent = `API 처리 중 (${completedCount}/${totalFiles})...`;
         };
 
-        const extractionPromises = resizedImageObjects.map((resizedObject, index) => (async () => {
-            if (isScanCancelled) return;
-            try {
-                const payload = {
-                    contents: [{ role: "user", parts: [{ text: PROMPT_EXTRACT_TEXT }, { inlineData: { mimeType: 'image/jpeg', data: resizedObject.data } }] }],
-                    generationConfig: { temperature: 0, responseMimeType: "application/json" }
-                };
-                const result = await callApi(payload);
-                if (Array.isArray(result)) {
-                    extractedItems.push(...result);
-                }
-            } catch (error) {
-                console.error(`[1차 호출] 파일 스캔 오류 (${resizedObject.file.name}):`, error);
-                failedFileObjectsForRetry.push(resizedObject.file);
-            } finally {
-                if (!isScanCancelled) {
-                    scanProgressModalText.textContent = `[1/2] 텍스트 추출 중 (${index + 1}/${totalFiles})...`;
-                }
-            }
-        })());
-        await Promise.all(extractionPromises);
-        if (isScanCancelled) return { cancelled: true };
+        const processApiRequest = async (resizedObject) => {
+            const { file, data: base64ImageData } = resizedObject;
+            let lastError = null;
 
-        // --- 3단계: 2차 AI 호출 (주소 처리) 및 데이터 병합 ---
-        scanProgressModalText.textContent = `[2/2] 주소 변환 중 (0/${extractedItems.length})...`;
-        const finalItemsMap = new Map();
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                if (isScanCancelled) throw new Error("Scan cancelled");
+                try {
+                    const payload = {
+                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
+                        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+                    };
+                    const tempApiKeyForLocalTest = "AIzaSyD8ZGE4WyIGatmPzRkJijnOt8PqtnLFyds";
+                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
-        const processingPromises = extractedItems.map((item, index) => (async () => {
-            if (isScanCancelled) return;
-            try {
-                // 1차 추출 데이터 (기본 정보)
-                const newItem = {
-                    no: parseInt(item.no, 10),
-                    hawbNo: item.hawbNo || '',
-                    receiverAddressOriginal: item.receiverAddress || '',
-                    companyNameOriginal: item.receiverCompanyName || '',
-                    receiverNameOriginal: item.receiverName || '',
-                    receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
-                    status: '배송전', isHawbConfirmed: false,
-                    deliveryCompletionTime: null, completionType: null, completionDetail: null,
-                    addressLocation: null, isStruckThrough: false,
-                };
+                    const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
+                    
+                    const result = await response.json();
 
-                // 2차 호출 (주소 처리)
-                const addressPayload = {
-                    contents: [{ role: "user", parts: [{ text: `${PROMPT_PROCESS_ADDRESS}\n\n**Example Input:**\n"${item.receiverAddress}"` }] }],
-                    generationConfig: { temperature: 0, responseMimeType: "application/json" }
-                };
-                const addressResult = await callApi(addressPayload);
-
-                newItem.baseAddress = addressResult.baseAddressKorean || '';
-                newItem.detailAddress = addressResult.detailAddressKorean || '';
-                newItem.baseAddress_AI = addressResult.baseAddressKorean || '';
-                newItem.detailAddress_AI = addressResult.detailAddressKorean || '';
-
-                // 이름 번역 (간단한 규칙으로 처리, 추후 AI로 대체 가능)
-                newItem.companyNameKorean = item.receiverCompanyName || '';
-                newItem.receiverNameKorean = item.receiverName || '';
-                newItem.receiverNameKoreanOriginal = item.receiverName || '';
-
-                // 주소 검증
-                const validationResult = await validateAddressWithKakao(newItem.baseAddress, newItem.detailAddress);
-                newItem.baseAddress = validationResult.baseAddress; // 검증된 주소로 업데이트
-                newItem.isAddressValidated = validationResult.validated;
-
-                finalItemsMap.set(newItem.no, newItem);
-
-            } catch (error) {
-                console.error(`[2차 호출] 항목 ${item.no} 처리 오류:`, error);
-                // 2차 호출 실패 시, 원본 주소를 상세 주소로 넘김
-                const fallbackItem = {
-                    no: parseInt(item.no, 10),
-                    baseAddress: '',
-                    detailAddress: item.receiverAddress || '',
-                    isAddressValidated: false,
-                };
-                finalItemsMap.set(fallbackItem.no, { ...item, ...fallbackItem });
-            } finally {
-                if (!isScanCancelled) {
-                    scanProgressModalText.textContent = `[2/2] 주소 변환 중 (${index + 1}/${extractedItems.length})...`;
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        const parsedData = JSON.parse(result.candidates[0].content.parts[0].text);
+                        if (Array.isArray(parsedData) && parsedData.length > 0) {
+                             return parsedData;
+                        }
+                    }
+                    throw new Error("AI가 유효한 배열 형식으로 응답하지 않았습니다.");
+                } catch (error) {
+                    if (isScanCancelled) throw error;
+                    lastError = error;
+                    console.warn(`파일(${file.name}) 처리 시도 ${attempt} 실패:`, error);
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
                 }
             }
-        })());
-        await Promise.all(processingPromises);
+            throw lastError;
+        };
+        
+        const worker = async () => {
+            while (requestQueue.length > 0 && !isScanCancelled) {
+                const requestObject = requestQueue.shift(); 
+                if (requestObject) {
+                    try {
+                        const apiResultArray = await processApiRequest(requestObject);
+                        if (isScanCancelled) return;
+
+                        for (const geminiItem of apiResultArray) {
+                            const no = parseInt(geminiItem.no || '0', 10);
+                            if (no === 0) continue;
+                            
+                            if (geminiItem.baseAddressKorean && geminiItem.detailAddressKorean) {
+                                geminiItem.detailAddressKorean = geminiItem.detailAddressKorean.replace(/,/g, ' ');
+                            }
+
+                            const validationResult = await validateAddressWithKakao(geminiItem.baseAddressKorean, geminiItem.detailAddressKorean);
+                            geminiItem.baseAddressKorean = validationResult.baseAddress;
+                            geminiItem.detailAddressKorean = validationResult.detailAddress;
+                            geminiItem.isAddressValidated = validationResult.validated;
+
+                            tempMergedResults.set(no, geminiItem);
+                        }
+                    } catch (error) {
+                        if (isScanCancelled) return;
+                        console.error(`파일 스캔 오류 (${requestObject.file.name}):`, error);
+                        failedFileObjectsForRetry.push(requestObject.file);
+                    } finally {
+                        if (!isScanCancelled) {
+                            updateApiProgress();
+                        }
+                    }
+                }
+            }
+        };
+
+        const workerPromises = Array.from({ length: CONCURRENT_LIMIT }, () => worker());
+        await Promise.all(workerPromises);
+
         if (isScanCancelled) return { cancelled: true };
 
-        // --- 4단계: 최종 데이터 업데이트 ---
         let newCount = 0;
         let updateCount = 0;
-        if (finalItemsMap.size > 0) {
-            finalItemsMap.forEach(newItem => {
+        const allNewItems = Array.from(tempMergedResults.values()); 
+
+        if (allNewItems.length > 0) {
+            const finalItems = allNewItems.map(item => ({
+                no: parseInt(item.no, 10),
+                hawbNo: item.hawbNo || '',
+                baseAddress: item.baseAddressKorean || '',
+                detailAddress: item.detailAddressKorean || '',
+                baseAddress_AI: item.baseAddressKorean || '',
+                detailAddress_AI: item.detailAddressKorean || '',
+                receiverAddressOriginal: item.receiverAddress || '',
+                companyNameOriginal: item.receiverCompanyName || '',
+                receiverNameOriginal: item.receiverName || '',
+                companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
+                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                receiverNameKoreanOriginal: item.receiverNameKorean || item.receiverName || '',
+                receiverTelephoneNo: item.receiverPhone ? getCleanPhoneNumber(item.receiverPhone) : '',
+                status: '배송전', isHawbConfirmed: false,
+                deliveryCompletionTime: null, completionType: null, completionDetail: null,
+                addressLocation: null,
+                isStruckThrough: false,
+                isAddressValidated: item.isAddressValidated
+            }));
+            
+            finalItems.forEach(newItem => {
                 const existingItemIndex = deliveryItems.findIndex(item => item.no === newItem.no);
                 if (existingItemIndex > -1) {
                     deliveryItems[existingItemIndex] = { ...deliveryItems[existingItemIndex], ...newItem };
@@ -2546,7 +2575,6 @@ const sendCompletionNotification = (item) => {
             deliveryItems.sort((a, b) => a.no - b.no);
             saveDeliveryItemsToLocalStorage();
         }
-        
         return { newCount, updateCount, failedFiles: failedFileObjectsForRetry };
     }
     
