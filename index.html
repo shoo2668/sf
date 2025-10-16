@@ -840,7 +840,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.9.0";
+            const version = "v1.8.1";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1600,7 +1600,7 @@ const sendCompletionNotification = (item) => {
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
-            const originalFullAddress = item.baseAddress + (item.detailAddress ? `? ${item.detailAddress}` : '');
+            const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
             originalAddressDisplay.textContent = item.receiverAddressOriginal || '원본 주소 없음';
             editableAddressInput.value = originalFullAddress;
@@ -1650,7 +1650,7 @@ const sendCompletionNotification = (item) => {
                         case 'add': input.value = currentValue + val; break;
                         case 'add-space': input.value = currentValue + (currentValue.length > 0 && !/[-\s]$/.test(currentValue) ? ' ' : '') + val; break;
                         case 'add-unit': input.value = currentValue + val + ' '; break;
-                        case 'add-separator': input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? ' ' : '') + '? '; break;
+                        case 'add-comma': input.value = currentValue + (currentValue.length > 0 && !/\s$/.test(currentValue) ? '' : '') + ', '; break;
                         case 'add-hyphen': input.value = currentValue + '-'; break;
                         case 'backspace-char': input.value = currentValue.slice(0, -1); break;
                         case 'backspace-word':
@@ -1669,18 +1669,18 @@ const sendCompletionNotification = (item) => {
 
             const detailAddressSource = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
             if (detailAddressSource) {
-                addressPiecesContainer.appendChild(createKeyButton('?', 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 px-3 !py-1.5 rounded-full', undefined, 'add-separator'));
+                addressPiecesContainer.appendChild(createKeyButton(',', 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 px-3 !py-1.5 rounded-full', undefined, 'add-comma'));
                 const detailPieces = (detailAddressSource || '').split(/[\s,]+/).filter(Boolean);
                 detailPieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
             }
 
-            ['1', '2', '3', '4', '5', '6', '7', '8', '9', '?', '0', '-'].forEach(key => {
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '-'].forEach(key => {
                 let action = 'add';
                 let colorClass = 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500';
                 if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
                     colorClass = 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900';
                 }
-                if (key === '?') action = 'add-separator';
+                if (key === ',') action = 'add-comma';
                 if (key === '-') action = 'add-hyphen';
                 numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
             });
@@ -1732,12 +1732,12 @@ const sendCompletionNotification = (item) => {
                 return;
             }
 
-            const separatorIndex = fullAddress.indexOf('?');
+            const commaIndex = fullAddress.indexOf(',');
             let tempBaseAddress, tempDetailAddress;
 
-            if (separatorIndex > -1) {
-                tempBaseAddress = fullAddress.substring(0, separatorIndex).trim();
-                tempDetailAddress = fullAddress.substring(separatorIndex + 1).trim();
+            if (commaIndex > -1) {
+                tempBaseAddress = fullAddress.substring(0, commaIndex).trim();
+                tempDetailAddress = fullAddress.substring(commaIndex + 1).trim();
             } else {
                 tempBaseAddress = fullAddress;
                 tempDetailAddress = '';
