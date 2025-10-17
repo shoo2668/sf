@@ -846,7 +846,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v1.8.1";
+            const version = "v1.9.0";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1757,6 +1757,7 @@ const sendCompletionNotification = (item) => {
                 deliveryItems[itemIndex].detailAddress = detail;
                 deliveryItems[itemIndex].addressLocation = null;
                 deliveryItems[itemIndex].isAddressValidated = isValidated;
+                deliveryItems[itemIndex].feedback_status = 'USER_CORRECTED'; // ▼▼▼ [추가] '사용자 수정'으로 기록
                 saveDeliveryItemsToLocalStorage();
                 renderDeliveryCards(activeFilter);
                 closeSmartEditModal();
@@ -1859,6 +1860,12 @@ const sendCompletionNotification = (item) => {
                 deliveryItems[itemIndex].isHawbConfirmed = true;
                 deliveryItems[itemIndex].status = '배송중';
                 
+                // ▼▼▼ [수정] 주소가 수정되지 않았다면 'AI 정답'으로 기록 ▼▼▼
+                if (deliveryItems[itemIndex].feedback_status !== 'USER_CORRECTED') {
+                    deliveryItems[itemIndex].feedback_status = 'AI_CORRECT';
+                }
+                // ▲▲▲ [수정 끝] ▲▲▲
+                
                 saveDeliveryItemsToLocalStorage();
                 searchTerm = '';
                 invoiceNumberInput.value = '';
@@ -1883,6 +1890,7 @@ const sendCompletionNotification = (item) => {
             } else {
                 deliveryItems[itemIndex].isHawbConfirmed = false;
                 deliveryItems[itemIndex].status = '배송전';
+                deliveryItems[itemIndex].feedback_status = 'UNCONFIRMED'; // ▼▼▼ [수정] 체크 해제 시 미확인으로
                 deliveryItems[itemIndex].addressLocation = null;
                 delete deliveryItems[itemIndex].distanceFromMe;
                 
@@ -1990,7 +1998,7 @@ const sendCompletionNotification = (item) => {
                                ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
                                 ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
                             </p>
-                            ${data.receiverAddressOriginal ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.receiverAddressOriginal})</p>` : ''}
+                            ${data.original_ocr_address ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.original_ocr_address})</p>` : ''}
                         </div>
                     </div>
                     <div class="flex items-start space-x-2.5">
@@ -2552,9 +2560,14 @@ const sendCompletionNotification = (item) => {
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
-                baseAddress_AI: item.baseAddressKorean || '',
-                detailAddress_AI: item.detailAddressKorean || '',
-                receiverAddressOriginal: item.receiverAddress || '',
+                
+                // ▼▼▼ [수정/추가] 학습용 데이터 필드 ▼▼▼
+                feedback_status: 'UNCONFIRMED', // 'UNCONFIRMED', 'AI_CORRECT', 'USER_CORRECTED'
+                original_ocr_address: item.receiverAddress || '', // AI가 본 이미지의 원본 텍스트
+                ai_base_address: item.baseAddressKorean || '',   // AI가 추출한 기본 주소
+                ai_detail_address: item.detailAddressKorean || '', // AI가 추출한 상세 주소
+                // ▲▲▲ [수정/추가 끝] ▲▲▲
+
                 companyNameOriginal: item.receiverCompanyName || '',
                 receiverNameOriginal: item.receiverName || '',
                 companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
