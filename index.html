@@ -685,57 +685,55 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
         *   Let's call this result the "Translated Full Address".
     *   **STEP 3: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
         
-        *   **Rule A (Identify the Complete Road Name):** First, identify the FULL road name string. This string often includes numbers and ends with an anchor like '로', '길', '대로', '번길'. You must treat this as a single, unbreakable unit.
-            *   Correct Identification: "송이로17길", "백제고분로41길", "올림픽로35가길"
+        *   **Rule A (Identify and Correct the Complete Road Name):** First, identify the FULL road name string. This string often includes numbers and ends with an anchor like '로', '길', '대로', '번길'.
+            *   **Self-Correction Rule:** If the translated road name seems misspelled or unnatural (e.g., "송이31길", "삼박사로"), you MUST correct it to the most plausible, standard Korean road name (e.g., "송이로31길", "삼학사로"). Use your knowledge of Korean geography to make this correction.
             *   **Inference Rule:** If a road name seems incomplete (e.g., starts with '길' or '로'), try to infer the full name from surrounding context (like a 'dong' name). For example, if you see 'Samjeon-dong' and '4gil', it's highly likely the full road name is '삼전로4길'.
 
         *   **Rule B (Find the Building Number):** The building number is the numeric block (e.g., '46-30', '9', '24-17') that appears IMMEDIATELY AFTER the complete road name identified in Rule A.
-            *   Example 1: In "서울 송파구 송이로17길 46-30", the complete road name is "송이로17길". The building number is "46-30".
-            *   Example 2: In "서울 송파구 올림픽로35가길 9", the complete road name is "올림픽로35가길". The building number is "9".
             *   If a number appears before the road name (e.g., "30-7, Baekjegobun-ro 40-gil"), it is highly likely NOT the building number. The number AFTER the full road name has much higher priority.
 
-        *   **Rule C (Building Number Precedence):** When multiple numeric blocks (e.g., '17', '302') appear near the road name, the numeric block identified in Rule B (the one immediately following the full road name) MUST be the building number for the "baseAddressKorean". All other numeric blocks (especially those appearing before the road name or after the building number) must be included in the "detailAddressKorean".
+        *   **Rule C (Building Number Precedence):** When multiple numeric blocks (e.g., '17', '302') appear near the road name, the numeric block identified in Rule B (the one immediately following the full road name) MUST be the building number for the "baseAddressKorean". All other numeric blocks must be included in the "detailAddressKorean".
             *   Example: For "17, Dongnam-ro 14-gil 302", the road name is "동남로14길". The building number is "17". The remaining "302" MUST be the detail address.
 
         *   **Rule D (Extract Base and Detail Address):**
             *   "baseAddressKorean" consists of everything from the start of the address up to and including the building number found in Rule B.
             *   "detailAddressKorean" is everything that remains after the base address has been extracted.
             *   **Detail Address Ordering:** Within "detailAddressKorean", if both '동' and '호' exist, you MUST reorder them to the standard Korean format: '[Building Name (optional)] [동 number] [호 number]'. For example, "1203호 114동 힐스테이트" should become "힐스테이트 114동 1203호".
-            *   Special Case for Commas: If a comma appears between numbers (e.g., "2,201"), treat it as a potential typo or separator, not a thousands marker. In "2,201, Songpa-daero", the building number is likely "201", not "2201". Use context to decide.
+            *   **Redundancy Removal:** Do not include generic terms like "빌딩" or "아파트" in the detail address if a specific building name is already present.
 
         *   **Rule E (If No Road Name Anchor):** If no clear road name anchor ('로', '길') is found, fall back to using legal address anchors ('동', '리') or building names to make a best-effort separation.
 
-        *   **Address Hierarchy Rule:** If both a street address (e.g., '풍성로14길 19') and an administrative dong (e.g., '풍납2동') are present, the street address is the primary component for "baseAddressKorean". The administrative dong should be considered redundant information and **MUST be omitted** from the final output unless it is part of a building name.
+        *   **Address Hierarchy Rule:** If conflicting administrative areas are present (e.g., "Gyeonggi-Do" and "Songpa-gu, Seoul"), prioritize the more specific or latter-mentioned area ("Songpa-gu, Seoul").
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
   {
-    "no": "10",
-    "hawbNo": "SF328354177 3290",
-    "receiverCompanyName": "Siheun Kim",
-    "receiverCompanyNameKorean": "김시흔",
-    "receiverName": "Siheun Kim",
-    "receiverNameKorean": "김시흔",
-    "receiverPhone": "01030291280",
-    "receiverAddress": "Seoul Songpa-gu 4gil 32 201",
-    "rawOcrAddress": "Seoul\\nSongpa-gu\\n4gil 32 201\\n201",
-    "baseAddressKorean": "서울 송파구 삼전로4길 32",
-    "detailAddressKorean": "201호"
+    "no": "3",
+    "hawbNo": "SF329930652 4342",
+    "receiverCompanyName": "Siwon Bae",
+    "receiverCompanyNameKorean": "배시원",
+    "receiverName": "Siwon Bae",
+    "receiverNameKorean": "배시원",
+    "receiverPhone": "01086531806",
+    "receiverAddress": "Seoul Songpa-gu Songi 31-gil 56 2-dong 1302-ho Munjeong Siyoung",
+    "rawOcrAddress": "Seoul\\nSongpa-gu\\nSongi 31-\\ngil 56 2-dong\\n1302-ho\\nMunjeong\\nSiyoung",
+    "baseAddressKorean": "서울 송파구 송이로31길 56",
+    "detailAddressKorean": "문정시영 2동 1302호"
   },
   {
-    "no": "11",
-    "hawbNo": "SF328330151 0635",
-    "receiverCompanyName": "DongMin Kim",
-    "receiverCompanyNameKorean": "김동민",
-    "receiverName": "DongMin Kim",
-    "receiverNameKorean": "김동민",
-    "receiverPhone": "01090520991",
-    "receiverAddress": "Seoul Songpa-gu 20, Songi-ro 31-gi 1203Ho,114 Dong Hillstate e-Pyeonhan",
-    "rawOcrAddress": "Seoul\\nSongpa-gu\\n20, Songi-ro\\n31-gi\\n1203Ho,114\\nDong\\nHillstate e-\\nPyeonhan",
-    "baseAddressKorean": "서울 송파구 송이로31길 20",
-    "detailAddressKorean": "힐스테이트 이편한 114동 1203호"
+    "no": "25",
+    "hawbNo": "SF025031918 8005",
+    "receiverCompanyName": "Donald Hwang",
+    "receiverCompanyNameKorean": "도널드 황",
+    "receiverName": "Donald Hwang",
+    "receiverNameKorean": "도널드 황",
+    "receiverPhone": "01062962698",
+    "receiverAddress": "Seoul Songpa-Gu 89,Sambaksa-ro, Songpa-gu, Seoul, 05602, Korea",
+    "rawOcrAddress": "Seoul\\nSongpa-Gu\\n89,Sambaksa\\n-ro, Songpa-\\ngu, Seoul,\\n05602, Korea",
+    "baseAddressKorean": "서울 송파구 삼학사로 89",
+    "detailAddressKorean": ""
   }
 ]
 `;
