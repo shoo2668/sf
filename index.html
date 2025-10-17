@@ -690,18 +690,17 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
             *   **Inference Rule:** If a road name seems incomplete (e.g., starts with '길' or '로'), try to infer the full name from surrounding context (like a 'dong' name). For example, if you see 'Samjeon-dong' and '4gil', it's highly likely the full road name is '삼전로4길'.
 
         *   **Rule B (Find the Building Number):** The building number is the numeric block (e.g., '46-30', '9', '24-17') that appears IMMEDIATELY AFTER the complete road name identified in Rule A.
-            *   If a number appears before the road name (e.g., "30-7, Baekjegobun-ro 40-gil"), it is highly likely NOT the building number. The number AFTER the full road name has much higher priority.
+            *   **CRITICAL DISTINCTION:** A number immediately followed by 'gil', 'ro', 'ga-gil' is part of the road name itself, NOT the building number. The building number is the standalone number that comes AFTER this complete unit.
+            *   Example 1: For "11GIL 25 BEOBWON-RO", the road name unit is "법원로11길". The building number is "25". The result must be "법원로11길 25".
+            *   Example 2: For "124, Wiryesongpa-ro 108-1201", the road name is "위례송파로". The building number is "124". The "108-1201" is detail address. The number appearing before the road name has higher priority if it's a standalone number.
 
-        *   **Rule C (Building Number Precedence):** When multiple numeric blocks (e.g., '17', '302') appear near the road name, the numeric block identified in Rule B (the one immediately following the full road name) MUST be the building number for the "baseAddressKorean". All other numeric blocks must be included in the "detailAddressKorean".
-            *   Example: For "17, Dongnam-ro 14-gil 302", the road name is "동남로14길". The building number is "17". The remaining "302" MUST be the detail address.
-
-        *   **Rule D (Extract Base and Detail Address):**
+        *   **Rule C (Extract Base and Detail Address):**
             *   "baseAddressKorean" consists of everything from the start of the address up to and including the building number found in Rule B.
             *   "detailAddressKorean" is everything that remains after the base address has been extracted.
             *   **Detail Address Ordering:** Within "detailAddressKorean", if both '동' and '호' exist, you MUST reorder them to the standard Korean format: '[Building Name (optional)] [동 number] [호 number]'. For example, "1203호 114동 힐스테이트" should become "힐스테이트 114동 1203호".
             *   **Redundancy Removal:** Do not include generic terms like "빌딩" or "아파트" in the detail address if a specific building name is already present.
 
-        *   **Rule E (If No Road Name Anchor):** If no clear road name anchor ('로', '길') is found, fall back to using legal address anchors ('동', '리') or building names to make a best-effort separation.
+        *   **Rule D (If No Road Name Anchor):** If no clear road name anchor ('로', '길') is found, fall back to using legal address anchors ('동', '리') or building names to make a best-effort separation.
 
         *   **Address Hierarchy Rule:** If conflicting administrative areas are present (e.g., "Gyeonggi-Do" and "Songpa-gu, Seoul"), prioritize the more specific or latter-mentioned area ("Songpa-gu, Seoul").
 
@@ -710,30 +709,30 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 **Example Output:**
 [
   {
-    "no": "3",
-    "hawbNo": "SF329930652 4342",
-    "receiverCompanyName": "Siwon Bae",
-    "receiverCompanyNameKorean": "배시원",
-    "receiverName": "Siwon Bae",
-    "receiverNameKorean": "배시원",
-    "receiverPhone": "01086531806",
-    "receiverAddress": "Seoul Songpa-gu Songi 31-gil 56 2-dong 1302-ho Munjeong Siyoung",
-    "rawOcrAddress": "Seoul\\nSongpa-gu\\nSongi 31-\\ngil 56 2-dong\\n1302-ho\\nMunjeong\\nSiyoung",
-    "baseAddressKorean": "서울 송파구 송이로31길 56",
-    "detailAddressKorean": "문정시영 2동 1302호"
+    "no": "8",
+    "hawbNo": "SF328501981 8120",
+    "receiverCompanyName": "Dong Hyuk YOON",
+    "receiverCompanyNameKorean": "윤동혁",
+    "receiverName": "Dong Hyuk YOON",
+    "receiverNameKorean": "윤동혁",
+    "receiverPhone": "01027692039",
+    "receiverAddress": "Seoul Songpa-gu 124, Wiryesongpa-ro 108-1201",
+    "rawOcrAddress": "Seoul\\nSongpa-gu\\n124,\\nWiryesongpa\\n-ro 108-1201",
+    "baseAddressKorean": "서울 송파구 위례송파로 124",
+    "detailAddressKorean": "108-1201"
   },
   {
-    "no": "25",
-    "hawbNo": "SF025031918 8005",
-    "receiverCompanyName": "Donald Hwang",
-    "receiverCompanyNameKorean": "도널드 황",
-    "receiverName": "Donald Hwang",
-    "receiverNameKorean": "도널드 황",
-    "receiverPhone": "01062962698",
-    "receiverAddress": "Seoul Songpa-Gu 89,Sambaksa-ro, Songpa-gu, Seoul, 05602, Korea",
-    "rawOcrAddress": "Seoul\\nSongpa-Gu\\n89,Sambaksa\\n-ro, Songpa-\\ngu, Seoul,\\n05602, Korea",
-    "baseAddressKorean": "서울 송파구 삼학사로 89",
-    "detailAddressKorean": ""
+    "no": "10",
+    "hawbNo": "SF327592073 0197",
+    "receiverCompanyName": "ALEX KOO",
+    "receiverCompanyNameKorean": "알렉스 구",
+    "receiverName": "ALEX KOO",
+    "receiverNameKorean": "알렉스 구",
+    "receiverPhone": "01022210129",
+    "receiverAddress": "Seoul Songpa-Gu A501, HBUSINESS PARK, 11GIL 25 BEOBWON-RO",
+    "rawOcrAddress": "Seoul\\nSongpa-Gu\\nA501,\\nHBUSINESS\\nPARK,\\n11GIL 25\\nBEOBWON-\\nRO",
+    "baseAddressKorean": "서울 송파구 법원로11길 25",
+    "detailAddressKorean": "H비즈니스파크 A501"
   }
 ]
 `;
