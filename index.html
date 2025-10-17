@@ -663,7 +663,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
 1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
 
-2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
+2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "rawOcrAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
 
 3.  **SEPARATE COMPANY AND PERSONAL NAME:**
     *   **Scenario A (Separate Columns):** If the invoice has distinct columns like "Company Name of Receiver" and "Name of receiver", extract the text from each column into "receiverCompanyName" and "receiverName" respectively.
@@ -675,7 +675,12 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
 4.  **TRANSLATE AND SEPARATE ADDRESS:**
     *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
-    *   **STEP 1: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
+    
+    // ▼▼▼ [수정] 'rawOcrAddress' 추출 규칙 추가 ▼▼▼
+    *   **STEP 1: Extract Raw OCR Address.** Create a key named "rawOcrAddress". In this field, you MUST put the raw, untranslated text from the receiver address block, preserving all original line breaks with "\\n". DO NOT translate, join, or alter this text in any way. This is the literal text as seen in the image.
+    // ▲▲▲ [수정 끝] ▲▲▲
+
+    *   **STEP 2: Perform a STRICT, LITERAL TRANSLATION of the original "receiverAddress".**
         *   Translate every component EXACTLY as it appears.
         *   **English Word Joining Rule:** If a single English word is broken across lines (e.g., 'OLYMPI' and 'CRO'), you MUST join them (e.g., 'OLYMPICRO').
         *   **Korean Noun Joining Rule:** When processing Korean addresses, if two consecutive lines can form a natural compound noun (like an apartment name or a road name), you MUST join them without a space. However, do not merge numbers with units (like 동, 호) if they are on separate lines.
@@ -686,14 +691,10 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
         *   DO NOT reorder, correct, or omit any other characters (e.g., 'GAGIL' MUST become '가길').
         *   If the original is already in Korean, just copy it.
         *   Let's call this result the "Translated Full Address".
-    *   **STEP 2: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
+    *   **STEP 3: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
         *   **Rule A (Primary): Find the Address Anchor.** First, search for a Korean road name anchor ('로', '길') or a legal address anchor ('동', '리'). Prioritize road name anchors.
-        
-        // ▼▼▼ [추가된 부분] ▼▼▼
         *   **Rule B (Special Case - Precedence):** Before applying the standard anchor rule, check for a number block (e.g., '16-11', '123') that appears on its own line or is separated by a space between a district name (e.g., 'Songpa-gu') and a road name (e.g., 'Macheon-ro'). If this pattern is found, this number block MUST be considered part of the base address and placed immediately after the district name.
             *   Example: For an address structured as 'Seoul Songpa-gu', then '16-11', then 'Macheon-ro 51-gil', the "Translated Full Address" should be processed as '서울 송파구 16-11 마천로 51길...'.
-        // ▲▲▲ [추가된 부분 끝] ▲▲▲
-
         *   **Rule C (If Anchor Found): Extract the Base Address.** The base address consists of everything from the start of the address up to and including the number block that appears IMMEDIATELY BEFORE the anchor. This number is the building number or lot number.
             *   Example 1: For "서울 송파구 1218 양재대로 245-501", the anchor is '대로'. The number block immediately before it is '1218'. So, "baseAddressKorean" is "서울 송파구 양재대로 1218".
             *   Example 2: For "경기 성남시 분당구 판교역로 235", the anchor is '로'. The number block before it is '235'. So, "baseAddressKorean" is "경기 성남시 분당구 판교역로 235".
@@ -717,6 +718,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
     "receiverNameKorean": "김리차드",
     "receiverPhone": "24080670",
     "receiverAddress": "No.601, 422-dong, 1300, yangjae-daero",
+    "rawOcrAddress": "No.601, 422-dong,\\n1300, yangjae-daero",
     "baseAddressKorean": "서울 강동구 양재대로 1300",
     "detailAddressKorean": "601호 422동"
   },
@@ -729,6 +731,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
     "receiverNameKorean": "허지영",
     "receiverPhone": "01025190714",
     "receiverAddress": "Seoul Songpa-gu 135, Olympic-ro 235-1301",
+    "rawOcrAddress": "Seoul Songpa-gu\\n135, Olympic-ro\\n235-1301",
     "baseAddressKorean": "서울 송파구 올림픽로 135",
     "detailAddressKorean": "235-1301"
   }
@@ -2561,12 +2564,12 @@ const sendCompletionNotification = (item) => {
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
                 
-                // ▼▼▼ [수정/추가] 학습용 데이터 필드 ▼▼▼
+                // ▼▼▼ [수정] 'original_ocr_address'의 소스를 'rawOcrAddress'로 변경 ▼▼▼
                 feedback_status: 'UNCONFIRMED', // 'UNCONFIRMED', 'AI_CORRECT', 'USER_CORRECTED'
-                original_ocr_address: item.receiverAddress || '', // AI가 본 이미지의 원본 텍스트
+                original_ocr_address: item.rawOcrAddress || item.receiverAddress || '', // AI가 본 이미지의 원본 텍스트
                 ai_base_address: item.baseAddressKorean || '',   // AI가 추출한 기본 주소
                 ai_detail_address: item.detailAddressKorean || '', // AI가 추출한 상세 주소
-                // ▲▲▲ [수정/추가 끝] ▲▲▲
+                // ▲▲▲ [수정 끝] ▲▲▲
 
                 companyNameOriginal: item.receiverCompanyName || '',
                 receiverNameOriginal: item.receiverName || '',
