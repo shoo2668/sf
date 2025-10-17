@@ -700,7 +700,7 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
         *   **Rule D (Extract Base and Detail Address):**
             *   "baseAddressKorean" consists of everything from the start of the address up to and including the building number found in Rule B.
             *   "detailAddressKorean" is everything that remains after the base address has been extracted.
-            *   **Detail Address Ordering:** Within "detailAddressKorean", if both '동' and '호' exist, you MUST reorder them to the standard Korean format: `[Building Name (optional)] [동 number] [호 number]`. For example, "1203호 114동 힐스테이트" should become "힐스테이트 114동 1203호".
+            *   **Detail Address Ordering:** Within "detailAddressKorean", if both '동' and '호' exist, you MUST reorder them to the standard Korean format: '[Building Name (optional)] [동 number] [호 number]'. For example, "1203호 114동 힐스테이트" should become "힐스테이트 114동 1203호".
             *   Special Case for Commas: If a comma appears between numbers (e.g., "2,201"), treat it as a potential typo or separator, not a thousands marker. In "2,201, Songpa-daero", the building number is likely "201", not "2201". Use context to decide.
 
         *   **Rule E (If No Road Name Anchor):** If no clear road name anchor ('로', '길') is found, fall back to using legal address anchors ('동', '리') or building names to make a best-effort separation.
