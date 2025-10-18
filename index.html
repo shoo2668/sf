@@ -1623,18 +1623,20 @@ const sendCompletionNotification = (item) => {
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
             originalAddressDisplay.textContent = item.original_ocr_address || '원본 주소 없음';
-            editableAddressInput.value = originalFullAddress;
             
-            // 직접 타이핑 시에도 수정 상태로 변경하는 이벤트 리스너 추가
-            // 기존 리스너를 제거하여 중복 등록 방지
-            const oldInput = document.getElementById('editable-address-input');
-            const newInput = oldInput.cloneNode(true);
-            oldInput.parentNode.replaceChild(newInput, oldInput);
-            newInput.addEventListener('input', markAsChanged);
-            newInput.addEventListener('input', autoResizeTextarea); // 자동 리사이즈도 다시 연결
+            // ▼▼▼ [수정 시작] 입력창(textarea)을 복제하여 기존 리스너 문제를 원천 차단 ▼▼▼
+            const editableAddressContainer = document.getElementById('editable-address-container');
+            const oldTextarea = editableAddressContainer.querySelector('textarea');
+            const newTextarea = oldTextarea.cloneNode(true);
+            newTextarea.value = originalFullAddress; // 새 입력창에 현재 카드 주소 설정
+            oldTextarea.parentNode.replaceChild(newTextarea, oldTextarea);
+            
+            newTextarea.addEventListener('input', markAsChanged);
+            newTextarea.addEventListener('input', autoResizeTextarea);
+            // ▲▲▲ [수정 끝] ▲▲▲
 
             setTimeout(() => {
-                autoResizeTextarea({target: newInput});
+                autoResizeTextarea({target: newTextarea});
             }, 0);
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
@@ -1666,7 +1668,7 @@ const sendCompletionNotification = (item) => {
 
                     markAsChanged(); // 버튼 클릭 시 '수정 행위' 발생으로 기록
 
-                    const input = document.getElementById('editable-address-input');
+                    const input = document.getElementById('editable-address-input'); // 항상 최신 입력창을 찾음
                     let currentValue = input.value;
                     const act = button.dataset.action;
                     const val = button.dataset.value;
@@ -1695,15 +1697,16 @@ const sendCompletionNotification = (item) => {
                 return button;
             };
 
-            // '수정 완료' 버튼에 이벤트 리스너를 여기서 직접 설정
+            // ▼▼▼ [수정 시작] '수정 완료' 버튼도 복제하여 리스너 중복 원천 차단 ▼▼▼
             const localApplyBtn = document.getElementById('apply-address-btn');
-            const newApplyBtn = localApplyBtn.cloneNode(true); // 기존 리스너 제거를 위해 버튼 복제
+            const newApplyBtn = localApplyBtn.cloneNode(true);
             localApplyBtn.parentNode.replaceChild(newApplyBtn, localApplyBtn);
 
             newApplyBtn.addEventListener('click', () => {
                 const currentInputValue = document.getElementById('editable-address-input').value;
                 applyAddressEdit(currentInputValue.trim(), hasUserMadeChanges);
-            }, { once: true }); // 한번만 실행되도록 설정
+            }, { once: true });
+            // ▲▲▲ [수정 끝] ▲▲▲
 
             const basePieces = (item.ai_base_address || item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
             basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
