@@ -686,16 +686,16 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     *   **STEP 3: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
         
         *   **Rule A (Identify and Force-Correct the Complete Road Name):** First, identify the FULL road name string which ends with '로', '길', '대로', '번길'.
-            *   **CRITICAL SELF-CORRECTION RULE:** If the translated road name appears to be a plausible OCR error (e.g., "삼봉길", "동화영마을길", "바란로", "푸덕천로"), you MUST NOT use the incorrect name. You MUST use your internal knowledge of Korean addresses to replace it with the most probable, correct road name (e.g., "상봉길", "동화역말길", "발안로", "풍덕천로"). This correction is mandatory.
+            *   **CRITICAL SELF-CORRECTION RULE:** If the translated road name appears to be a plausible OCR error (e.g., "새마을길", "떡정골로", "자은돌래길"), you MUST NOT use the incorrect name. You MUST use your internal knowledge of Korean addresses to replace it with the most probable, correct road name (e.g., "샘마을길", "떡전골로", "작은돌래길"). This correction is mandatory.
             *   **Inference Rule:** If a road name seems incomplete (e.g., starts with '길' or '로'), try to infer the full name from surrounding context (like a 'dong' name).
 
         *   **Rule B (Find the Building Number with a Strict Priority):**
-            *   **PRIORITY 1 (Number Before Road Name):** First, check if there is a standalone numeric block (e.g., "30", "135") BEFORE the road name. If found, this is the building number. This rule is the highest priority.
-                *   Example: For "30, Backjegobun-ro 18-gil 101", the building number is "30". Ignore "101".
+            *   **PRIORITY 1 (Number Before Road Name):** First, check if there is a standalone numeric block (e.g., "30", "104-7") BEFORE the road name. If found, this is the building number. This rule is the highest priority.
+                *   Example: For "202, 104-7, 떡전골로", the building number is "104-7".
             *   **PRIORITY 2 (Number After Road Name):** If no number is found before the road name, the building number is the numeric block that appears IMMEDIATELY AFTER the complete road name.
-                *   Example 1: For "Songpa-daero 345", the building number is "345".
-                *   Example 2: For "IHYEON-RO 29BEON-GIL, 72-21", the road name is "이현로29번길". The building number is "72-21".
-            *   **AVOID THIS MISTAKE:** A number that is clearly part of a detail address (e.g., "223Dong", "101-506") should NOT be chosen as the building number.
+                *   Example 1: For "송파대로 345", the building number is "345".
+                *   Example 2: For "이현로29번길, 72-21", the road name is "이현로29번길". The building number is "72-21".
+            *   **AVOID THIS MISTAKE:** A number that is clearly part of a detail address (e.g., "223동", "101-506") should NOT be chosen as the building number.
 
         *   **Rule C (Extract Base and Detail Address):**
             *   "baseAddressKorean" consists of everything from the start of the address up to and including the building number found in Rule B. If no building number is found, it ends at the road name.
@@ -705,7 +705,7 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
         *   **Rule D (If No Road Name Anchor):** If no clear road name anchor ('로', '길') is found, fall back to using legal address anchors ('동', '리') or building names to make a best-effort separation.
 
-        *   **Address Hierarchy Rule:** If conflicting administrative areas are present (e.g., "Gyeonggi-Do" and "Songpa-gu, Seoul"), prioritize the more specific or latter-mentioned area ("Songpa-gu, Seoul").
+        *   **Address Hierarchy Rule:** If conflicting administrative areas are present (e.g., "경기도" and "시흥시"), prioritize the more specific or latter-mentioned area.
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
@@ -725,17 +725,17 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     "detailAddressKorean": "106동 1605호"
   },
   {
-    "no": "30",
-    "hawbNo": "SF028394305 6093",
-    "receiverCompanyName": "NTK Co., Ltd.",
-    "receiverCompanyNameKorean": "엔티케이 주식회사",
-    "receiverName": "PIAO YAN",
-    "receiverNameKorean": "피아오 얀",
-    "receiverPhone": "01085661867",
-    "receiverAddress": "Gyeonggi-Do Hwaseong-Si 55-4, Donghwayeongmal-gil, Bongdam-eup",
-    "rawOcrAddress": "Gyeonggi-Do\\nHwaseong-Si 55-\\n4,\\nDonghwayeongm\\nal-gil, Bongdam-\\neup",
-    "baseAddressKorean": "경기 화성시 봉담읍 동화역말길 55-4",
-    "detailAddressKorean": ""
+    "no": "14",
+    "hawbNo": "SF153420969 2767",
+    "receiverCompanyName": "Choi Yong Tae",
+    "receiverCompanyNameKorean": "최용태",
+    "receiverName": "Choi Yong Tae",
+    "receiverNameKorean": "최용태",
+    "receiverPhone": "087596189",
+    "receiverAddress": "Gyeonggi-Do Hwaseong-Si 202, 104-7, Tteokjeongol-ro",
+    "rawOcrAddress": "Gyeonggi-Do Hwaseong-\\nSi 202, 104-7,\\nTteokjeongol-ro,\\nHwaseong-si, Gyeonggi-\\ndo, Republic of Korea",
+    "baseAddressKorean": "경기 화성시 떡전골로 104-7",
+    "detailAddressKorean": "202"
   }
 ]
 `;
