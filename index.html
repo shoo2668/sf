@@ -1646,6 +1646,18 @@ const sendCompletionNotification = (item) => {
                     e.preventDefault();
                     e.stopPropagation();
 
+                    // ▼▼▼ [버그 수정] 수정 상태를 기록하는 로직 추가 ▼▼▼
+                    const itemIndex = deliveryItems.findIndex(item => item.no === currentEditItemNo);
+                    if (itemIndex > -1) {
+                        // 이 시점에서 feedback_status를 'USER_CORRECTED'로 임시 변경
+                        // 최종 저장은 '수정 완료' 버튼 클릭 시 applyAddressEdit 함수에서 이루어짐
+                        if (deliveryItems[itemIndex].feedback_status !== 'USER_CORRECTED') {
+                           deliveryItems[itemIndex].feedback_status = 'USER_CORRECTED';
+                           console.log(`Item ${currentEditItemNo} status changed to USER_CORRECTED (pending save)`);
+                        }
+                    }
+                    // ▲▲▲ [버그 수정 끝] ▲▲▲
+
                     const input = editableAddressInput;
                     let currentValue = input.value;
                     const act = button.dataset.action;
@@ -1706,8 +1718,7 @@ const sendCompletionNotification = (item) => {
             unitKeypad.appendChild(backspaceWordBtn);
 
             const modalContent = smartEditModal.querySelector('.smart-edit-modal-content');
-            // 키보드가 올라올 때 모달이 밀리는 것을 방지하기 위해 현재 높이로 고정
-            modalContent.style.maxHeight = `${window.innerHeight - 48}px`; // 48px은 상하 여백
+            modalContent.style.maxHeight = `${window.innerHeight - 48}px`;
 
             document.body.classList.add('modal-open');
             smartEditModal.style.display = 'flex';
