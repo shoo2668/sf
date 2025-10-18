@@ -2725,9 +2725,17 @@ const sendCompletionNotification = (item) => {
     exportDataButton.addEventListener('click', () => {
         if (deliveryItems.length === 0) { showMessage("저장할 데이터가 없습니다."); return; }
         try {
-            const today = new Date();
-            const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            const fileName = `SF-${formattedDate}.json`;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            const formattedDateTime = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+            const fileName = `SF-${formattedDateTime}.json`;
+
             const dataStr = JSON.stringify(deliveryItems, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
