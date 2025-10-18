@@ -1611,31 +1611,30 @@ const sendCompletionNotification = (item) => {
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) { showMessage('카드 정보를 찾을 수 없습니다.'); return; }
             
-            // ▼▼▼ [버그 수정] 모달이 열릴 때, 수정 상태를 추적할 변수와 함수 정의 ▼▼▼
-            let isAddressManuallyChanged = false; 
+            // '수정 행위' 자체를 추적하는 변수 선언
+            let hasUserMadeChanges = false; 
             const markAsChanged = () => {
-                if (!isAddressManuallyChanged) {
-                    const itemIndex = deliveryItems.findIndex(i => i.no === currentEditItemNo);
-                    if (itemIndex > -1) {
-                        deliveryItems[itemIndex].feedback_status = 'USER_CORRECTED';
-                        console.log(`Item ${currentEditItemNo} status marked as USER_CORRECTED.`);
-                    }
-                    isAddressManuallyChanged = true;
+                if (!hasUserMadeChanges) {
+                    console.log(`Item ${currentEditItemNo} is being manually edited.`);
+                    hasUserMadeChanges = true;
                 }
             };
-            // ▲▲▲ [버그 수정 끝] ▲▲▲
-
+            
             const originalFullAddress = item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : '');
             
             originalAddressDisplay.textContent = item.original_ocr_address || '원본 주소 없음';
             editableAddressInput.value = originalFullAddress;
             
-            // ▼▼▼ [버그 수정] 직접 타이핑 시에도 수정 상태로 변경하는 이벤트 리스너 추가 ▼▼▼
-            editableAddressInput.addEventListener('input', markAsChanged);
-            // ▲▲▲ [버그 수정 끝] ▲▲▲
+            // 직접 타이핑 시에도 수정 상태로 변경하는 이벤트 리스너 추가
+            // 기존 리스너를 제거하여 중복 등록 방지
+            const oldInput = document.getElementById('editable-address-input');
+            const newInput = oldInput.cloneNode(true);
+            oldInput.parentNode.replaceChild(newInput, oldInput);
+            newInput.addEventListener('input', markAsChanged);
+            newInput.addEventListener('input', autoResizeTextarea); // 자동 리사이즈도 다시 연결
 
             setTimeout(() => {
-                autoResizeTextarea({target: editableAddressInput});
+                autoResizeTextarea({target: newInput});
             }, 0);
 
             const addressPiecesContainer = document.getElementById('address-pieces-container');
@@ -1665,9 +1664,9 @@ const sendCompletionNotification = (item) => {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    markAsChanged(); // ▼▼▼ [버그 수정] 버튼 클릭 시 수정 상태로 변경하는 함수 호출 ▼▼▼
+                    markAsChanged(); // 버튼 클릭 시 '수정 행위' 발생으로 기록
 
-                    const input = editableAddressInput;
+                    const input = document.getElementById('editable-address-input');
                     let currentValue = input.value;
                     const act = button.dataset.action;
                     const val = button.dataset.value;
@@ -1695,6 +1694,16 @@ const sendCompletionNotification = (item) => {
                 });
                 return button;
             };
+
+            // '수정 완료' 버튼에 이벤트 리스너를 여기서 직접 설정
+            const localApplyBtn = document.getElementById('apply-address-btn');
+            const newApplyBtn = localApplyBtn.cloneNode(true); // 기존 리스너 제거를 위해 버튼 복제
+            localApplyBtn.parentNode.replaceChild(newApplyBtn, localApplyBtn);
+
+            newApplyBtn.addEventListener('click', () => {
+                const currentInputValue = document.getElementById('editable-address-input').value;
+                applyAddressEdit(currentInputValue.trim(), hasUserMadeChanges);
+            }, { once: true }); // 한번만 실행되도록 설정
 
             const basePieces = (item.ai_base_address || item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
             basePieces.forEach(piece => addressPiecesContainer.appendChild(createKeyButton(piece, 'bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900 px-3 !py-1.5 rounded-full', undefined, 'add-space')));
@@ -1751,7 +1760,7 @@ const sendCompletionNotification = (item) => {
             }
         };
         
-        const applyAddressEdit = async (fullAddress) => {
+        const applyAddressEdit = async (fullAddress, wasChanged) => {
             if (currentEditItemNo === null) return;
             
             showLoadingMessage('주소 검증 중...');
@@ -1778,15 +1787,14 @@ const sendCompletionNotification = (item) => {
             closeConfirmationModal();
 
             const saveAddress = (base, detail, isValidated) => {
-                // ▼▼▼ [버그 수정] 저장 시점에 AI 원본과 최종 수정본을 비교하여 상태를 다시 한번 설정 ▼▼▼
-                const originalCombinedAddress = (deliveryItems[itemIndex].ai_base_address || '') + ", " + (deliveryItems[itemIndex].ai_detail_address || '');
-                const newCombinedAddress = (base || '') + ", " + (detail || '');
-                
-                // 주소 내용에 변화가 있을 경우에만 'USER_CORRECTED'로 설정
-                if (originalCombinedAddress.trim() !== newCombinedAddress.trim()) {
+                // 전달받은 'wasChanged' 값으로 상태를 최종 결정
+                if (wasChanged) {
                     deliveryItems[itemIndex].feedback_status = 'USER_CORRECTED';
+                    console.log(`Item ${currentEditItemNo} final status saved as USER_CORRECTED.`);
+                } else {
+                    // 수정 행위가 없었다면, 상태를 변경하지 않음 (AI_CORRECT 또는 UNCONFIRMED 유지)
+                    console.log(`Item ${currentEditItemNo} saved without changes to feedback_status.`);
                 }
-                // ▲▲▲ [버그 수정 끝] ▲▲▲
 
                 deliveryItems[itemIndex].baseAddress = base;
                 deliveryItems[itemIndex].detailAddress = detail;
