@@ -2,8 +2,9 @@
   "name": "SF 배송 시트",
   "short_name": "배송 시트",
   "description": "SF Express 배송 관리를 위한 PWA 시트",
-  "start_url": "/sf/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
+  "scope": "./",
   "launch_handler": {
     "client_mode": "focus-existing"
   },
@@ -22,5 +23,21 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "images",
+          "accept": ["image/jpeg", "image/png", "image/webp", "image/*"]
+        }
+      ]
+    }
+  }
 }
