@@ -1707,15 +1707,42 @@ const sendCompletionNotification = (item) => {
                 return button;
             };
 
-            // ▼▼▼ [수정 시작] '수정 완료' 버튼도 복제하여 리스너 중복 원천 차단 ▼▼▼
+            // ▼▼▼ [수정 시작] 모든 버튼을 복제하고 새 리스너를 연결합니다. ▼▼▼
             const localApplyBtn = document.getElementById('apply-address-btn');
+            const localRevertBtn = document.getElementById('revert-address-btn');
+            const localResetBtn = document.getElementById('reset-address-btn');
+
             const newApplyBtn = localApplyBtn.cloneNode(true);
+            const newRevertBtn = localRevertBtn.cloneNode(true);
+            const newResetBtn = localResetBtn.cloneNode(true);
+
             localApplyBtn.parentNode.replaceChild(newApplyBtn, localApplyBtn);
+            localRevertBtn.parentNode.replaceChild(newRevertBtn, localRevertBtn);
+            localResetBtn.parentNode.replaceChild(newResetBtn, localResetBtn);
 
             newApplyBtn.addEventListener('click', () => {
                 const currentInputValue = document.getElementById('editable-address-input').value;
                 applyAddressEdit(currentInputValue.trim(), hasUserMadeChanges);
             }, { once: true });
+
+            newRevertBtn.addEventListener('click', () => {
+                const item = deliveryItems.find(i => i.no === currentEditItemNo);
+                if (item) {
+                    const currentTextarea = document.getElementById('editable-address-input');
+                    const originalBase = typeof item.ai_base_address !== 'undefined' ? item.ai_base_address : item.baseAddress;
+                    const originalDetail = typeof item.ai_detail_address !== 'undefined' ? item.ai_detail_address : item.detailAddress;
+                    currentTextarea.value = originalBase + (originalDetail ? `, ${originalDetail}` : '');
+                    autoResizeTextarea({ target: currentTextarea });
+                    document.getElementById('address-pieces-container').dataset.isPieceClicked = 'false';
+                }
+            });
+
+            newResetBtn.addEventListener('click', () => {
+                const currentTextarea = document.getElementById('editable-address-input');
+                currentTextarea.value = '';
+                autoResizeTextarea({ target: currentTextarea });
+                document.getElementById('address-pieces-container').dataset.isPieceClicked = 'false';
+            });
             // ▲▲▲ [수정 끝] ▲▲▲
 
             const basePieces = (item.ai_base_address || item.baseAddress || '').split(/[\s,]+/).filter(Boolean);
@@ -1830,31 +1857,6 @@ const sendCompletionNotification = (item) => {
                 });
             }
         };
-        
-        applyAddressBtn.addEventListener('click', async () => await applyAddressEdit(editableAddressInput.value.trim()));
-        
-        resetAddressBtn.addEventListener('click', () => {
-            editableAddressInput.value = '';
-            autoResizeTextarea({target: editableAddressInput});
-
-            // 주소 조각 클릭 상태를 초기화
-            const addressPiecesContainer = document.getElementById('address-pieces-container');
-            addressPiecesContainer.dataset.isPieceClicked = 'false';
-        });
-        
-        revertAddressBtn.addEventListener('click', () => {
-            const item = deliveryItems.find(i => i.no === currentEditItemNo);
-            if(item) {
-                const originalBase = typeof item.baseAddress_AI !== 'undefined' ? item.baseAddress_AI : item.baseAddress;
-                const originalDetail = typeof item.detailAddress_AI !== 'undefined' ? item.detailAddress_AI : item.detailAddress;
-                editableAddressInput.value = originalBase + (originalDetail ? `, ${originalDetail}` : '');
-                autoResizeTextarea({target: editableAddressInput});
-
-                // 주소 조각 클릭 상태를 초기화하여, 다음 조각 클릭 시 입력창이 비워지도록 함
-                const addressPiecesContainer = document.getElementById('address-pieces-container');
-                addressPiecesContainer.dataset.isPieceClicked = 'false';
-            }
-        });
         
         smartEditExitBtn.addEventListener('click', closeSmartEditModal);
         editableAddressInput.addEventListener('input', autoResizeTextarea);
