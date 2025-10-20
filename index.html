@@ -686,24 +686,24 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     *   **STEP 3: From the "Translated Full Address", separate it into "baseAddressKorean" and "detailAddressKorean" using the following rules:**
         
         *   **Rule A (Identify and Force-Correct the Complete Road Name):** First, identify the FULL road name string which ends with '로', '길', '대로', '번길'.
-            *   **CRITICAL SELF-CORRECTION RULE:** If the translated road name appears to be a plausible OCR error (e.g., "새마을길", "떡정골로", "자은돌래길"), you MUST NOT use the incorrect name. You MUST use your internal knowledge of Korean addresses to replace it with the most probable, correct road name (e.g., "샘마을길", "떡전골로", "작은돌래길"). This correction is mandatory.
+            *   **CRITICAL SELF-CORRECTION RULE:** If the translated road name appears to be a plausible OCR error (e.g., "새마을길", "떡정골로", "자은돌래길", "Bronson-to"), you MUST NOT use the incorrect name. You MUST use your internal knowledge of Korean addresses to replace it with the most probable, correct road name (e.g., "샘마을길", "떡전골로", "작은돌래길", "법원로"). This correction is mandatory.
             *   **Inference Rule:** If a road name seems incomplete (e.g., starts with '길' or '로'), try to infer the full name from surrounding context (like a 'dong' name).
 
         *   **Rule B (Find the Building Number with a Strict Priority):**
-            *   **PRIORITY 1 (Number Before Road Name):** First, check if there is a standalone numeric block (e.g., "30", "104-7") BEFORE the road name. If found, this is the building number. This rule is the highest priority.
-                *   Example: For "202, 104-7, 떡전골로", the building number is "104-7".
+            *   **PRIORITY 1 (Number Before Road Name):** First, check for standalone numeric blocks (e.g., "30", "104-7", "7-16") BEFORE the road name.
+                *   If there are multiple numeric blocks before the road name (e.g., "203, 7-16, 송이로..."), the one that is structured like a valid Korean building number (e.g., "7-16") or is closest to the road name is the building number. The other numbers (e.g., "203") are part of the detail address.
             *   **PRIORITY 2 (Number After Road Name):** If no number is found before the road name, the building number is the numeric block that appears IMMEDIATELY AFTER the complete road name.
                 *   Example 1: For "송파대로 345", the building number is "345".
-                *   Example 2: For "이현로29번길, 72-21", the road name is "이현로29번길". The building number is "72-21".
-            *   **AVOID THIS MISTAKE:** A number that is clearly part of a detail address (e.g., "223동", "101-506") should NOT be chosen as the building number.
+                *   Example 2: For "송파대로 201", even if "201" is on a new line, it is the building number.
+            *   **AVOID THIS MISTAKE:** A number that is clearly part of a detail address (e.g., "223동", "101-506", "헬리오시티 511") should NOT be chosen as the building number.
 
         *   **Rule C (Extract Base and Detail Address):**
-            *   "baseAddressKorean" consists of everything from the start of the address up to and including the building number found in Rule B. If no building number is found, it ends at the road name.
+            *   "baseAddressKorean" consists of everything from the start of the address up to and including the building number found in Rule B. It MUST include the building number. If no building number is found, it ends at the road name.
             *   "detailAddressKorean" is everything that remains after the base address has been extracted.
             *   **Detail Address Ordering:** Within "detailAddressKorean", if both '동' and '호' exist, you MUST reorder them to the standard Korean format: '[Building Name (optional)] [동 number] [호 number]'.
             *   **Redundancy Removal:** Do not include generic terms like "빌딩" or "아파트" in the detail address if a specific building name is already present.
 
-        *   **Rule D (If No Road Name Anchor):** If no clear road name anchor ('로', '길') is found, fall back to using legal address anchors ('동', '리') or building names to make a best-effort separation.
+        *   **Rule D (If No Road Name Anchor):** If no clear road name anchor ('로', '길') is found, fall back to using legal address anchors ('동', '리') or building names to make a best-effort separation. If OCR is extremely poor and results in a nonsensical address (e.g., "시안칭 로드, 송포 애비뉴"), leave "baseAddressKorean" empty.
 
         *   **Address Hierarchy Rule:** If conflicting administrative areas are present (e.g., "경기도" and "시흥시"), prioritize the more specific or latter-mentioned area.
 
@@ -712,30 +712,40 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 **Example Output:**
 [
   {
-    "no": "6",
-    "hawbNo": "SF317507804 0357",
-    "receiverCompanyName": "은정 양",
-    "receiverCompanyNameKorean": "양은정",
-    "receiverName": "은정 양",
-    "receiverNameKorean": "양은정",
-    "receiverPhone": "01085011609",
-    "receiverAddress": "화성시 106동 1605호봉담읍 삼봉길 35-10",
-    "rawOcrAddress": "화성시 106동\\n1605호봉담읍 삼\\n봉길 35-10",
-    "baseAddressKorean": "경기 화성시 봉담읍 상봉길 35-10",
-    "detailAddressKorean": "106동 1605호"
+    "no": "14",
+    "hawbNo": "SF328548008 3407",
+    "receiverCompanyName": "JINMO JOO",
+    "receiverCompanyNameKorean": "주진모",
+    "receiverName": "JINMO JOO",
+    "receiverNameKorean": "주진모",
+    "receiverPhone": "01023691232",
+    "receiverAddress": "Seoul Songpa-gu 7-16, Songi-ro 27-gil 203",
+    "rawOcrAddress": "Seoul\\nSongpa-gu 7-\\n16, Songi-ro\\n27-gil 203",
+    "baseAddressKorean": "서울 송파구 송이로27길 7-16",
+    "detailAddressKorean": "203"
   },
   {
-    "no": "14",
-    "hawbNo": "SF153420969 2767",
-    "receiverCompanyName": "Choi Yong Tae",
-    "receiverCompanyNameKorean": "최용태",
-    "receiverName": "Choi Yong Tae",
-    "receiverNameKorean": "최용태",
-    "receiverPhone": "087596189",
-    "receiverAddress": "Gyeonggi-Do Hwaseong-Si 202, 104-7, Tteokjeongol-ro",
-    "rawOcrAddress": "Gyeonggi-Do Hwaseong-\\nSi 202, 104-7,\\nTteokjeongol-ro,\\nHwaseong-si, Gyeonggi-\\ndo, Republic of Korea",
-    "baseAddressKorean": "경기 화성시 떡전골로 104-7",
-    "detailAddressKorean": "202"
+    "no": "46",
+    "hawbNo": "SF155664740 0267",
+    "receiverCompanyName": "",
+    "receiverName": "Ha Juyeon",
+    "receiverNameKorean": "하주연",
+    "receiverPhone": "01095723009",
+    "receiverAddress": "Seoul Songpa-Gu 6-708, 10, Ogeum-ro 32-gil",
+    "rawOcrAddress": "Seoul\\nSongpa-Gu\\n6-708, 10,\\nOgeum-ro\\n32-gil,\\nSongpa-gu,\\nSeoul, 05672,\\nRep. of\\nKOREA",
+    "baseAddressKorean": "서울 송파구 오금로32길 10",
+    "detailAddressKorean": "6-708"
+  },
+  {
+    "no": "56",
+    "hawbNo": "SF155132952 9474",
+    "receiverName": "ZHENG LONGXI",
+    "receiverNameKorean": "정룡희",
+    "receiverPhone": "01095078199",
+    "receiverAddress": "#B-1422,201,SONGPA-DAERO,SONGPA-GU,SEOUL",
+    "rawOcrAddress": "Seoul\\nSongpa-Gu\\n#B-\\n1422,201,SO\\nNGPA-\\nDAERO,SO\\nNGPA-\\nGU,SEOUL,\\nREPUBLIC\\nOF KOREA",
+    "baseAddressKorean": "서울 송파구 송파대로 201",
+    "detailAddressKorean": "B동 1422호"
   }
 ]
 `;
