@@ -690,9 +690,10 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
             *   **Inference Rule:** If a road name seems incomplete (e.g., starts with '길' or '로'), try to infer the full name from surrounding context (like a 'dong' name).
 
         *   **Rule B (Find the Building Number with a Strict Priority):**
-            *   **PRIORITY 1 (Number Before Road Name):** First, check for standalone numeric blocks (e.g., "30", "104-7", "7-16") BEFORE the road name.
+            *   **PRIORITY 1 (Number Before Road Name):** First, check for standalone numeric blocks (e.g., "30", "104-7", "1218") that appear immediately before the road name, without other words in between. If found, this is the building number. This rule is the highest priority.
+                *   Example: For "1218, 양재대로 102-802", the building number is "1218". "102-802" is part of the detail address.
                 *   If there are multiple numeric blocks before the road name (e.g., "203, 7-16, 송이로..."), the one that is structured like a valid Korean building number (e.g., "7-16") or is closest to the road name is the building number. The other numbers (e.g., "203") are part of the detail address.
-            *   **PRIORITY 2 (Number After Road Name):** If no number is found before the road name, the building number is the numeric block that appears IMMEDIATELY AFTER the complete road name.
+            *   **PRIORITY 2 (Number After Road Name):** If no number is found before the road name, the building number is the numeric block that appears IMMEDIATELY AFTER the complete road name, even if it's on a new line.
                 *   Example 1: For "송파대로 345", the building number is "345".
                 *   Example 2: For "송파대로 201", even if "201" is on a new line, it is the building number.
             *   **AVOID THIS MISTAKE:** A number that is clearly part of a detail address (e.g., "223동", "101-506", "헬리오시티 511") should NOT be chosen as the building number.
@@ -712,22 +713,19 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 **Example Output:**
 [
   {
-    "no": "14",
-    "hawbNo": "SF328548008 3407",
-    "receiverCompanyName": "JINMO JOO",
-    "receiverCompanyNameKorean": "주진모",
-    "receiverName": "JINMO JOO",
-    "receiverNameKorean": "주진모",
-    "receiverPhone": "01023691232",
-    "receiverAddress": "Seoul Songpa-gu 7-16, Songi-ro 27-gil 203",
-    "rawOcrAddress": "Seoul\\nSongpa-gu 7-\\n16, Songi-ro\\n27-gil 203",
-    "baseAddressKorean": "서울 송파구 송이로27길 7-16",
-    "detailAddressKorean": "203"
+    "no": "23",
+    "hawbNo": "SF327541997 5425",
+    "receiverName": "yuna choi",
+    "receiverNameKorean": "최유나",
+    "receiverPhone": "01097342337",
+    "receiverAddress": "Seoul Songpa-gu 1218, Yangjae-daero 102-802",
+    "rawOcrAddress": "Seoul\\nSongpa-gu\\n1218,\\nYangjae-\\ndaero 102-\\n802",
+    "baseAddressKorean": "서울 송파구 양재대로 1218",
+    "detailAddressKorean": "102-802"
   },
   {
     "no": "46",
     "hawbNo": "SF155664740 0267",
-    "receiverCompanyName": "",
     "receiverName": "Ha Juyeon",
     "receiverNameKorean": "하주연",
     "receiverPhone": "01095723009",
