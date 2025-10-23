@@ -685,12 +685,12 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
     *   **STEP 3 (STRICT ASSEMBLY): From the "Translated Full Address", assemble "baseAddressKorean" and "detailAddressKorean" using the following strict algorithm.**
 
-        *   **Rule A (Self-Correction - Limited):** Only correct road names if the OCR error is extremely obvious and common (e.g., "BUILDING-RO" -> "법원로"). For all other cases, prioritize literal translation. DO NOT infer road names from building names.
+        *   **Rule A (Self-Correction - Limited):** Only correct road names if the OCR error is extremely obvious and common (e.g., "BUILDING-RO" -> "법원로", "wiryegwa njangro" -> "위례광장로"). For all other cases, prioritize literal translation. DO NOT infer road names from building names.
 
         *   **Rule B (Strict Address Assembly Algorithm):**
-            1.  **Find Anchor:** Scan the "Translated Full Address" to find a Korean road name anchor ('로', '길', '대로', '번길').
+            1.  **Find Anchor (CRITICAL):** Scan the "Translated Full Address" to find a Korean road name anchor. **Crucially, a number followed by a hyphen and 'gil' or 'ro' (e.g., "31-gil", "40-gil") MUST be treated as part of the anchor itself.** Do not mistake the number before the hyphen as a building number.
             2.  **Find Building Number (CRITICAL LOGIC):**
-                - **Check PRIORITY 1 first:** Look for a standalone number immediately **before** the road name (e.g., "**152**, 충민로...").
+                - **Check PRIORITY 1 first:** Look for a standalone number immediately **before** the complete road name anchor (e.g., "**56**, 송이로31길").
                 - **If a PRIORITY 1 number is found, IT IS THE BUILDING NUMBER.** You MUST use it and **IGNORE any numbers that appear after the road name** for the purpose of \`baseAddressKorean\`.
                 - **Only if NO PRIORITY 1 number is found,** then check **PRIORITY 2:** Use the standalone number immediately **after** the road name as the building number (e.g., "올림픽로 **99**").
             3.  **Assemble \`baseAddressKorean\`:** Combine the address components from the beginning up to and including the single, correctly identified building number.
@@ -706,24 +706,36 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
             - **Detail Address Formatting:**
                 - If both '동' and '호' exist, reorder them to the standard format: '[Building Name (optional)] [동 number] [호 number]'.
                 - If a detail address contains a multi-unit range for a single office (e.g., "C-819-822", "601,602"), extract only the first unit (e.g., "C-819", "601").
-                - **CRITICAL EXCEPTION:** DO NOT apply the above rule to apartment unit numbers. If you see a clear 'dong-ho' format like "216-2201" or "102-1105", you MUST PRESERVE the entire number.
+                - **CRITICAL EXCEPTION (Apartment Units):** DO NOT apply the above rule to apartment unit numbers. If you see a clear 'dong-ho' format like "216-2201" or "102-1105", you MUST PRESERVE the entire number.
+                - **CRITICAL RULE ('호' Suffix):** Only add '호' to a standalone number (e.g., "201") if the original OCR text explicitly contained "ho" (e.g., "201ho"). If the original text just has a number like "201", keep it as "201" in the output. NEVER add '호' to a number that is clearly part of a building number format like "16-11".
 
-        *   **Rule D (Address Hierarchy Rule):** If conflicting administrative areas are present (e.g., "경기도" and "서울 송파구"), prioritize the information that is part of the main road name address block. Discard the conflicting, less relevant information from the final output.
+        *   **Rule D (Address Hierarchy Rule):** If conflicting administrative areas are present, prioritize the information that is part of the main road name address block. Discard the conflicting, less relevant information.
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
   {
-    "no": "4",
-    "hawbNo": "SF3299839203775",
-    "receiverName": "EUN JIN KIM",
-    "receiverNameKorean": "김은진",
-    "receiverPhone": "01097061145",
-    "receiverAddress": "Seoul Songpa-gu 135, Olympic-ro 216-2201",
-    "rawOcrAddress": "Seoul Songpa-gu 135, Olympic-ro 216-2201",
-    "baseAddressKorean": "서울 송파구 올림픽로 135",
-    "detailAddressKorean": "216-2201"
+    "no": "19",
+    "hawbNo": "SF329913250",
+    "receiverName": "Bohwa Kim",
+    "receiverNameKorean": "김보화",
+    "receiverPhone": "01091111857",
+    "receiverAddress": "Seoul Songpa-gu 19-18, Backjegobun-ro 40-gil 401ho",
+    "rawOcrAddress": "Seoul Songpa-gu 19-18, Backjegobun-ro 40-gil 401ho",
+    "baseAddressKorean": "서울 송파구 백제고분로40길 19-18",
+    "detailAddressKorean": "401호"
+  },
+  {
+    "no": "16",
+    "hawbNo": "SF329917534",
+    "receiverName": "Company sy",
+    "receiverNameKorean": "회사 sy",
+    "receiverPhone": "01055902303",
+    "receiverAddress": "Seoul Songpa-gu 16-11, Macheon-ro 51-gil 202ho",
+    "rawOcrAddress": "Seoul Songpa-gu 16-11, Macheon-ro 51-gil 202ho",
+    "baseAddressKorean": "서울 송파구 마천로51길 16-11",
+    "detailAddressKorean": "202호"
   },
   {
     "no": "6",
@@ -735,17 +747,6 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     "rawOcrAddress": "Seoul Songpa-gu 345. Songpa-daero 410-605, Hellio City Apt.",
     "baseAddressKorean": "서울 송파구 송파대로 345",
     "detailAddressKorean": "헬리오 시티 410-605"
-  },
-  {
-    "no": "34",
-    "hawbNo": "SF3283361769492",
-    "receiverName": "Hyogyun Park",
-    "receiverNameKorean": "박효균",
-    "receiverPhone": "01087957615",
-    "receiverAddress": "Seoul Songpa-gu Olympic ro 435 Parkrio 314-1703",
-    "rawOcrAddress": "Seoul Songpa-gu Olympic ro 435 Parkrio 314-1703",
-    "baseAddressKorean": "서울 송파구 올림픽로 435",
-    "detailAddressKorean": "파크리오 314-1703"
   }
 ]
 `;
