@@ -755,6 +755,19 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
         // --- Helper functions ---
 
+        // ▼▼▼ [추가 시작] 터치 피드백(진동)을 위한 헬퍼 함수 ▼▼▼
+        const triggerVibration = (duration = 15) => {
+            // navigator.vibrate가 지원되는 환경인지 먼저 확인합니다.
+            if ('vibrate' in navigator) {
+                try {
+                    navigator.vibrate(duration);
+                } catch (e) {
+                    console.warn("Vibration failed.", e);
+                }
+            }
+        };
+        // ▲▲▲ [추가 끝] ▲▲▲
+
             const showLoadingMessage = (message) => {
     confirmationModalTitle.textContent = '처리 중...';
     confirmationModalBody.innerHTML = `
@@ -973,6 +986,7 @@ const sendCompletionNotification = (item) => {
                 switch (action) {
                     case 'copy-completion':
                         {
+                            triggerVibration(); // <-- [추가]
                             const item = deliveryItems.find(i => i.no === itemNo);
                             if (item) {
                                 const completionText = item.completionType === '본인전달'
@@ -992,6 +1006,7 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'edit-completion-detail':
                         {
+                            triggerVibration(); // <-- [추가]
                             const item = deliveryItems.find(i => i.no === itemNo);
                             if (item) {
                                 const isEditableText = ['본인전달', '직접입력'].includes(item.completionType);
@@ -1009,6 +1024,7 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'swap-name':
                         {
+                            triggerVibration(); // <-- [추가]
                             const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
                             if (itemIndex > -1) {
                                 const item = deliveryItems[itemIndex];
@@ -1045,6 +1061,7 @@ const sendCompletionNotification = (item) => {
                         }
                         break;
                     case 'revert-delivery':
+                        triggerVibration(); // <-- [추가]
                         openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
                             handleStatusChange(itemNo, '배송중');
                             showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
@@ -1688,10 +1705,11 @@ const sendCompletionNotification = (item) => {
                 button.appendChild(keyPop);
 
                 button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
+    triggerVibration(); // <-- [추가]
 
-                    markAsChanged(); // 버튼 클릭 시 '수정 행위' 발생으로 기록
+    markAsChanged(); // 버튼 클릭 시 '수정 행위' 발생으로 기록
 
                     const input = document.getElementById('editable-address-input'); // 항상 최신 입력창을 찾음
                     let currentValue = input.value;
@@ -2453,9 +2471,10 @@ const sendCompletionNotification = (item) => {
     };
     
     filterButtonsContainer.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-filter]');
-        if (!button) return;
-        const newFilter = button.dataset.filter;
+    const button = event.target.closest('button[data-filter]');
+    if (!button) return;
+    triggerVibration(); // <-- [추가]
+    const newFilter = button.dataset.filter;
         
         const oldIndex = filterCategories.indexOf(activeFilter);
         const newIndex = filterCategories.indexOf(newFilter);
@@ -3119,9 +3138,10 @@ const sendCompletionNotification = (item) => {
             });
 
             actionBarContainer.addEventListener('click', async (event) => {
-                const button = event.target.closest('button');
-                if (!button) return;
-                const action = button.dataset.action;
+    const button = event.target.closest('button');
+    if (!button) return;
+    triggerVibration(); // <-- [추가]
+    const action = button.dataset.action;
                 if (!action) return;
                 const fabOptions = document.getElementById('fab-options');
                 if (action === 'toggle-fab') {
