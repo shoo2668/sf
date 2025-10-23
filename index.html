@@ -689,15 +689,16 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
         *   **Rule B (Strict Address Assembly Algorithm):**
             1.  **Find Anchor:** Scan the "Translated Full Address" to find a Korean road name anchor ('로', '길', '대로', '번길').
-            2.  **Find Building Number:** Use the strict priority system to find the building number associated with that anchor.
-                - **PRIORITY 1:** A number immediately before the road name (e.g., "**16-11**, 마천로51길").
-                - **PRIORITY 2:** A number immediately after the road name (e.g., "올림픽로 **99**").
-            3.  **Assemble \`baseAddressKorean\`:** Combine the address components from the beginning up to and including the building number. The \`baseAddressKorean\` MUST contain a building number if one was found.
-            4.  **No Invention:** If a road name anchor or a building number cannot be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., using a '동' or '리' if present). Do not invent information.
+            2.  **Find Building Number (CRITICAL LOGIC):**
+                - **Check PRIORITY 1 first:** Look for a standalone number immediately **before** the road name (e.g., "**152**, 충민로...").
+                - **If a PRIORITY 1 number is found, IT IS THE BUILDING NUMBER.** You MUST use it and **IGNORE any numbers that appear after the road name** for the purpose of \`baseAddressKorean\`.
+                - **Only if NO PRIORITY 1 number is found,** then check **PRIORITY 2:** Use the standalone number immediately **after** the road name as the building number (e.g., "올림픽로 **99**").
+            3.  **Assemble \`baseAddressKorean\`:** Combine the address components from the beginning up to and including the single, correctly identified building number.
+            4.  **No Invention:** If no road name or building number can be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., a '동' or '리' if present).
 
         *   **Rule C (Extract and CLEAN \`detailAddressKorean\`):**
             - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
-            - **CRITICAL CLEANING STEP:** After extracting the remaining text, you MUST REMOVE the following redundant or unnecessary information from \`detailAddressKorean\`:
+            - **MANDATORY CLEANING STEP:** After extracting the remaining text, you MUST REMOVE the following redundant information from \`detailAddressKorean\`:
                 - Repeated administrative districts (e.g., "송파구", "서울", "Seoul", "Songpa-gu").
                 - Country names (e.g., "대한민국", "Korea", "Republic of Korea").
                 - Postal codes (e.g., "05854").
@@ -724,26 +725,26 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     "detailAddressKorean": "송파 테라 타워 B동 B1022"
   },
   {
-    "no": "17",
-    "hawbNo": "SF1540738222888",
-    "receiverName": "Jae Sung Lee",
-    "receiverNameKorean": "이재성",
-    "receiverPhone": "01035936658",
-    "receiverAddress": "Gyeonggi-do Sangnok-gu, Ansan-si Room No.817, Moonjeong Helium Summit Tower, 13 Bubwon-Ro. Songpa-Gu, Seoul",
-    "rawOcrAddress": "Gyeonggi-do Sangnok-gu, Ansan-si Room No.817, Moonjeong Helium Summit Tower, 13 Bubwon-Ro. Songpa-Gu, Seoul",
-    "baseAddressKorean": "서울 송파구 법원로8길 13",
-    "detailAddressKorean": "헬리움 서밋 No.817"
+    "no": "41",
+    "hawbNo": "SF3275083185965",
+    "receiverName": "MINHAE KWON",
+    "receiverNameKorean": "권민해",
+    "receiverPhone": "01065661947",
+    "receiverAddress": "Seoul Songpa-gu 152, Chungmin-ro 303-1802",
+    "rawOcrAddress": "Seoul\\nSongpa-gu\\n152,\\nChungmin-\\nro 303-1802",
+    "baseAddressKorean": "서울 송파구 충민로 152",
+    "detailAddressKorean": "303-1802"
   },
   {
-    "no": "11",
-    "hawbNo": "SF0288649597144",
-    "receiverName": "Eunseok Yang",
-    "receiverNameKorean": "양은석",
-    "receiverPhone": "0220543456",
-    "receiverAddress": "601,602,Block B,Munjeong Tera Tower 1,167,Songpa -daero",
-    "rawOcrAddress": "Seoul Songpa-Gu 601,602,Block B,Munjeong Tera Tower 1,167,Songpa -daero",
-    "baseAddressKorean": "서울 송파구 송파대로 167",
-    "detailAddressKorean": "문정 테라 타워 B블록 601"
+    "no": "14",
+    "hawbNo": "SF3285480083407",
+    "receiverName": "JINMO JOO",
+    "receiverNameKorean": "주진모",
+    "receiverPhone": "01023691232",
+    "receiverAddress": "Seoul Songpa-gu 7-16, Songi-ro 27-gil 203",
+    "rawOcrAddress": "Seoul\\nSongpa-gu 7-\\n16, Songi-ro\\n27-gil 203",
+    "baseAddressKorean": "서울 송파구 송이로27길 7-16",
+    "detailAddressKorean": "203"
   }
 ]
 `;
@@ -1641,7 +1642,23 @@ const sendCompletionNotification = (item) => {
             
             newTextarea.addEventListener('input', markAsChanged);
             newTextarea.addEventListener('input', autoResizeTextarea);
-            // ▲▲▲ [수정 끝] ▲▲▲
+
+            // ▼▼▼ [추가 시작] 복제된 새 입력창에 주소 이동 이벤트 리스너를 다시 등록합니다. ▼▼▼
+            newTextarea.addEventListener('focus', () => {
+                const originalAddressContainer = document.getElementById('original-address-container');
+                const editableAddressContainer = document.getElementById('editable-address-container');
+                if (originalAddressContainer && editableAddressContainer) {
+                    editableAddressContainer.before(originalAddressContainer);
+                }
+            });
+            newTextarea.addEventListener('blur', () => {
+                const originalAddressContainer = document.getElementById('original-address-container');
+                const scrollArea = document.getElementById('smart-edit-scroll-area');
+                if (originalAddressContainer && scrollArea) {
+                    scrollArea.prepend(originalAddressContainer);
+                }
+            });
+            // ▲▲▲ [추가 끝] ▲▲▲
 
             setTimeout(() => {
                 autoResizeTextarea({target: newTextarea});
@@ -1858,26 +1875,6 @@ const sendCompletionNotification = (item) => {
         
         smartEditExitBtn.addEventListener('click', closeSmartEditModal);
         editableAddressInput.addEventListener('input', autoResizeTextarea);
-        // ▼▼▼ [추가] 주소 편집창 포커스에 따른 참조용 주소 위치 변경 로직 ▼▼▼
-        editableAddressInput.addEventListener('focus', () => {
-            const originalAddressContainer = document.getElementById('original-address-container');
-            const editableAddressContainer = document.getElementById('editable-address-container');
-            
-            // 참조용 주소를 주소 편집 영역 바로 앞에 삽입
-            if (originalAddressContainer && editableAddressContainer) {
-                editableAddressContainer.before(originalAddressContainer);
-            }
-        });
-
-        editableAddressInput.addEventListener('blur', () => {
-            const originalAddressContainer = document.getElementById('original-address-container');
-            const scrollArea = document.getElementById('smart-edit-scroll-area');
-
-            // 참조용 주소를 스크롤 영역의 맨 처음으로 되돌림
-            if (originalAddressContainer && scrollArea) {
-                scrollArea.prepend(originalAddressContainer);
-            }
-        });
         confirmOkButton.addEventListener('click', () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); });
         confirmCancelButton.addEventListener('click', closeConfirmationModal);
         clearSignatureBtn.addEventListener('click', () => signatureTextInput.value = '');
