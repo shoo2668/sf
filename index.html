@@ -688,26 +688,28 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
         *   **Rule A (Self-Correction - Limited):** Only correct road names if the OCR error is extremely obvious and common (e.g., "BUILDING-RO" -> "법원로", "wiryegwa njangro" -> "위례광장로"). For all other cases, prioritize literal translation. DO NOT infer road names from building names.
 
         *   **Rule B (Strict Address Assembly Algorithm):**
-            1.  **Find Anchor (CRITICAL):** Scan the "Translated Full Address" to find a Korean road name anchor. **Crucially, a number followed by a hyphen and 'gil' or 'ro' (e.g., "31-gil", "40-gil") MUST be treated as part of the anchor itself.** Do not mistake the number before the hyphen as a building number.
-            2.  **Find Building Number (CRITICAL LOGIC):**
-                - **Check PRIORITY 1 first:** Look for a standalone number immediately **before** the complete road name anchor (e.g., "**56**, 송이로31길").
-                - **If a PRIORITY 1 number is found, IT IS THE BUILDING NUMBER.** You MUST use it and **IGNORE any numbers that appear after the road name** for the purpose of \`baseAddressKorean\`.
-                - **Only if NO PRIORITY 1 number is found,** then check **PRIORITY 2:** Use the standalone number immediately **after** the road name as the building number (e.g., "올림픽로 **99**").
-            3.  **Assemble \`baseAddressKorean\`:** Combine the address components from the beginning up to and including the single, correctly identified building number.
-            4.  **No Invention:** If no road name or building number can be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., using a '동' or '리' if present).
+    1.  **Find Anchor (CRITICAL):** Scan the "Translated Full Address" to find a Korean road name anchor. **Crucially, a number followed by a hyphen and 'gil' or 'ro' (e.g., "31-gil", "8-gil") MUST be treated as part of the road name itself, NOT as a building number.**
+    2.  **Find Building Number (CRITICAL LOGIC - ENHANCED):**
+        - **Check PRIORITY 1 first:** Look for a standalone number immediately **before** the complete road name anchor (e.g., "**56**, 송이로31길").
+        - **If a PRIORITY 1 number is found, IT IS THE BUILDING NUMBER.** You MUST use it and **IGNORE any numbers that appear after the road name** for the purpose of \`baseAddressKorean\`.
+        - **Only if NO PRIORITY 1 number is found,** then check **PRIORITY 2:** Use the standalone number immediately **after** the road name as the building number (e.g., "올림픽로 **99**").
+        - **CRITICAL CLARIFICATION:** Numbers that are part of the road name (e.g., "31-gil", "8-gil") should NEVER be mistaken as building numbers.
+    3.  **Assemble \`baseAddressKorean\`:** Combine the address components from the beginning up to and including the single, correctly identified building number.
+    4.  **No Invention:** If no road name or building number can be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., using a '동' or '리' if present).
 
         *   **Rule C (Extract and CLEAN \`detailAddressKorean\`):**
-            - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
-            - **MANDATORY CLEANING STEP:** After extracting the remaining text, you MUST REMOVE the following redundant information from \`detailAddressKorean\`:
-                - Repeated administrative districts (e.g., "송파구", "서울", "Seoul", "Songpa-gu").
-                - Country names (e.g., "대한민국", "Korea", "Republic of Korea").
-                - Postal codes (e.g., "05854").
-                - Generic words like "Address", "주소".
-            - **Detail Address Formatting:**
-                - If both '동' and '호' exist, reorder them to the standard format: '[Building Name (optional)] [동 number] [호 number]'.
-                - If a detail address contains a multi-unit range for a single office (e.g., "C-819-822", "601,602"), extract only the first unit (e.g., "C-819", "601").
-                - **CRITICAL EXCEPTION (Apartment Units):** DO NOT apply the above rule to apartment unit numbers. If you see a clear 'dong-ho' format like "216-2201" or "102-1105", you MUST PRESERVE the entire number.
-                - **CRITICAL RULE ('호' Suffix):** Only add '호' to a standalone number (e.g., "201") if the original OCR text explicitly contained "ho" (e.g., "201ho"). If the original text just has a number like "201", keep it as "201" in the output. NEVER add '호' to a number that is clearly part of a building number format like "16-11".
+    - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
+    - **MANDATORY CLEANING STEP:** After extracting the remaining text, you MUST REMOVE the following redundant information from \`detailAddressKorean\`:
+        - Repeated administrative districts (e.g., "송파구", "서울", "Seoul", "Songpa-gu").
+        - Country names (e.g., "대한민국", "Korea", "Republic of Korea").
+        - Postal codes (e.g., "05854").
+        - Generic words like "Address", "주소".
+    - **WHITESPACE NORMALIZATION:** Normalize multiple consecutive spaces to single spaces in the detail address.
+    - **Detail Address Formatting:**
+        - If both '동' and '호' exist, reorder them to the standard format: '[Building Name (optional)] [동 number] [호 number]'.
+        - If a detail address contains a multi-unit range for a single office (e.g., "C-819-822", "601,602"), extract only the first unit (e.g., "C-819", "601").
+        - **CRITICAL EXCEPTION (Apartment Units):** DO NOT apply the above rule to apartment unit numbers. If you see a clear 'dong-ho' format like "216-2201" or "102-1105", you MUST PRESERVE the entire number.
+        - **CRITICAL RULE ('호' Suffix):** Only add '호' to a standalone number (e.g., "201") if the original OCR text explicitly contained "ho" (e.g., "201ho"). If the original text just has a number like "201", keep it as "201" in the output. NEVER add '호' to a number that is clearly part of a building number format like "16-11".
 
         *   **Rule D (Address Hierarchy Rule):** If conflicting administrative areas are present, prioritize the information that is part of the main road name address block. Discard the conflicting, less relevant information.
 
