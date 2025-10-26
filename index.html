@@ -689,12 +689,14 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
         *   **Rule B (Strict Address Assembly Algorithm):**
             1.  **Find Anchor (CRITICAL):** Scan the "Translated Full Address" to find a Korean road name anchor. **Crucially, a number followed by a hyphen and 'gil' or 'ro' (e.g., "31-gil", "40-gil") MUST be treated as part of the anchor itself.** Do not mistake the number before the hyphen as a building number.
-            2.  **Find Building Number (ULTRA-CRITICAL LOGIC):**
+            
+            2.  **Find Building Number (ULTRA-CRITICAL LOGIC - ENHANCED):**
                 - **Step 2.1 (PRIORITY 1 CHECK):** First, and most importantly, check if there is a standalone number **immediately before** the complete road name anchor (e.g., "**13**, 성복1로").
                 - **Step 2.2 (PRIORITY 1 ACTION):** If a number is found in Step 2.1, that number **IS THE DEFINITIVE BUILDING NUMBER.** You MUST use it to assemble the \`baseAddressKorean\`. For this specific task, you MUST then **NEVER consider any numbers that appear after the road name as the building number.**
                 - **Step 2.3 (PRIORITY 2 ACTION):** **ONLY IF** no number was found in Step 2.1, then you are permitted to use the standalone number **immediately after** the road name as the building number (e.g., "올림픽로 **99**").
-            3.  **Assemble \`baseAddressKorean\`:** Combine the address components from the beginning up to and including the single, correctly identified building number from Step 2.
-            4.  **No Invention:** If no road name or building number can be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., using a '동' or '리' if present).
+                - **CRITICAL EXCEPTION (Complex Building Numbers):** If the number immediately before the road name is a complex format like "30-28" and there's a simpler number after the road name, re-evaluate which is more likely the actual building number.
+
+            3.  **FALLBACK FOR MISSING ROAD NAMES:** If no road name can be identified but there is a clear building/complex name (e.g., "파크리오", "와이즈더쉽"), construct the \`baseAddressKorean\` using the available administrative district and building name.            4.  **No Invention:** If no road name or building number can be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., using a '동' or '리' if present).
 
         *   **Rule C (Extract and CLEAN \`detailAddressKorean\`):**
             - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
@@ -704,7 +706,7 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
                 - Country names (e.g., "대한민국", "Korea", "Republic of Korea").
                 - Postal codes (e.g., "05854").
                 - Generic words like "Address", "주소", "unit", "유닛".
-            - **Detail Address Formatting:**
+            - **BUILDING NAME PRESERVATION:** If a well-known building/complex name (e.g., "파크리오", "와이즈더쉽", "리치빌") appears in the address, preserve it in either base or detail address appropriately.            - **Detail Address Formatting:**
                 - If both '동' and '호' exist, reorder them to the standard format: '[Building Name (optional)] [동 number] [호 number]'.
                 - If a detail address contains a multi-unit range for a single office (e.g., "C-819-822", "1001~1003"), extract only the first unit (e.g., "C-819", "1001").
                 - **CRITICAL EXCEPTION (Apartment Units):** DO NOT apply the above rule to apartment unit numbers. If you see a clear 'dong-ho' format like "216-2201" or "102-1105", you MUST PRESERVE the entire number.
