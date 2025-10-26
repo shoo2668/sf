@@ -1763,10 +1763,28 @@ const sendCompletionNotification = (item) => {
             localRevertBtn.parentNode.replaceChild(newRevertBtn, localRevertBtn);
             localResetBtn.parentNode.replaceChild(newResetBtn, localResetBtn);
 
-            newApplyBtn.addEventListener('click', () => {
-                const currentInputValue = document.getElementById('editable-address-input').value;
-                applyAddressEdit(currentInputValue.trim(), hasUserMadeChanges);
-            }, { once: true });
+            newApplyBtn.addEventListener('click', async () => {
+                // 1. 클릭 즉시 버튼을 비활성화하여 중복 클릭 방지
+                newApplyBtn.disabled = true;
+                newApplyBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                try {
+                    const currentInputValue = document.getElementById('editable-address-input').value;
+                    // 2. await를 사용하여 주소 수정 작업이 완전히 끝날 때까지 기다림
+                    await applyAddressEdit(currentInputValue.trim(), hasUserMadeChanges);
+                } catch (error) {
+                    console.error("주소 적용 중 오류 발생:", error);
+                    // 오류가 발생해도 버튼은 다시 활성화되어야 함
+                } finally {
+                    // 3. 작업이 끝나면 (모달이 아직 열려있을 경우를 대비해) 버튼을 다시 활성화
+                    // 모달이 닫히기 전에 이 코드가 실행될 수 있으므로, 버튼이 존재하는지 확인
+                    const stillExistsBtn = document.getElementById('apply-address-btn');
+                    if (stillExistsBtn) {
+                        stillExistsBtn.disabled = false;
+                        stillExistsBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                }
+            });
 
             newRevertBtn.addEventListener('click', () => {
                 const item = deliveryItems.find(i => i.no === currentEditItemNo);
