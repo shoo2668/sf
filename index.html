@@ -696,7 +696,9 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
                 - **Step 2.3 (PRIORITY 2 ACTION):** **ONLY IF** no number was found in Step 2.1, then you are permitted to use the standalone number **immediately after** the road name as the building number (e.g., "올림픽로 **99**").
                 - **CRITICAL EXCEPTION (Complex Building Numbers):** If the number immediately before the road name is a complex format like "30-28" and there's a simpler number after the road name, re-evaluate which is more likely the actual building number.
 
-            3.  **FALLBACK FOR MISSING ROAD NAMES:** If no road name can be identified but there is a clear building/complex name (e.g., "파크리오", "와이즈더쉽"), construct the \`baseAddressKorean\` using the available administrative district and building name.            4.  **No Invention:** If no road name or building number can be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., using a '동' or '리' if present).
+            3.  **FALLBACK FOR MISSING ROAD NAMES:** If no road name can be identified but there is a clear building/complex name (e.g., "파크리오", "와이즈더쉽"), construct the \`baseAddressKorean\` using the available administrative district and building name.
+
+            4.  **No Invention:** If no road name or building number can be reliably identified, construct the \`baseAddressKorean\` using the available information (e.g., using a '동' or '리' if present).
 
         *   **Rule C (Extract and CLEAN \`detailAddressKorean\`):**
             - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
@@ -705,7 +707,8 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
                 - Repeated administrative districts (e.g., "송파구", "서울", "Seoul", "Suji-gu").
                 - Country names (e.g., "대한민국", "Korea", "Republic of Korea").
                 - Postal codes (e.g., "05854").
-                - Generic words like "Address", "주소", "unit", "유닛".
+                - Generic words like "Address", "주소", "unit", "유닛", "Room", "룸", "Building", "빌딩".
+            - **BUILDING-TENANT FORMAT STANDARDIZATION:** When both building number and unit number exist (e.g., "Building 103, Room 401"), convert to standardized format "103-401".
             - **BUILDING NAME PRESERVATION:** If a well-known building/complex name (e.g., "파크리오", "와이즈더쉽", "리치빌") appears in the address, preserve it in either base or detail address appropriately.            - **Detail Address Formatting:**
                 - If both '동' and '호' exist, reorder them to the standard format: '[Building Name (optional)] [동 number] [호 number]'.
                 - If a detail address contains a multi-unit range for a single office (e.g., "C-819-822", "1001~1003"), extract only the first unit (e.g., "C-819", "1001").
@@ -753,7 +756,7 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
   }
 ]
 `;
-        
+
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
