@@ -3074,7 +3074,10 @@ const sendCompletionNotification = (item) => {
                     const onSingle = () => completeItems([currentItem], true);
                     const onBatch = () => completeItems([currentItem, ...sameAddressItems], true);
 
+                    // ▼▼▼ [추가] 일괄 처리 확인창을 띄우기 전에, 배송 위치 선택 창을 먼저 닫습니다. ▼▼▼
+                    closeDeliveryLocationModal();
                     openBatchCompletionModal(message, onSingle, onBatch);
+                    // ▲▲▲ [추가 끝] ▲▲▲
                 } else {
                     completeItems([currentItem], currentItem.status !== '완료');
                 }
