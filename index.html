@@ -1519,7 +1519,6 @@ const sendCompletionNotification = (item) => {
                 }
             };
 
-            // ▼▼▼ [핵심 수정] openConfirmationModal 호출 방식을 원래대로 되돌립니다. ▼▼▼
             const bodyHtml = `
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
                 <form id="phone-edit-form">
@@ -1527,12 +1526,9 @@ const sendCompletionNotification = (item) => {
                 </form>
             `;
             
-            // openConfirmationModal 함수를 원래의 인자 순서에 맞게 호출합니다.
-            openConfirmationModal(messageForModal, onOk, '수정 완료', '취소');
+            openConfirmationModal(bodyHtml, onOk, '수정 완료', '취소');
             
-            // title은 모달이 열린 후에 직접 수정합니다.
             confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
-            // ▲▲▲ [핵심 수정 끝] ▲▲▲
 
             const phoneForm = document.getElementById('phone-edit-form');
             const newPhoneInput = document.getElementById('phone-edit-input');
@@ -1547,11 +1543,17 @@ const sendCompletionNotification = (item) => {
                 newPhoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
                 newPhoneInput.focus();
 
+                // ▼▼▼ [핵심 수정] 'submit' 이벤트를 '수정 완료' 버튼 클릭으로 연결합니다. ▼▼▼
                 phoneForm.addEventListener('submit', (event) => {
-                    event.preventDefault();
-                    onOk();
-                    closeConfirmationModal();
+                    event.preventDefault(); // 페이지 새로고침 방지
+                    
+                    // '수정 완료' 버튼을 찾아서 프로그래밍적으로 클릭합니다.
+                    const okButton = document.getElementById('confirmOkButton');
+                    if (okButton) {
+                        okButton.click();
+                    }
                 });
+                // ▲▲▲ [핵심 수정 끝] ▲▲▲
             }
         };
         const openTimeEditModal = (itemNo) => {
