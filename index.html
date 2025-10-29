@@ -1506,29 +1506,9 @@ const sendCompletionNotification = (item) => {
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) return;
 
-            confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
-            
-            confirmationModalBody.innerHTML = `
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
-                <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg bg-white dark:bg-gray-700" value="" inputmode="numeric" pattern="[0-9]*" maxlength="13">
-            `;
-            
-            confirmOkButton.textContent = '수정 완료';
-            confirmCancelButton.textContent = '취소';
-            confirmCancelButton.style.display = '';
-            confirmationModalButtons.style.display = 'flex';
-
-            const phoneInput = document.getElementById('phone-edit-input');
-            
-            const autoHyphenOnInput = (target) => {
-                target.value = target.value
-                    .replace(/[^0-9]/g, '')
-                    .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3")
-                    .replace(/(\-{1,2})$/g, "");
-            }
-            phoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
-            
-            onConfirmCallback = () => {
+            const onOk = () => {
+                const phoneInput = document.getElementById('phone-edit-input');
+                if (!phoneInput) return;
                 const newPhoneNumber = phoneInput.value;
                 const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
                 if (itemIndex > -1) {
@@ -1539,11 +1519,41 @@ const sendCompletionNotification = (item) => {
                 }
             };
 
-            document.body.classList.add('modal-open');
-            confirmationModal.style.display = 'flex';
-            phoneInput.focus();
-        };
+            // ▼▼▼ [핵심 수정] openConfirmationModal 호출 방식을 원래대로 되돌립니다. ▼▼▼
+            const messageForModal = `
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">숫자만 입력하세요. 자동으로 하이픈(-)이 추가됩니다.</p>
+                <form id="phone-edit-form">
+                    <input type="tel" id="phone-edit-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 text-lg bg-white dark:bg-gray-700" value="" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+                </form>
+            `;
+            
+            // openConfirmationModal 함수를 원래의 인자 순서에 맞게 호출합니다.
+            openConfirmationModal(messageForModal, onOk, '수정 완료', '취소');
+            
+            // title은 모달이 열린 후에 직접 수정합니다.
+            confirmationModalTitle.textContent = `${item.no}번 전화번호 수정`;
+            // ▲▲▲ [핵심 수정 끝] ▲▲▲
 
+            const phoneForm = document.getElementById('phone-edit-form');
+            const newPhoneInput = document.getElementById('phone-edit-input');
+            
+            if (phoneForm && newPhoneInput) {
+                const autoHyphenOnInput = (target) => {
+                    target.value = target.value
+                        .replace(/[^0-9]/g, '')
+                        .replace(/^(\d{0,3})(\d{0,4})(\d{0,4})$/g, "$1-$2-$3")
+                        .replace(/(\-{1,2})$/g, "");
+                }
+                newPhoneInput.addEventListener('input', (e) => autoHyphenOnInput(e.target));
+                newPhoneInput.focus();
+
+                phoneForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    onOk();
+                    closeConfirmationModal();
+                });
+            }
+        };
         const openTimeEditModal = (itemNo) => {
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item || !item.deliveryCompletionTime) return;
