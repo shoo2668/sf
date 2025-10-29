@@ -811,18 +811,17 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
             }
         };
         // ▲▲▲ [추가 끝] ▲▲▲
-// ▼▼▼ [추가 시작] '일괄 완료 처리' 전용 확인창 함수 ▼▼▼
+
         const openBatchCompletionModal = (message, onSingle, onBatch) => {
             confirmationModalTitle.textContent = '일괄 완료 처리';
             confirmationModalBody.innerHTML = `<div class="text-base text-gray-700 dark:text-gray-300 mb-6">${message}</div>`;
             
-            // 버튼을 동적으로 생성
+            // ▼▼▼ [수정 시작] 버튼 HTML을 매번 새로 생성하여 초기화합니다. ▼▼▼
             confirmationModalButtons.innerHTML = `
                 <button id="confirmSingleButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">현재 카드만</button>
                 <button id="confirmBatchButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">모두 함께</button>
             `;
 
-            // 각 버튼에 클릭 이벤트 할당
             document.getElementById('confirmSingleButton').onclick = () => {
                 if (onSingle) onSingle();
                 closeConfirmationModal();
@@ -831,12 +830,12 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
                 if (onBatch) onBatch();
                 closeConfirmationModal();
             };
+            // ▲▲▲ [수정 끝] ▲▲▲
 
             confirmationModalButtons.style.display = 'flex';
             document.body.classList.add('modal-open');
             confirmationModal.style.display = 'flex';
         };
-        // ▲▲▲ [추가 끝] ▲▲▲
 
         const showLoadingMessage = (message) => {
     confirmationModalTitle.textContent = '처리 중...';
@@ -1691,11 +1690,22 @@ const sendCompletionNotification = (item) => {
         const openConfirmationModal = (message, onOk, okText = '확인', cancelText = '취소') => {
             confirmationModalTitle.textContent = '확인';
             confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 dark:text-gray-300 mb-6" id="confirmation-modal-message">${message}</p>`;
-            confirmOkButton.textContent = okText;
-            confirmCancelButton.textContent = cancelText;
-            confirmCancelButton.style.display = '';
+            
+            // ▼▼▼ [수정 시작] 버튼 HTML을 매번 새로 생성하여 초기화합니다. ▼▼▼
+            confirmationModalButtons.innerHTML = `
+                <button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">${cancelText}</button>
+                <button id="confirmOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">${okText}</button>
+            `;
+
+            document.getElementById('confirmOkButton').onclick = () => {
+                if (onOk) onOk();
+                closeConfirmationModal();
+            };
+            document.getElementById('confirmCancelButton').onclick = closeConfirmationModal;
+            // ▲▲▲ [수정 끝] ▲▲▲
+
+            onConfirmCallback = onOk; // 이전 로직과의 호환성을 위해 유지
             confirmationModalButtons.style.display = 'flex';
-            onConfirmCallback = onOk;
             document.body.classList.add('modal-open');
             confirmationModal.style.display = 'flex';
         };
