@@ -180,10 +180,11 @@
             justify-content: center;
             padding: 1.5rem;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 50;
+            z-index: 50; /* 기본 모달 z-index */
         }
 
-        .confirmation-modal { z-index: 51; }
+        /* [수정] 확인창(confirmation-modal)이 항상 다른 모달 위에 오도록 z-index 값을 높입니다. */
+        .confirmation-modal { z-index: 52; }
 
         /* ▼▼▼ [수정] 모달 배경색에 CSS 변수 적용 ▼▼▼ */
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content {
@@ -1130,11 +1131,15 @@ const sendCompletionNotification = (item) => {
                         }
                         break;
                     case 'revert-delivery':
-                        triggerVibration(); // <-- [추가]
-                        openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
-                            handleStatusChange(itemNo, '배송중');
-                            showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
-                        });
+                        { // 중괄호로 범위를 명확히 합니다.
+                            triggerVibration();
+                            const onOk = () => {
+                                handleStatusChange(itemNo, '배송중');
+                                showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
+                            };
+                            // [수정] 새로 만든 복잡한 모달이 아닌, 원래의 단순한 모달을 호출하도록 onOk를 명확히 전달합니다.
+                            openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, onOk);
+                        }
                         break;
                     case 'identity-verification':
                         openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
