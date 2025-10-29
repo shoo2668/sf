@@ -683,14 +683,19 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
         - Preserve ALL numbers and symbols exactly as they are.
         - Let's call this result the "Translated Full Address".
 
-    *   **STEP 3 (PRECISE 3-STEP ASSEMBLY): From the "Translated Full Address", assemble "baseAddressKorean" and "detailAddressKorean" using the following algorithm.**
+    *   **STEP 3 (ENHANCED 3-STEP ASSEMBLY): From the "Translated Full Address", assemble "baseAddressKorean" and "detailAddressKorean" using the following algorithm.**
 
-        *   **Rule A (Self-Correction - Limited):** Only correct road names if the OCR error is extremely obvious and common (e.g., "BUILDING-RO" -> "법원로", "wiryegwa njangro" -> "위례광장로", "Gwangok-ro" -> "관곡로"). For all other cases, prioritize literal translation. DO NOT infer road names from building names.
+        *   **Rule A (Enhanced Self-Correction):** 
+            - Correct obvious OCR errors in road names (e.g., "BUILDING-RO" -> "법원로", "wiryegwa njangro" -> "위례광장로").
+            - **CRITICAL FIX:** Correct "호중대로" -> "중대로" (remove erroneous "호" prefix from road names).
+            - Correct district names: "Seocho-Gu" in Songpa-gu addresses -> "송파구".
+            - For all other cases, prioritize literal translation.
 
         *   **Rule B (PRECISE 3-STEP Address Assembly Algorithm):**
             1.  **STEP 1 - Find Anchor:** Identify the Korean road name (도로명) OR legal dong/ri (법정동/법정리). This is your anchor.
-                - **Road Name:** "xx로", "xx길", "xx대로" patterns
-                - **Legal Dong/Ri:** "xx동", "xx리" patterns
+                - **Road Name Patterns:** "xx로", "xx길", "xx대로" (e.g., "중대로27길", "위례송파로")
+                - **Legal Dong/Ri Patterns:** "xx동", "xx리" (e.g., "가락본동", "문정동")
+                - **Road Name Priority:** Prefer road names over legal dong when both are present.
 
             2.  **STEP 2 - Find Building/Lot Number (CRITICAL - IMMEDIATE POSITION):**
                 - **PRIORITY 1 (IMMEDIATELY BEFORE anchor):** Look ONLY at the text **immediately before** the anchor.
@@ -698,7 +703,7 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
                   - Examples:
                     - "3-22, 백제고분로12길" → "3-22" (immediately before)
                     - "41-4, 가락본동" → "41-4" (immediately before)
-                    - "101 대일빌리지 41-4, 가락본동" → "41-4" (immediately before "가락본동")
+                    - "7, 중대로27길" → "7" (immediately before)
                 
                 - **PRIORITY 2 (IMMEDIATELY AFTER anchor):** **ONLY IF** no number is found immediately before, then look at the text **immediately after** the anchor.
                   - Example: "올림픽로 99" → "99" (immediately after)
@@ -709,32 +714,33 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
             3.  **STEP 3 - Extract Detail Address:**
                 - Everything else becomes the detail address.
                 - **CRITICAL:** Never include the building/lot number from Step 2 in the detail address.
+                - **UNIT NUMBER PRESERVATION:** Preserve complete unit numbers like "501호", "103-401", "211동1604호".
                 - Examples:
                   - "3-22, 백제고분로12길 302" → detail: "302"
-                  - "101 대일빌리지 41-4, 가락본동" → detail: "101 대일빌리지"
-                  - "올림픽로 99 154-1201" → detail: "154-1201"
+                  - "501 호중대로27길 7" → detail: "501호"
+                  - "124 위례송파로 103-401" → detail: "103-401"
 
             4.  **Assemble \`baseAddressKorean\`:** Combine: [Administrative District] + [Anchor] + [Building/Lot Number from Step 2]
                 - Format: "서울 송파구 백제고분로12길 3-22"
-                - Format: "서울 송파구 가락본동 41-4"
-                - Format: "서울 송파구 올림픽로 99"
+                - Format: "서울 송파구 중대로27길 7"
+                - Format: "서울 송파구 올림픽로 135"
 
             5.  **Assemble \`detailAddressKorean\`:** Use all remaining text after removing components used in base address.
 
         *   **Rule C (Detail Address Cleaning):**
             - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
             - **MANDATORY CLEANING:** Remove the following from \`detailAddressKorean\`:
-                - Repeated administrative districts (e.g., "송파구", "서울")
-                - Country names (e.g., "대한민국", "Korea", "Republic of Korea")
-                - Postal codes (e.g., "05854")
-                - Generic words like "Address", "주소", "unit", "유닛", "Building", "빌딩", "Apt", "아파트".
+                - Repeated administrative districts
+                - Country names
+                - Postal codes
+                - Generic words like "Address", "주소", "unit", "Building", "Apt"
             - **PRESERVATION:** Keep apartment unit numbers, building names, room numbers, village names.
             - **STANDARDIZATION:** 
-                - Format building-room combinations (e.g., "빌딩 23, 1109호" -> "23-1109")
-                - For apartment "동-호" formats, preserve completely (e.g., "211동1604호")
-            - **CRITICAL RULE ('호' Suffix):** Only add '호' to a standalone number (e.g., "201") if the original OCR text explicitly contained "ho" (e.g., "201ho"). If the original text just has a number like "201", keep it as "201" in the output.
+                - Format building-room combinations (e.g., "Room 401, Building 103" -> "103-401")
+                - For apartment "동-호" formats, preserve completely
+            - **CRITICAL RULE ('호' Suffix):** Only add '호' to a standalone number if the original OCR text explicitly contained "ho" or "호".
 
-        *   **Rule D (Fallback - No Road Name or Legal Dong):** If no road name or legal dong can be identified, construct \`baseAddressKorean\` using available administrative information and building names. Preserve all original information in \`detailAddressKorean\`.
+        *   **Rule D (Fallback):** If no road name or legal dong can be identified, construct \`baseAddressKorean\` using available administrative information.
 
 5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
@@ -742,58 +748,47 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 [
   {
     "no": "1",
-    "hawbNo": "SF3294660770840",
-    "receiverName": "EunJung Choi",
-    "receiverNameKorean": "은정 최",
-    "receiverPhone": "01071049227",
-    "receiverAddress": "Seoul Songpa-gu 3-22, Baekjeogobun-ro 12-gil 302",
-    "rawOcrAddress": "Seoul Songpa-gu 3-22, Baekjeogobun-ro 12-gil 302",
-    "baseAddressKorean": "서울 송파구 백제고분로12길 3-22",
-    "detailAddressKorean": "302"
+    "hawbNo": "SF3296642878806",
+    "receiverName": "Support Ryu",
+    "receiverNameKorean": "류 서포트",
+    "receiverPhone": "01098924075",
+    "receiverAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
+    "rawOcrAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
+    "baseAddressKorean": "서울 송파구 위례송파로 124",
+    "detailAddressKorean": "103-401"
   },
   {
     "no": "2",
-    "hawbNo": "SF3296995041971",
-    "receiverName": "SEUNGHW AN NOH",
-    "receiverNameKorean": "안승환",
-    "receiverPhone": "01047905191",
-    "receiverAddress": "Seoul Songpa-gu 101 Dae il village 41-4, Garakbon-dong",
-    "rawOcrAddress": "Seoul Songpa-gu 101 Dae il village 41-4, Garakbon-dong",
-    "baseAddressKorean": "서울 송파구 가락본동 41-4",
-    "detailAddressKorean": "101 대일빌리지"
+    "hawbNo": "SF3275782073642",
+    "receiverName": "규은 우",
+    "receiverNameKorean": "우규은",
+    "receiverPhone": "01057191082",
+    "receiverAddress": "송파구 501 호중대로 27 길 7",
+    "rawOcrAddress": "송파구 501 호중대로 27 길 7",
+    "baseAddressKorean": "서울 송파구 중대로27길 7",
+    "detailAddressKorean": "501호"
   },
   {
-    "no": "3",
-    "hawbNo": "SF3294369007573",
-    "receiverName": "KYUNGMIN KIM",
-    "receiverNameKorean": "김경민",
-    "receiverPhone": "01088910049",
-    "receiverAddress": "Seoul Songpa-gu 435, Olympic-ro, Songpa-gu, 211dong1604ho, parkrio apt.",
-    "rawOcrAddress": "Seoul Songpa-gu 435, Olympic-ro, Songpa-gu, 211dong1604ho, parkrio apt.",
-    "baseAddressKorean": "서울 송파구 올림픽로 435",
-    "detailAddressKorean": "파크리오 211동1604호"
+    "no": "9",
+    "hawbNo": "SF0259205839169",
+    "receiverName": "Rina",
+    "receiverNameKorean": "리나",
+    "receiverPhone": "01081101680",
+    "receiverAddress": "Seoul Songpa-Gu H Business Park NO.C 1216,Munjeo ng-dong377-1, Songpa-gu, Seoul",
+    "rawOcrAddress": "Seoul Songpa-Gu H Business Park NO.C 1216,Munjeo ng-dong377-1, Songpa-gu, Seoul",
+    "baseAddressKorean": "서울 송파구 법원로9길 26",
+    "detailAddressKorean": "H 비즈니스 파크 NO.C 1216"
   },
   {
-    "no": "4",
-    "hawbNo": "SF3273312164277",
-    "receiverName": "Jihyun Lee",
-    "receiverNameKorean": "이지현",
-    "receiverPhone": "01097920098",
-    "receiverAddress": "Seoul Songpa-gu Olympic-ro 135 219-1204",
-    "rawOcrAddress": "Seoul Songpa-gu Olympic-ro 135 219-1204",
+    "no": "14",
+    "hawbNo": "SF0250504029130",
+    "receiverName": "Shinhyoung CHOI",
+    "receiverNameKorean": "최신형",
+    "receiverPhone": "01034887838",
+    "receiverAddress": "Seoul Songpa-Gu #222-2903, Ricenz, Olympic-ro 135, Songpa-gu, Seoul",
+    "rawOcrAddress": "Seoul Songpa-Gu #222-2903, Ricenz, Olympic-ro 135, Songpa-gu, Seoul",
     "baseAddressKorean": "서울 송파구 올림픽로 135",
-    "detailAddressKorean": "219-1204"
-  },
-  {
-    "no": "11",
-    "hawbNo": "SF3273387461565",
-    "receiverName": "Hyeonjong Jeong",
-    "receiverNameKorean": "정현종",
-    "receiverPhone": "01042904117",
-    "receiverAddress": "Seoul Songpa-gu 3, Baekjegobun-ro 31-gil, Songpa-gu#502",
-    "rawOcrAddress": "Seoul Songpa-gu 3, Baekjegobun-ro 31-gil, Songpa-gu#502",
-    "baseAddressKorean": "서울 송파구 백제고분로31길 3",
-    "detailAddressKorean": "502"
+    "detailAddressKorean": "리첸츠 #222-2903"
   }
 ]
 `;
