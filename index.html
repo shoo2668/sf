@@ -426,6 +426,19 @@
                                 <input type="file" id="importDataInput" class="hidden" accept=".json"/>
                             </div>
                         </div>
+
+                        <!-- 구분선 -->
+                        <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+                        <!-- ▼▼▼ [추가 시작] 웹훅 설정 UI ▼▼▼ -->
+                        <div>
+                            <h3 class="setting-section-title">웹훅 (자동화)</h3>
+                            <div class="flex items-center space-x-2">
+                                <input type="url" id="webhook-url-input" placeholder="웹훅 URL을 입력하세요" class="flex-grow px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:ring-blue-500 focus:border-blue-500">
+                                <button id="save-webhook-url-button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">저장</button>
+                            </div>
+                        </div>
+                        <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
                     </div>
 
                     <!-- 앱 초기화 섹션 -->
@@ -1112,10 +1125,14 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'identity-verification':
                         openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
-                            copyHawbOnComplete(itemNo); // <-- [추가]
+                            copyHawbOnComplete(itemNo);
                             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                             handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
                             sortItemsByDistanceSilent();
+                            
+                            // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
+                            const updatedItem = deliveryItems.find(i => i.no === itemNo);
+                            if (updatedItem) sendWebhook(updatedItem);
                         });
                         break;
                     case 'open-location-modal':
@@ -1645,7 +1662,7 @@ const sendCompletionNotification = (item) => {
                     let completionType = item.completionType;
 
                     if (item.status !== '완료') {
-                        copyHawbOnComplete(currentSignatureItemNo); // <-- [추가]
+                        copyHawbOnComplete(currentSignatureItemNo);
                         completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                         completionType = '직접입력'; 
                     }
@@ -1655,6 +1672,10 @@ const sendCompletionNotification = (item) => {
                     }
 
                     handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText);
+                    
+                    // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
+                    const updatedItem = deliveryItems.find(i => i.no === currentSignatureItemNo);
+                    if (updatedItem) sendWebhook(updatedItem);
                 }
                 sortItemsByDistanceSilent();
                 closeSignatureModal();
@@ -2020,6 +2041,48 @@ const sendCompletionNotification = (item) => {
                 });
             }
         };
+
+        // ▼▼▼ [추가 시작] 웹훅 전송 함수 ▼▼▼
+        const sendWebhook = async (item) => {
+            const webhookUrl = localStorage.getItem('webhookUrl');
+            if (!webhookUrl) {
+                console.log("웹훅 URL이 설정되지 않아 전송을 건너뜁니다.");
+                return;
+            }
+
+            const payload = {
+                no: item.no,
+                hawbNo: item.hawbNo,
+                receiverName: item.receiverNameKorean,
+                companyName: item.companyNameKorean,
+                fullAddress: item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : ''),
+                completionType: item.completionType,
+                completionDetail: item.completionDetail,
+                completionTime: item.deliveryCompletionTime
+            };
+
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    console.log(`웹훅 전송 성공 (항목 ${item.no}):`, await response.text());
+                    showToastMessage(`${item.no}번 웹훅 전송 성공`);
+                } else {
+                    console.error(`웹훅 전송 실패 (항목 ${item.no}):`, response.status, await response.text());
+                    showMessage(`웹훅 전송에 실패했습니다 (상태: ${response.status}).`, '웹훅 오류');
+                }
+            } catch (error) {
+                console.error(`웹훅 전송 중 네트워크 오류 (항목 ${item.no}):`, error);
+                showMessage(`웹훅 전송 중 네트워크 오류가 발생했습니다.`, '웹훅 오류');
+            }
+        };
+        // ▲▲▲ [추가 끝] ▲▲▲
 
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
             deliveryItems = deliveryItems.map(item => {
@@ -2937,6 +3000,29 @@ const sendCompletionNotification = (item) => {
             completedSortOrder = localStorage.getItem('completedSortOrder') || 'no';
             // ▲▲▲ [추가 끝] ▲▲▲
 
+            // ▼▼▼ [추가 시작] 웹훅 URL 저장 및 불러오기 로직 ▼▼▼
+            const webhookUrlInput = document.getElementById('webhook-url-input');
+            const saveWebhookUrlButton = document.getElementById('save-webhook-url-button');
+
+            // 페이지 로드 시 저장된 URL 불러오기
+            const savedWebhookUrl = localStorage.getItem('webhookUrl');
+            if (savedWebhookUrl) {
+                webhookUrlInput.value = savedWebhookUrl;
+            }
+
+            // 저장 버튼 클릭 이벤트
+            saveWebhookUrlButton.addEventListener('click', () => {
+                const urlToSave = webhookUrlInput.value.trim();
+                if (urlToSave) {
+                    localStorage.setItem('webhookUrl', urlToSave);
+                    showToastMessage('웹훅 URL이 저장되었습니다.');
+                } else {
+                    localStorage.removeItem('webhookUrl');
+                    showToastMessage('웹훅 URL이 삭제되었습니다.');
+                }
+            });
+            // ▲▲▲ [추가 끝] ▲▲▲
+
             initializeTheme(); // <-- 테마 초기화 함수 호출
 
             if ('serviceWorker' in navigator) {
@@ -3088,7 +3174,14 @@ const sendCompletionNotification = (item) => {
 
                     if (isNewCompletion) {
                         const updatedItem = deliveryItems.find(i => i.no === itemNo);
-                        if (updatedItem) sendCompletionNotification(updatedItem);
+                        if (updatedItem) {
+                            sendCompletionNotification(updatedItem);
+                            
+                            // ▼▼▼ [추가] 웹훅 전송 (문자보내기 버튼 제외) ▼▼▼
+                            if (buttonId !== 'location-modal-confirm-with-sms') {
+                                sendWebhook(updatedItem);
+                            }
+                        }
 
                         // '문자 보내기' 버튼을 눌렀을 때만 SMS 실행
                         if (buttonId === 'location-modal-confirm-with-sms') {
