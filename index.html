@@ -2043,45 +2043,33 @@ const sendCompletionNotification = (item) => {
         };
 
         // ▼▼▼ [추가 시작] 웹훅 전송 함수 ▼▼▼
-        const sendWebhook = async (item) => {
+        const sendWebhook = (item) => {
             const webhookUrl = localStorage.getItem('webhookUrl');
             if (!webhookUrl) {
                 console.log("웹훅 URL이 설정되지 않아 전송을 건너뜁니다.");
                 return;
             }
 
-            const payload = {
-                no: item.no,
-                hawbNo: item.hawbNo,
-                receiverName: item.receiverNameKorean,
-                companyName: item.companyNameKorean,
-                fullAddress: item.baseAddress + (item.detailAddress ? `, ${item.detailAddress}` : ''),
-                completionType: item.completionType,
-                completionDetail: item.completionDetail,
-                completionTime: item.deliveryCompletionTime
-            };
-
+            // ▼▼▼ [핵심 수정] 복잡한 fetch 대신, CORS 제약이 없는 간단한 이미지 로드 방식으로 변경 ▼▼▼
             try {
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: {
-                        // ▼▼▼ 'application/json'을 'text/plain'으로 변경 ▼▼▼
-                        'Content-Type': 'text/plain',
-                    },
-                    body: JSON.stringify(payload)
-                });
+                // 1. 눈에 보이지 않는 이미지 객체를 하나 만듭니다.
+                const img = new Image();
+                
+                // 2. 이 이미지의 소스(src)를 우리가 호출하려는 웹훅 URL로 지정합니다.
+                //    브라우저는 이 "이미지"를 불러오기 위해 해당 URL로 GET 요청을 보냅니다.
+                //    이 요청 자체가 매크로드로이드의 트리거(신호)가 됩니다.
+                img.src = webhookUrl;
 
-                if (response.ok) {
-                    console.log(`웹훅 전송 성공 (항목 ${item.no}):`, await response.text());
-                    showToastMessage(`${item.no}번 웹훅 전송 성공`);
-                } else {
-                    console.error(`웹훅 전송 실패 (항목 ${item.no}):`, response.status, await response.text());
-                    showToastMessage(`웹훅 전송 실패 (상태: ${response.status})`, 3000);
-                }
+                // 3. 성공/실패 여부와 관계없이 요청은 보내졌으므로, 사용자에게 피드백을 줍니다.
+                console.log(`웹훅 호출 시도 (항목 ${item.no}): ${webhookUrl}`);
+                showToastMessage(`${item.no}번 자동화 트리거 호출`);
+
             } catch (error) {
-                console.error(`웹훅 전송 중 네트워크 오류 (항목 ${item.no}):`, error);
-                showToastMessage(`웹훅 전송 실패: 네트워크 오류`, 3000);
+                // 이 방식은 거의 오류를 발생시키지 않지만, 만약을 위해 남겨둡니다.
+                console.error(`웹훅 호출 중 오류 (항목 ${item.no}):`, error);
+                showToastMessage(`자동화 트리거 호출 실패`, 3000);
             }
+            // ▲▲▲ [수정 끝] ▲▲▲
         };
         // ▲▲▲ [추가 끝] ▲▲▲
 
