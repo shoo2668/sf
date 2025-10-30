@@ -2065,7 +2065,8 @@ const sendCompletionNotification = (item) => {
                 const response = await fetch(webhookUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        // ▼▼▼ 'application/json'을 'text/plain'으로 변경 ▼▼▼
+                        'Content-Type': 'text/plain',
                     },
                     body: JSON.stringify(payload)
                 });
@@ -2075,7 +2076,6 @@ const sendCompletionNotification = (item) => {
                     showToastMessage(`${item.no}번 웹훅 전송 성공`);
                 } else {
                     console.error(`웹훅 전송 실패 (항목 ${item.no}):`, response.status, await response.text());
-                    // ▼▼▼ 이 부분을 showToastMessage로 수정했습니다 ▼▼▼
                     showToastMessage(`웹훅 전송 실패 (상태: ${response.status})`, 3000);
                 }
             } catch (error) {
