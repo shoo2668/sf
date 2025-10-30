@@ -861,17 +861,24 @@ const showToastMessage = (message, duration = 2000) => {
 };
 
 const showMessage = (message, title = '알림') => {
-    confirmationModalTitle.textContent = title;
-    confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 dark:text-gray-300 mb-6">${message}</p>`;
-    confirmOkButton.textContent = '확인';
-    // 취소 버튼은 숨깁니다.
-    confirmCancelButton.style.display = 'none';
-    confirmationModalButtons.style.display = 'flex';
-    
-    onConfirmCallback = null; // 확인 버튼 클릭 시 특별한 동작 없음
-    document.body.classList.add('modal-open');
-    confirmationModal.style.display = 'flex';
-};
+            // 1. 중앙 관리 함수인 openConfirmationModal을 호출하여 모달을 띄웁니다.
+            //    - onOk 콜백은 null로 전달하여 '확인' 버튼이 특별한 동작 없이 모달만 닫도록 합니다.
+            openConfirmationModal(message, null, '확인', '취소');
+
+            // 2. openConfirmationModal이 생성한 모달의 내용을 '알림' 스타일에 맞게 조정합니다.
+            confirmationModalTitle.textContent = title; // 제목 변경
+            
+            const cancelButton = document.getElementById('confirmCancelButton');
+            if (cancelButton) {
+                cancelButton.style.display = 'none'; // 취소 버튼 숨기기
+            }
+            
+            const okButton = document.getElementById('confirmOkButton');
+            if (okButton) {
+                okButton.classList.remove('w-1/2'); // 너비 클래스 제거
+                okButton.classList.add('w-full');   // 전체 너비로 설정
+            }
+        };
 
 const sendCompletionNotification = (item) => {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -1715,7 +1722,7 @@ const sendCompletionNotification = (item) => {
             confirmationModalTitle.textContent = '확인';
             confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 dark:text-gray-300 mb-6" id="confirmation-modal-message">${message}</p>`;
             
-            // ▼▼▼ [핵심 수정] 버튼 HTML을 매번 새로 생성하여 초기화합니다. ▼▼▼
+            // ▼▼▼ [핵심] 버튼 HTML을 매번 새로 생성하여 이전의 이벤트(.onclick)를 완벽하게 제거합니다. ▼▼▼
             confirmationModalButtons.innerHTML = `
                 <button id="confirmCancelButton" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">${cancelText}</button>
                 <button id="confirmOkButton" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">${okText}</button>
@@ -1726,7 +1733,7 @@ const sendCompletionNotification = (item) => {
                 closeConfirmationModal();
             };
             document.getElementById('confirmCancelButton').onclick = closeConfirmationModal;
-            // ▲▲▲ [핵심 수정 끝] ▲▲▲
+            // ▲▲▲ [핵심 끝] ▲▲▲
 
             onConfirmCallback = onOk; // 이전 로직과의 호환성을 위해 유지
             confirmationModalButtons.style.display = 'flex';
