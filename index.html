@@ -3032,6 +3032,18 @@ const sendCompletionNotification = (item) => {
 
                 const completeItems = (itemsToComplete, showSms) => {
                     const completedNos = [];
+
+                    // ▼▼▼ [추가 시작] 첫 번째 아이템의 송장번호를 클립보드에 복사합니다. ▼▼▼
+                    if (itemsToComplete.length > 0) {
+                        const firstItem = itemsToComplete[0];
+                        if (firstItem.hawbNo) {
+                            navigator.clipboard.writeText(firstItem.hawbNo)
+                                .then(() => console.log(`${firstItem.hawbNo} copied to clipboard.`))
+                                .catch(err => console.error('Failed to copy hawbNo: ', err));
+                        }
+                    }
+                    // ▲▲▲ [추가 끝] ▲▲▲
+
                     itemsToComplete.forEach(item => {
                         const isNewCompletion = item.status !== '완료';
                         const completionTime = isNewCompletion ? new Date().toLocaleString('ko-KR', dateTimeFormatOptions) : item.deliveryCompletionTime;
