@@ -658,17 +658,36 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
 // ▼▼▼ [수정] 고고밴 앱 실행 함수 통일 및 수정 - 기존 코드 어딘가에 추가 ▼▼▼
 const openGogoVanApp = () => {
-    // 고고밴 앱을 실행하는 정확한 인텐트 URL
-    const intentUrl = 'intent://main#Intent;package=kr.gogovan.android.gogodriver;scheme=gogovan;end';
+    // 다양한 인텐트 URI 시도
+    const intentUrls = [
+        'gogovan://main',
+        'intent://main#Intent;package=kr.gogovan.android.gogodriver;scheme=gogovan;end',
+        'intent://main#Intent;package=kr.gogovan.android.gogodriver;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end'
+    ];
     
-    // 앱이 설치되어 있지 않으면 플레이스토어로 이동
-    setTimeout(() => {
-        if (document.hidden || document.webkitHidden) {
+    let currentTry = 0;
+    
+    const tryNextIntent = () => {
+        if (currentTry < intentUrls.length) {
+            window.location.href = intentUrls[currentTry];
+            currentTry++;
+            
+            // 앱이 실행되지 않으면 다음 인텐트 시도
+            setTimeout(() => {
+                if (document.hidden || document.webkitHidden) {
+                    // 앱이 실행된 것으로 판단
+                    return;
+                } else {
+                    tryNextIntent();
+                }
+            }, 300);
+        } else {
+            // 모든 인텐트 시도 실패 시 플레이스토어로 이동
             window.location.href = 'https://play.google.com/store/apps/details?id=kr.gogovan.android.gogodriver';
         }
-    }, 500);
+    };
     
-    window.location.href = intentUrl;
+    tryNextIntent();
 };
 
 const askToOpenGogoX = () => {
