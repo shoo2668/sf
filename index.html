@@ -1112,6 +1112,7 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'identity-verification':
                         openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
+                            copyHawbOnComplete(itemNo); // <-- [추가]
                             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                             handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
                             sortItemsByDistanceSilent();
@@ -1625,6 +1626,7 @@ const sendCompletionNotification = (item) => {
                     let completionType = item.completionType;
 
                     if (item.status !== '완료') {
+                        copyHawbOnComplete(currentSignatureItemNo); // <-- [추가]
                         completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                         completionType = '직접입력'; 
                     }
@@ -1988,20 +1990,6 @@ const sendCompletionNotification = (item) => {
         };
 
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
-            const itemToUpdate = deliveryItems.find(item => item.no === itemNo);
-
-            // 상태가 '완료'로 변경되는 시점에만 송장번호를 복사합니다.
-            if (itemToUpdate && newStatus === '완료' && itemToUpdate.status !== '완료') {
-                if (itemToUpdate.hawbNo) {
-                    navigator.clipboard.writeText(itemToUpdate.hawbNo).then(() => {
-                        showToastMessage(`송장번호 ${itemToUpdate.hawbNo} 복사 완료`);
-                    }).catch(err => {
-                        console.error('송장번호 복사 실패:', err);
-                        showToastMessage('송장번호 복사에 실패했습니다.', 2500);
-                    });
-                }
-            }
-
             deliveryItems = deliveryItems.map(item => {
                 if (item.no === itemNo) {
                     const updatedItem = { ...item, status: newStatus, isHawbConfirmed: newStatus !== '배송전' };
@@ -3048,6 +3036,9 @@ const sendCompletionNotification = (item) => {
                     const completedNos = [];
                     itemsToComplete.forEach(item => {
                         const isNewCompletion = item.status !== '완료';
+                        if (isNewCompletion) {
+                            copyHawbOnComplete(item.no); // <-- [추가]
+                        }
                         const completionTime = isNewCompletion ? new Date().toLocaleString('ko-KR', dateTimeFormatOptions) : item.deliveryCompletionTime;
                         handleStatusChange(item.no, '완료', completionTime, location, location);
                         completedNos.push(item.no);
