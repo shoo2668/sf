@@ -1115,6 +1115,19 @@ const sendCompletionNotification = (item) => {
                             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
                             handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
                             sortItemsByDistanceSilent();
+
+                            // ▼▼▼ [추가] 고고밴 실행을 묻는 로직 호출 ▼▼▼
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                const askToOpenGogoX = () => {
+                                    const onOk = () => {
+                                        window.location.href = 'intent:#Intent;package=kr.gogovan.android.gogodriver;component=kr.gogovan.android.gogodriver/co.kr.gogox.driver.MainActivity;end';
+                                    };
+                                    openConfirmationModal("고고밴 어플을 실행하시겠습니까?", onOk, '네', '아니오');
+                                };
+                                askToOpenGogoX();
+                            }
+                            // ▲▲▲ [추가 끝] ▲▲▲
                         });
                         break;
                     case 'open-location-modal':
@@ -1633,6 +1646,16 @@ const sendCompletionNotification = (item) => {
                 }
                 sortItemsByDistanceSilent();
                 closeSignatureModal();
+
+                // ▼▼▼ [추가] 고고밴 실행을 묻는 로직 호출 ▼▼▼
+                const askToOpenGogoX = () => {
+                    const onOk = () => {
+                        window.location.href = 'intent:#Intent;package=kr.gogovan.android.gogodriver;component=kr.gogovan.android.gogodriver/co.kr.gogox.driver.MainActivity;end';
+                    };
+                    openConfirmationModal("고고밴 어플을 실행하시겠습니까?", onOk, '네', '아니오');
+                };
+                askToOpenGogoX();
+                // ▲▲▲ [추가 끝] ▲▲▲
             }
         };
 
@@ -1984,16 +2007,27 @@ const sendCompletionNotification = (item) => {
         };
 
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
+            let changedItem = null;
             deliveryItems = deliveryItems.map(item => {
                 if (item.no === itemNo) {
                     const updatedItem = { ...item, status: newStatus, isHawbConfirmed: newStatus !== '배송전' };
                     if (completionTime !== null) updatedItem.deliveryCompletionTime = completionTime;
                     if (completionType !== null) updatedItem.completionType = completionType;
                     if (completionDetail !== null) updatedItem.completionDetail = completionDetail;
+                    changedItem = updatedItem; // 변경된 아이템을 저장
                     return updatedItem;
                 }
                 return item;
             });
+
+            // ▼▼▼ [핵심 수정] 상태가 '완료'로 변경될 때, 송장번호를 클립보드에 복사합니다. ▼▼▼
+            if (newStatus === '완료' && changedItem && changedItem.hawbNo) {
+                navigator.clipboard.writeText(changedItem.hawbNo)
+                    .then(() => console.log(`[Auto-Copied] ${changedItem.hawbNo}`))
+                    .catch(err => console.error('Failed to auto-copy hawbNo: ', err));
+            }
+            // ▲▲▲ [핵심 수정 끝] ▲▲▲
+
             saveDeliveryItemsToLocalStorage();
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
@@ -3046,7 +3080,11 @@ const sendCompletionNotification = (item) => {
 
                 const askToOpenGogoX = () => {
                     const onOk = () => {
-                        copyHawbAndOpenGogoX();
+                        copyHawbToClipboard();
+                        // ▼▼▼ [핵심 수정] 고고밴 앱을 실행하는 URL을 더 구체적으로 변경합니다. ▼▼▼
+                        const intentUrl = 'intent://#Intent;package=kr.gogovan.android.gogodriver;component=kr.gogovan.android.gogodriver/co.kr.gogox.driver.MainActivity;end';
+                        window.location.href = intentUrl;
+                        // ▲▲▲ [핵심 수정 끝] ▲▲▲
                     };
                     openConfirmationModal("고고밴 어플을 실행하시겠습니까?", onOk, '네', '아니오');
                 };
