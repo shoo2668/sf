@@ -656,6 +656,38 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 });
 // ▲▲▲▲▲ [수정 끝] ▲▲▲▲▲
 
+// ▼▼▼ [수정] 고고밴 앱 실행 함수 통일 및 수정 - 기존 코드 어딘가에 추가 ▼▼▼
+const openGogoVanApp = () => {
+    // 고고밴 앱을 실행하는 정확한 인텐트 URL
+    const intentUrl = 'intent://main#Intent;package=kr.gogovan.android.gogodriver;scheme=gogovan;end';
+    
+    // 앱이 설치되어 있지 않으면 플레이스토어로 이동
+    setTimeout(() => {
+        if (document.hidden || document.webkitHidden) {
+            window.location.href = 'https://play.google.com/store/apps/details?id=kr.gogovan.android.gogodriver';
+        }
+    }, 500);
+    
+    window.location.href = intentUrl;
+};
+
+const askToOpenGogoX = () => {
+    const onOk = () => {
+        openGogoVanApp();
+    };
+    openConfirmationModal("고고밴 어플을 실행하시겠습니까?", onOk, '네', '아니오');
+};
+// ▲▲▲ [수정 끝] ▲▲▲
+
+// ▼▼▼ [추가] 송장번호 복사 함수 - 기존 코드 어딘가에 추가 ▼▼▼
+const copyHawbToClipboard = (item) => {
+    if (item && item.hawbNo) {
+        navigator.clipboard.writeText(item.hawbNo)
+            .then(() => console.log(`[Auto-Copied] ${item.hawbNo}`))
+            .catch(err => console.error('Failed to copy hawbNo: ', err));
+    }
+};
+// ▲▲▲ [추가 끝] ▲▲▲
 
 const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array. Your primary goals are 1) Flawless OCR of all address text, and 2) Assembling the text into a Korean address based on strict rules, NOT creative inference.
 
@@ -1111,25 +1143,25 @@ const sendCompletionNotification = (item) => {
                         });
                         break;
                     case 'identity-verification':
-                        openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
-                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
-                            sortItemsByDistanceSilent();
-
-                            // ▼▼▼ [추가] 고고밴 실행을 묻는 로직 호출 ▼▼▼
-                            const item = deliveryItems.find(i => i.no === itemNo);
-                            if (item) {
-                                const askToOpenGogoX = () => {
-                                    const onOk = () => {
-                                        window.location.href = 'intent:#Intent;package=kr.gogovan.android.gogodriver;component=kr.gogovan.android.gogodriver/co.kr.gogox.driver.MainActivity;end';
-                                    };
-                                    openConfirmationModal("고고밴 어플을 실행하시겠습니까?", onOk, '네', '아니오');
-                                };
-                                askToOpenGogoX();
-                            }
-                            // ▲▲▲ [추가 끝] ▲▲▲
-                        });
-                        break;
+    triggerVibration();
+    openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
+        const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+        const item = deliveryItems.find(i => i.no === itemNo);
+        
+        if (item) {
+            // 송장번호 복사
+            copyHawbToClipboard(item);
+            
+            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
+            sortItemsByDistanceSilent();
+            
+            // 고고밴 실행 여부 확인
+            setTimeout(() => {
+                askToOpenGogoX();
+            }, 300);
+        }
+    });
+    break;
                     case 'open-location-modal':
                         openDeliveryLocationModal(itemNo);
                         break;
@@ -1621,43 +1653,41 @@ const sendCompletionNotification = (item) => {
         };
 
         const saveSignature = () => {
-            const signatureText = signatureTextInput.value.trim();
-            if (!signatureText) {
-                showMessage('서명 내용을 입력해주세요.');
-                return;
+    const signatureText = signatureTextInput.value.trim();
+    if (!signatureText) {
+        showMessage('서명 내용을 입력해주세요.');
+        return;
+    }
+
+    if (currentSignatureItemNo !== null) {
+        const item = deliveryItems.find(i => i.no === currentSignatureItemNo);
+        if (item) {
+            let completionTime = null;
+            let completionType = item.completionType;
+
+            if (item.status !== '완료') {
+                completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                completionType = '직접입력'; 
+            }
+            
+            if (item.completionType === '본인전달') {
+                deliveryItems = deliveryItems.map(i => i.no === currentSignatureItemNo ? { ...i, receiverNameKorean: signatureText } : i);
             }
 
-            if (currentSignatureItemNo !== null) {
-                const item = deliveryItems.find(i => i.no === currentSignatureItemNo);
-                if (item) {
-                    let completionTime = null;
-                    let completionType = item.completionType;
+            // 송장번호 복사
+            copyHawbToClipboard(item);
+            
+            handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText);
+        }
+        sortItemsByDistanceSilent();
+        closeSignatureModal();
 
-                    if (item.status !== '완료') {
-                        completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                        completionType = '직접입력'; 
-                    }
-                    
-                    if (item.completionType === '본인전달') {
-                        deliveryItems = deliveryItems.map(i => i.no === currentSignatureItemNo ? { ...i, receiverNameKorean: signatureText } : i);
-                    }
-
-                    handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText);
-                }
-                sortItemsByDistanceSilent();
-                closeSignatureModal();
-
-                // ▼▼▼ [추가] 고고밴 실행을 묻는 로직 호출 ▼▼▼
-                const askToOpenGogoX = () => {
-                    const onOk = () => {
-                        window.location.href = 'intent:#Intent;package=kr.gogovan.android.gogodriver;component=kr.gogovan.android.gogodriver/co.kr.gogox.driver.MainActivity;end';
-                    };
-                    openConfirmationModal("고고밴 어플을 실행하시겠습니까?", onOk, '네', '아니오');
-                };
-                askToOpenGogoX();
-                // ▲▲▲ [추가 끝] ▲▲▲
-            }
-        };
+        // 고고밴 실행 여부 확인
+        setTimeout(() => {
+            askToOpenGogoX();
+        }, 300);
+    }
+};
 
         const openCompletionOptionsModal = (itemNo) => {
             completionOptionsTitle.textContent = `${itemNo}번 완료 옵션 선택`;
@@ -3038,88 +3068,7 @@ const sendCompletionNotification = (item) => {
 
             locationModalCancel.addEventListener('click', closeDeliveryLocationModal);
             locationModalConfirm.addEventListener('click', () => {
-                const selectedOption = document.querySelector('input[name="delivery-location"]:checked');
-                if (!selectedOption) { showMessage('배송 위치를 선택해주세요.'); return; }
 
-                let location = selectedOption.value;
-                if (location === '기타') {
-                    const otherInput = document.getElementById('other-location-input');
-                    location = otherInput.value.trim();
-                    if (!location) { showMessage('기타 배송 위치를 입력해주세요.'); return; }
-                }
-
-                const itemNo = currentLocationEditItemNo;
-                const currentItem = deliveryItems.find(i => i.no === itemNo);
-                if (!currentItem) return;
-
-                closeDeliveryLocationModal(); // 어떤 경우든 배송 위치 창은 먼저 닫음
-
-                const completeItem = () => {
-                    const isNewCompletion = currentItem.status !== '완료';
-                    const completionTime = isNewCompletion ? new Date().toLocaleString('ko-KR', dateTimeFormatOptions) : currentItem.deliveryCompletionTime;
-                    
-                    handleStatusChange(currentItem.no, '완료', completionTime, location, location);
-                    sortItemsByDistanceSilent();
-                    showToastMessage(`${currentItem.no}번: ${location} 완료`);
-
-                    if (isNewCompletion) {
-                        const updatedItem = deliveryItems.find(i => i.no === currentItem.no);
-                        if (updatedItem) sendCompletionNotification(updatedItem);
-                    }
-                };
-
-                const copyHawbAndOpenGogoX = () => {
-                    if (currentItem.hawbNo) {
-                        navigator.clipboard.writeText(currentItem.hawbNo)
-                            .then(() => console.log(`${currentItem.hawbNo} copied.`))
-                            .catch(err => console.error('Failed to copy hawbNo: ', err));
-                    }
-                    // 안드로이드 앱을 직접 실행하는 인텐트 URL
-                    window.location.href = 'intent:#Intent;package=kr.gogovan.android.gogodriver;end';
-                };
-
-                const askToOpenGogoX = () => {
-                    const onOk = () => {
-                        copyHawbToClipboard();
-                        // ▼▼▼ [핵심 수정] 고고밴 앱을 실행하는 URL을 더 구체적으로 변경합니다. ▼▼▼
-                        const intentUrl = 'intent://#Intent;package=kr.gogovan.android.gogodriver;component=kr.gogovan.android.gogodriver/co.kr.gogox.driver.MainActivity;end';
-                        window.location.href = intentUrl;
-                        // ▲▲▲ [핵심 수정 끝] ▲▲▲
-                    };
-                    openConfirmationModal("고고밴 어플을 실행하시겠습니까?", onOk, '네', '아니오');
-                };
-
-                const cleanPhoneNumber = getCleanPhoneNumber(currentItem.receiverTelephoneNo);
-                if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
-                    // 휴대폰 번호일 경우: 선택창 1 표시
-                    confirmationModalTitle.textContent = '작업 선택';
-                    confirmationModalBody.innerHTML = `<p class="text-base text-gray-700 dark:text-gray-300 mb-6">다음 작업을 선택하세요.</p>`;
-                    confirmationModalButtons.innerHTML = `
-                        <button id="btnCompleteOnly" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">완료만</button>
-                        <button id="btnSmsAndComplete" class="w-1/2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">문자 보내기</button>
-                    `;
-                    document.getElementById('btnSmsAndComplete').onclick = () => {
-                        completeItem();
-                        copyHawbAndOpenGogoX(); // 송장번호 복사 후 고고밴 실행 대신 문자 실행
-                        setTimeout(() => {
-                            const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
-                            window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
-                        }, 300);
-                        closeConfirmationModal();
-                    };
-                    document.getElementById('btnCompleteOnly').onclick = () => {
-                        completeItem();
-                        closeConfirmationModal();
-                        askToOpenGogoX();
-                    };
-                    confirmationModal.style.display = 'flex';
-                    document.body.classList.add('modal-open');
-                } else {
-                    // 일반 번호일 경우: 바로 선택창 2 표시
-                    completeItem();
-                    askToOpenGogoX();
-                }
-            });
 
             invoiceNumberInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') { event.preventDefault(); invoiceNumberInput.blur(); }
