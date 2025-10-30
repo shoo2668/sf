@@ -1989,6 +1989,19 @@ const sendCompletionNotification = (item) => {
             localStorage.setItem('filterScrollPositions', JSON.stringify(filterScrollPositions));
         };
 
+        // ▼▼▼ [수정] 송장번호 복사 헬퍼 함수 추가 및 handleStatusChange 원상 복구 ▼▼▼
+        const copyHawbOnComplete = (itemNo) => {
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (item && item.hawbNo) {
+                navigator.clipboard.writeText(item.hawbNo).then(() => {
+                    showToastMessage(`송장번호 ${item.hawbNo} 복사 완료`);
+                }).catch(err => {
+                    console.error('송장번호 복사 실패:', err);
+                    showToastMessage('송장번호 복사에 실패했습니다.', 2500);
+                });
+            }
+        };
+
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
             deliveryItems = deliveryItems.map(item => {
                 if (item.no === itemNo) {
@@ -2004,6 +2017,7 @@ const sendCompletionNotification = (item) => {
             renderDeliveryCards(activeFilter);
             updateFilterCounts();
         };
+        // ▲▲▲ [수정 끝] ▲▲▲
 
         const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
             const checkbox = document.querySelector(`input[data-action="toggle-hawb-confirm"][data-no="${itemNo}"]`);
