@@ -2426,6 +2426,7 @@ const sendCompletionNotification = (item) => {
         
         // 완료 필터 아이콘
         const iconSortTime = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>`;
+        const iconCopyAll = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
 
         if (activeFilter === '배송중') {
             allMenuItems = [
@@ -2443,7 +2444,10 @@ const sendCompletionNotification = (item) => {
                 // '순번순정렬'은 정렬 상태이므로 'sort' 타입으로 지정
                 { icon: iconSortNo, action: 'sort-no-completed', sortType: 'no', type: 'sort' },
                 // '완료시간순 정렬'은 정렬 상태이므로 'sort' 타입으로 지정
-                { icon: iconSortTime, action: 'sort-time', sortType: 'time', type: 'sort' }
+                { icon: iconSortTime, action: 'sort-time', sortType: 'time', type: 'sort' },
+                // ▼▼▼ [이 부분 추가] ▼▼▼
+                { icon: iconCopyAll, action: 'copy-all-completed', type: 'action' }
+                // ▲▲▲ [추가 끝] ▲▲▲
             ];
             currentSortType = completedSortOrder;
             activeColorClass = 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800';
@@ -3402,6 +3406,44 @@ const sendCompletionNotification = (item) => {
                     }
                 }
                 switch (action) {
+                    // ▼▼▼ [이 부분 추가] ▼▼▼
+                    case 'copy-all-completed':
+                        {
+                            // 1. 전체 deliveryItems에서 status가 '완료'인 항목만 필터링합니다.
+                            const completedItems = deliveryItems.filter(item => item.status === '완료');
+
+                            if (completedItems.length === 0) {
+                                showToastMessage('복사할 완료 항목이 없습니다.');
+                                break;
+                            }
+
+                            // 2. 순번(no)을 기준으로 오름차순 정렬하여 순서대로 복사되도록 합니다.
+                            completedItems.sort((a, b) => a.no - b.no);
+
+                            // 3. 각 항목을 "순번 - 내용 [시간]" 형식의 문자열로 변환합니다.
+                            const textLines = completedItems.map(item => {
+                                // 개별 항목 복사 로직과 동일하게 완료 내용을 결정합니다.
+                                const completionText = item.completionType === '본인전달'
+                                    ? (item.receiverNameKorean || '')
+                                    : (item.completionDetail || item.completionType || '');
+                                // 완료 시간을 HH:MM 형식으로 포맷팅합니다.
+                                const timeText = formatCompletionTime(item.deliveryCompletionTime);
+                                return `${item.no} - ${completionText} [${timeText}]`;
+                            });
+
+                            // 4. 변환된 문자열 배열을 줄바꿈(\n)으로 합쳐 최종 텍스트를 만듭니다.
+                            const textToCopy = textLines.join('\n');
+
+                            // 5. 클립보드에 복사하고 사용자에게 알림을 표시합니다.
+                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                showToastMessage(`완료된 항목 ${completedItems.length}개 복사 완료`);
+                            }).catch(err => {
+                                console.error('전체 완료 항목 복사 실패:', err);
+                                showMessage('클립보드 복사에 실패했습니다.');
+                            });
+                        }
+                        break;
+                    // ▲▲▲ [추가 끝] ▲▲▲
                     case 'sort-distance': sortItemsByDistance(); break;
                     case 'sort-no': sortItemsByNumber(); showToastMessage('순번순으로 정렬되었습니다.'); break;
                     case 'sort-no-completed':
