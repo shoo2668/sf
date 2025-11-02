@@ -948,7 +948,8 @@ const sendCompletionNotification = (item) => {
             // 지도 아이콘 터치 관련 변수
             let mapIconTapCount = 0;
             let mapIconTapTimer = null;
-            let mapIconLongPressTimer = null;
+            // ▼▼▼ [수정] 지도 길게 터치 타이머 변수 제거 ▼▼▼
+            // let mapIconLongPressTimer = null; 
 
             deliveryCardsContainer.addEventListener('touchstart', (event) => {
                 const frontDoorButton = event.target.closest('button[data-action="front-door-delivery"]');
@@ -962,29 +963,20 @@ const sendCompletionNotification = (item) => {
                     }, 300);
                 }
 
+                // ▼▼▼ [수정] 지도 아이콘 길게 터치 로직 전체 삭제 ▼▼▼
+                /*
                 const mapButton = event.target.closest('button[data-action="open-map"]');
-                if (mapButton) {
-                    // 길게 누르기 감지 시작
-                    mapIconLongPressTimer = setTimeout(() => {
-                        const itemNo = parseInt(mapButton.dataset.no, 10);
-                        const item = deliveryItems.find(i => i.no === itemNo);
-                        if (item) {
-                            const textToCopy = `**${item.no}. ${extractClipboardAddressPart(item)}`;
-                            navigator.clipboard.writeText(textToCopy); // 토스트 메시지 없이 복사
-                            openMap(item, true); // 길게 누르기 플래그와 함께 지도 열기
-                        }
-                        mapIconLongPressTimer = null; // 실행 후 초기화
-                        mapIconTapCount = 0; // 탭 카운트 초기화
-                    }, 400); // 400ms
-                }
+                if (mapButton) { ... }
+                */
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchmove', (event) => {
                 // 스크롤 시 모든 타이머 취소
                 clearTimeout(longPressTimer);
                 touchTarget = null;
-                clearTimeout(mapIconLongPressTimer);
-                mapIconLongPressTimer = null;
+                // ▼▼▼ [수정] 지도 길게 터치 타이머 취소 로직 제거 ▼▼▼
+                // clearTimeout(mapIconLongPressTimer);
+                // mapIconLongPressTimer = null;
             }, { passive: true });
 
             deliveryCardsContainer.addEventListener('touchend', (event) => {
@@ -999,33 +991,44 @@ const sendCompletionNotification = (item) => {
 
                 const mapButton = event.target.closest('button[data-action="open-map"]');
                 if (mapButton) {
-                    clearTimeout(mapIconLongPressTimer); // 길게 누르기 타이머 취소
-                    if (!mapIconLongPressTimer) { // 이미 길게 누르기가 실행되었다면 아무것도 안함
-                        return;
-                    }
+                    // ▼▼▼ [수정] 길게 터치 관련 로직 제거 ▼▼▼
+                    // clearTimeout(mapIconLongPressTimer);
+                    // if (!mapIconLongPressTimer) { return; }
                     
                     mapIconTapCount++; // 탭 횟수 증가
 
                     if (mapIconTapCount === 1) { // 첫 번째 탭
                         mapIconTapTimer = setTimeout(() => {
-                            // 300ms 후에도 두 번째 탭이 없으면 싱글 탭으로 처리
                             const itemNo = parseInt(mapButton.dataset.no, 10);
                             const item = deliveryItems.find(i => i.no === itemNo);
                             if (item) {
                                 openMap(item); // 일반 복사 및 지도 열기
                             }
-                            mapIconTapCount = 0; // 초기화
+                            mapIconTapCount = 0;
                         }, 300);
                     } else if (mapIconTapCount === 2) { // 두 번째 탭 (더블 탭)
-                        clearTimeout(mapIconTapTimer); // 싱글 탭 타이머 취소
+                        clearTimeout(mapIconTapTimer);
+                        mapIconTapTimer = setTimeout(() => {
+                            const itemNo = parseInt(mapButton.dataset.no, 10);
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                const textToCopy = `*${item.no}. ${extractClipboardAddressPart(item)}`;
+                                navigator.clipboard.writeText(textToCopy);
+                                openMap(item, true);
+                            }
+                            mapIconTapCount = 0;
+                        }, 300);
+                    } else if (mapIconTapCount === 3) { // 세 번째 탭 (트리플 탭)
+                        clearTimeout(mapIconTapTimer);
                         const itemNo = parseInt(mapButton.dataset.no, 10);
                         const item = deliveryItems.find(i => i.no === itemNo);
                         if (item) {
-                            const textToCopy = `*${item.no}. ${extractClipboardAddressPart(item)}`;
-                            navigator.clipboard.writeText(textToCopy); // 토스트 메시지 없이 복사
-                            openMap(item, true); // 더블 탭 플래그와 함께 지도 열기
+                            // ▼▼▼ [수정] 별표 2개로 변경 (기존 길게 터치 기능) ▼▼▼
+                            const textToCopy = `**${item.no}. ${extractClipboardAddressPart(item)}`;
+                            navigator.clipboard.writeText(textToCopy);
+                            openMap(item, true);
                         }
-                        mapIconTapCount = 0; // 초기화
+                        mapIconTapCount = 0;
                     }
                 }
             });
