@@ -811,6 +811,44 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
         // --- Helper functions ---
 
+        // ▼▼▼ [추가 시작] 텍스트를 이미지(Data URL)로 변환하는 헬퍼 함수 ▼▼▼
+        const generateCompletionImage = (text) => {
+            return new Promise((resolve) => {
+                // 1. 보이지 않는 캔버스 엘리먼트 생성
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // 2. 폰트 및 스타일 설정 (기본 폰트 사용)
+                const fontSize = 20; // 이미지 높이에 영향을 줌
+                const padding = 10;  // 텍스트 좌우 여백
+                const font = `${fontSize}px sans-serif`;
+                ctx.font = font;
+
+                // 3. 텍스트 크기를 측정하여 캔버스 크기 동적 조절
+                const textMetrics = ctx.measureText(text);
+                canvas.width = textMetrics.width + padding * 2;
+                canvas.height = fontSize + padding * 2;
+
+                // 4. 캔버스 크기 변경 후 폰트 재설정 (초기화 방지)
+                ctx.font = font;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // 5. 다크/라이트 모드에 따라 텍스트 색상 결정
+                const isDarkMode = document.documentElement.classList.contains('dark');
+                ctx.fillStyle = isDarkMode ? '#e0e0e0' : '#1f2937'; // 다크모드: 밝은 회색, 라이트모드: 어두운 회색
+
+                // 6. 캔버스 중앙에 텍스트 그리기
+                ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+                // 7. 캔버스 내용을 PNG 이미지 데이터 URL로 변환하여 반환
+                resolve(canvas.toDataURL('image/png'));
+            });
+        };
+        // ▲▲▲ [추가 끝] ▲▲▲
+
+        const triggerVibration = (duration = 15) => {
+
         // ▼▼▼ [추가 시작] 터치 피드백(진동)을 위한 헬퍼 함수 ▼▼▼
         const triggerVibration = (duration = 15) => {
             // navigator.vibrate가 지원되는 환경인지 먼저 확인합니다.
@@ -1134,13 +1172,20 @@ const sendCompletionNotification = (item) => {
                         });
                         break;
                     case 'identity-verification':
-                        openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
+                        openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, async () => { // <-- [수정] async 추가
                             copyHawbOnComplete(itemNo);
                             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
+                            
+                            // ▼▼▼ [추가 시작] 이름 텍스트로 이미지 생성 ▼▼▼
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            const nameToRender = item ? (item.receiverNameKorean || '신분증') : '신분증';
+                            const imageDataUrl = await generateCompletionImage(nameToRender);
+                            // ▲▲▲ [추가 끝] ▲▲▲
+
+                            // ▼▼▼ [수정] handleStatusChange에 생성된 이미지 데이터(imageDataUrl) 전달 ▼▼▼
+                            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증', imageDataUrl);
                             sortItemsByDistanceSilent();
                             
-                            // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
                             const updatedItem = deliveryItems.find(i => i.no === itemNo);
                             if (updatedItem) sendWebhook(updatedItem);
                         });
@@ -1658,7 +1703,7 @@ const sendCompletionNotification = (item) => {
             currentSignatureItemNo = null; 
         };
 
-        const saveSignature = () => {
+        const saveSignature = async () => { // <-- [수정] async 추가
             const signatureText = signatureTextInput.value.trim();
             if (!signatureText) {
                 showMessage('서명 내용을 입력해주세요.');
@@ -1681,9 +1726,12 @@ const sendCompletionNotification = (item) => {
                         deliveryItems = deliveryItems.map(i => i.no === currentSignatureItemNo ? { ...i, receiverNameKorean: signatureText } : i);
                     }
 
-                    handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText);
+                    // ▼▼▼ [추가] 입력된 텍스트로 이미지 생성 ▼▼▼
+                    const imageDataUrl = await generateCompletionImage(signatureText);
+
+                    // ▼▼▼ [수정] handleStatusChange에 생성된 이미지 데이터(imageDataUrl) 전달 ▼▼▼
+                    handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText, imageDataUrl);
                     
-                    // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
                     const updatedItem = deliveryItems.find(i => i.no === currentSignatureItemNo);
                     if (updatedItem) sendWebhook(updatedItem);
                 }
@@ -2083,13 +2131,15 @@ const sendCompletionNotification = (item) => {
         };
         // ▲▲▲ [추가 끝] ▲▲▲
 
-        const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
+        const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null, completionImage = null) => {
             deliveryItems = deliveryItems.map(item => {
                 if (item.no === itemNo) {
                     const updatedItem = { ...item, status: newStatus, isHawbConfirmed: newStatus !== '배송전' };
                     if (completionTime !== null) updatedItem.deliveryCompletionTime = completionTime;
                     if (completionType !== null) updatedItem.completionType = completionType;
                     if (completionDetail !== null) updatedItem.completionDetail = completionDetail;
+                    // ▼▼▼ [추가] completionImage 파라미터가 있으면 항목에 저장 ▼▼▼
+                    if (completionImage !== null) updatedItem.completionImage = completionImage;
                     return updatedItem;
                 }
                 return item;
@@ -2292,14 +2342,24 @@ const sendCompletionNotification = (item) => {
                 `;
 
                 if (showCompletedCard) {
-                    const isEditableText = ['본인전달', '직접입력'].includes(data.completionType);
-                    const isSelectableLocation = !isEditableText && data.completionType !== '서명';
+                    // ▼▼▼ [수정 시작] 완료 내용 표시 로직 변경 ▼▼▼
+                    let completionDisplayHtml;
+                    // 1. completionImage 데이터가 있으면 img 태그를 생성
+                    if (data.completionImage) {
+                        completionDisplayHtml = `<img src="${data.completionImage}" alt="완료 서명" class="h-6 inline-block" data-action="edit-completion-detail" data-no="${data.no}" />`;
+                    } 
+                    // 2. 이미지가 없으면 기존의 텍스트 기반 로직을 그대로 사용 (하위 호환성)
+                    else {
+                        const isEditableText = ['본인전달', '직접입력'].includes(data.completionType);
+                        const isSelectableLocation = !isEditableText && data.completionType !== '서명';
 
-                    const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
-                        ? `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200 p-1 border border-dashed border-gray-400 dark:border-gray-500 rounded-md bg-gray-50 dark:bg-gray-600 inline-block">${data.completionDetail}</span>`
-                        : (isEditableText || isSelectableLocation)
-                            ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 dark:text-gray-200 cursor-pointer">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`
-                            : `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200">${data.completionDetail || data.completionType}</span>`;
+                        completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
+                            ? `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200 p-1 border border-dashed border-gray-400 dark:border-gray-500 rounded-md bg-gray-50 dark:bg-gray-600 inline-block">${data.completionDetail}</span>`
+                            : (isEditableText || isSelectableLocation)
+                                ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 dark:text-gray-200 cursor-pointer">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`
+                                : `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200">${data.completionDetail || data.completionType}</span>`;
+                    }
+                    // ▲▲▲ [수정 끝] ▲▲▲
 
                     return `
                         <div class="${cardClasses} p-4 mb-4" data-no="${data.no}">
@@ -3131,7 +3191,7 @@ const sendCompletionNotification = (item) => {
             });
 
             // ▼▼▼ [수정 시작] 배송 위치 모달 버튼 이벤트 위임 처리 ▼▼▼
-            deliveryLocationModal.addEventListener('click', (event) => {
+            deliveryLocationModal.addEventListener('click', async (event) => { // <-- [수정] async 추가
                 const button = event.target.closest('button');
                 if (!button) return;
 
@@ -3170,7 +3230,12 @@ const sendCompletionNotification = (item) => {
                     }
 
                     const completionTime = isNewCompletion ? new Date().toLocaleString('ko-KR', dateTimeFormatOptions) : currentItem.deliveryCompletionTime;
-                    handleStatusChange(itemNo, '완료', completionTime, location, location);
+                    
+                    // ▼▼▼ [추가] 선택된 위치 텍스트로 이미지 생성 ▼▼▼
+                    const imageDataUrl = await generateCompletionImage(location);
+
+                    // ▼▼▼ [수정] handleStatusChange에 생성된 이미지 데이터(imageDataUrl) 전달 ▼▼▼
+                    handleStatusChange(itemNo, '완료', completionTime, location, location, imageDataUrl);
 
                     sortItemsByDistanceSilent();
                     showToastMessage(`${itemNo}번: ${location} 완료`);
@@ -3180,13 +3245,11 @@ const sendCompletionNotification = (item) => {
                         if (updatedItem) {
                             sendCompletionNotification(updatedItem);
                             
-                            // ▼▼▼ [추가] 웹훅 전송 (문자보내기 버튼 제외) ▼▼▼
                             if (buttonId !== 'location-modal-confirm-with-sms') {
                                 sendWebhook(updatedItem);
                             }
                         }
 
-                        // '문자 보내기' 버튼을 눌렀을 때만 SMS 실행
                         if (buttonId === 'location-modal-confirm-with-sms') {
                             const cleanPhoneNumber = getCleanPhoneNumber(currentItem.receiverTelephoneNo);
                             if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
