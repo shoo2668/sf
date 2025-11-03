@@ -702,25 +702,31 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
             - Correct obvious OCR errors in road names (e.g., "BUILDING-RO" -> "법원로", "wiryegwa njangro" -> "위례광장로").
             - **CRITICAL FIX:** Correct "호중대로" -> "중대로" (remove erroneous "호" prefix from road names).
             - Correct district names: "Seocho-Gu" in Songpa-gu addresses -> "송파구".
+            - **OCR ERROR CORRECTION:** Correct common OCR errors:
+              - "goema" -> "거마" (for "거마로")
+              - "garakro1 9gil" -> "가락로19길"
+              - Other obvious misspellings based on context
             - For all other cases, prioritize literal translation.
 
-        *   **Rule B (PRECISE 3-STEP Address Assembly Algorithm):**
+        *   **Rule B (ENHANCED 3-STEP Address Assembly Algorithm):**
             1.  **STEP 1 - Find Anchor:** Identify the Korean road name (도로명) OR legal dong/ri (법정동/법정리). This is your anchor.
                 - **Road Name Patterns:** "xx로", "xx길", "xx대로" (e.g., "중대로27길", "위례송파로")
                 - **Legal Dong/Ri Patterns:** "xx동", "xx리" (e.g., "가락본동", "문정동")
                 - **Road Name Priority:** Prefer road names over legal dong when both are present.
 
-            2.  **STEP 2 - Find Building/Lot Number (CRITICAL - IMMEDIATE POSITION):**
+            2.  **STEP 2 - Find Building/Lot Number (CRITICAL - ENHANCED LOGIC):**
                 - **PRIORITY 1 (IMMEDIATELY BEFORE anchor):** Look ONLY at the text **immediately before** the anchor.
                   - If there is a number (or number-range) **directly preceding** the anchor, that is the building/lot number.
+                  - **ENHANCED RULE:** If multiple numbers appear before the anchor (e.g., "411, 8, 법원로8길"), use the number **CLOSEST TO THE ANCHOR** as the building number.
                   - Examples:
                     - "3-22, 백제고분로12길" → "3-22" (immediately before)
-                    - "41-4, 가락본동" → "41-4" (immediately before)
+                    - "411, 8, 법원로8길" → "8" (closest to anchor), "411" goes to detail
                     - "7, 중대로27길" → "7" (immediately before)
                 
                 - **PRIORITY 2 (IMMEDIATELY AFTER anchor):** **ONLY IF** no number is found immediately before, then look at the text **immediately after** the anchor.
                   - Example: "올림픽로 99" → "99" (immediately after)
                   - Example: "백제고분로31길 3" → "3" (immediately after)
+                  - **CRITICAL FIX:** For "wiryeseong daero 16gil" ensure building number is included
 
                 - **CRITICAL PRESERVATION:** The building/lot number from Step 2 **MUST BE INCLUDED** in the \`baseAddressKorean\`.
 
@@ -728,19 +734,22 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
                 - Everything else becomes the detail address.
                 - **CRITICAL:** Never include the building/lot number from Step 2 in the detail address.
                 - **UNIT NUMBER PRESERVATION:** Preserve complete unit numbers like "501호", "103-401", "211동1604호".
+                - **MULTI-UNIT HANDLING:** For ranges like "#924, 925", extract only the first unit "#924".
                 - Examples:
                   - "3-22, 백제고분로12길 302" → detail: "302"
                   - "501 호중대로27길 7" → detail: "501호"
-                  - "124 위례송파로 103-401" → detail: "103-401"
+                  - "411, 8, 법원로8길" → detail: "411"
+                  - "#924, 925, 8 법원로8길" → detail: "#924"
 
             4.  **Assemble \`baseAddressKorean\`:** Combine: [Administrative District] + [Anchor] + [Building/Lot Number from Step 2]
                 - Format: "서울 송파구 백제고분로12길 3-22"
                 - Format: "서울 송파구 중대로27길 7"
                 - Format: "서울 송파구 올림픽로 135"
+                - Format: "서울 송파구 법원로8길 8"
 
             5.  **Assemble \`detailAddressKorean\`:** Use all remaining text after removing components used in base address.
 
-        *   **Rule C (Detail Address Cleaning):**
+        *   **Rule C (Enhanced Detail Address Cleaning):**
             - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
             - **MANDATORY CLEANING:** Remove the following from \`detailAddressKorean\`:
                 - Repeated administrative districts
@@ -751,6 +760,7 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
             - **STANDARDIZATION:** 
                 - Format building-room combinations (e.g., "Room 401, Building 103" -> "103-401")
                 - For apartment "동-호" formats, preserve completely
+            - **MULTI-UNIT RANGE HANDLING:** For office ranges "C-819-822", "#924, 925", extract only the first unit "C-819", "#924"
             - **CRITICAL RULE ('호' Suffix):** Only add '호' to a standalone number if the original OCR text explicitly contained "ho" or "호".
 
         *   **Rule D (Fallback):** If no road name or legal dong can be identified, construct \`baseAddressKorean\` using available administrative information.
@@ -782,26 +792,37 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     "detailAddressKorean": "501호"
   },
   {
-    "no": "9",
-    "hawbNo": "SF0259205839169",
-    "receiverName": "Rina",
-    "receiverNameKorean": "리나",
-    "receiverPhone": "01081101680",
-    "receiverAddress": "Seoul Songpa-Gu H Business Park NO.C 1216,Munjeo ng-dong377-1, Songpa-gu, Seoul",
-    "rawOcrAddress": "Seoul Songpa-Gu H Business Park NO.C 1216,Munjeo ng-dong377-1, Songpa-gu, Seoul",
-    "baseAddressKorean": "서울 송파구 법원로9길 26",
-    "detailAddressKorean": "H 비즈니스 파크 NO.C 1216"
+    "no": "13",
+    "hawbNo": "SF3296201597431",
+    "receiverName": "WONG ON KI",
+    "receiverNameKorean": "왕온기",
+    "receiverPhone": "01026245501",
+    "receiverAddress": "Seoul Songpa-Gu 411, 8, Beobwon-ro 8-gil, Songpa-gu, Seoul, Republic of Korea Beobwon-ro 8-gil 411, 8",
+    "rawOcrAddress": "Seoul Songpa-Gu 411, 8, Beobwon-ro 8-gil, Songpa-gu, Seoul, Republic of Korea Beobwon-ro 8-gil 411, 8",
+    "baseAddressKorean": "서울 송파구 법원로8길 8",
+    "detailAddressKorean": "411"
   },
   {
-    "no": "14",
-    "hawbNo": "SF0250504029130",
-    "receiverName": "Shinhyoung CHOI",
-    "receiverNameKorean": "최신형",
-    "receiverPhone": "01034887838",
-    "receiverAddress": "Seoul Songpa-Gu #222-2903, Ricenz, Olympic-ro 135, Songpa-gu, Seoul",
-    "rawOcrAddress": "Seoul Songpa-Gu #222-2903, Ricenz, Olympic-ro 135, Songpa-gu, Seoul",
-    "baseAddressKorean": "서울 송파구 올림픽로 135",
-    "detailAddressKorean": "리첸츠 #222-2903"
+    "no": "45",
+    "hawbNo": "SF1556005586351",
+    "receiverName": "Lim yeowoon",
+    "receiverNameKorean": "임여운",
+    "receiverPhone": "01040859319",
+    "receiverAddress": "Seoul Songpa-Gu #924, 925, 8 Beobwon-ro 8-gil, Songpa-gu, Seoul, Korea",
+    "rawOcrAddress": "Seoul Songpa-Gu #924, 925, 8 Beobwon-ro 8-gil, Songpa-gu, Seoul, Korea",
+    "baseAddressKorean": "서울 송파구 법원로8길 8",
+    "detailAddressKorean": "#924"
+  },
+  {
+    "no": "1",
+    "hawbNo": "SF3296849740330",
+    "receiverName": "Chulhee Cho",
+    "receiverNameKorean": "조철희",
+    "receiverPhone": "01048597988",
+    "receiverAddress": "Seoul Songpa-gu goema ro 56 104-201",
+    "rawOcrAddress": "Seoul Songpa-gu goema ro 56 104-201",
+    "baseAddressKorean": "서울 송파구 거마로 56",
+    "detailAddressKorean": "104-201"
   }
 ]
 `;
@@ -1934,14 +1955,28 @@ const sendCompletionNotification = (item) => {
                 numberKeypad.appendChild(createKeyButton(key, colorClass, key, action));
             });
 
-            ['길', '번길', '동', '리'].forEach(unit => {
-                unitKeypad.appendChild(createKeyButton(unit, 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900', unit, 'add-unit'));
+            // ▼▼▼ [수정 시작] 요청하신 4x2 그리드 레이아웃에 맞춰 버튼 생성 로직을 재구성합니다. ▼▼▼
+            const unitKeypadButtons = [
+                // 1행: 길, 번길
+                { text: '길',    colorClass: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900', value: '길',    action: 'add-unit' },
+                { text: '번길',  colorClass: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900', value: '번길',  action: 'add-unit' },
+                // 2행: 동, 리
+                { text: '동',    colorClass: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900', value: '동',    action: 'add-unit' },
+                { text: '리',    colorClass: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900', value: '리',    action: 'add-unit' },
+                // 3행: 호, 빈칸
+                { text: '호',    colorClass: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900', value: '호',    action: 'add-unit' },
+                { text: '\u00A0', colorClass: 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500', value: ' ',     action: 'add' },
+                // 4행: <, <<
+                { text: '<',     colorClass: 'bg-gray-400 hover:bg-gray-500 text-white',                                 value: '<',     action: 'backspace-char' },
+                { text: '<<',    colorClass: 'bg-red-500 hover:bg-red-600 text-white',                                   value: '<<',    action: 'backspace-word' }
+            ];
+
+            // 재구성된 버튼 정보를 기반으로 버튼을 순서대로 생성합니다.
+            unitKeypadButtons.forEach(btnInfo => {
+                const button = createKeyButton(btnInfo.text, btnInfo.colorClass, btnInfo.value, btnInfo.action);
+                unitKeypad.appendChild(button);
             });
-            unitKeypad.appendChild(createKeyButton('\u00A0', 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500', ' ', 'add'));
-            unitKeypad.appendChild(createKeyButton('<', 'bg-gray-400 hover:bg-gray-500 text-white', '<', 'backspace-char'));
-            const backspaceWordBtn = createKeyButton('<<', 'bg-red-500 hover:bg-red-600 text-white', '<<', 'backspace-word');
-            backspaceWordBtn.classList.add('col-span-2');
-            unitKeypad.appendChild(backspaceWordBtn);
+            // ▲▲▲ [수정 끝] ▲▲▲
 
             const modalContent = smartEditModal.querySelector('.smart-edit-modal-content');
             modalContent.style.maxHeight = `${window.innerHeight - 48}px`;
