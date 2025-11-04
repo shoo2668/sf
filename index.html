@@ -670,159 +670,77 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 // ▲▲▲▲▲ [수정 끝] ▲▲▲▲▲
 
 
-const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array. Your primary goals are 1) Flawless OCR of all address text, and 2) Assembling the text into a Korean address based on strict rules, NOT creative inference.
+const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
-**CRITICAL INSTRUCTIONS:**
+**CRITICAL PHILOSOPHY CHANGE:**
+This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT incremental fixes.
 
-1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
+**FUNDAMENTAL RULES:**
 
-2.  **EXTRACT KEY-VALUE PAIRS:** For each invoice, extract the following fields: "no", "hawbNo", "receiverAddress", "rawOcrAddress", "receiverPhone", "receiverCompanyName", and "receiverName".
+1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item.
 
-3.  **SEPARATE COMPANY AND PERSONAL NAME:**
-    *   Intelligently separate company/organization names and personal names. If separation is impossible, place the entire text in both "receiverCompanyName" and "receiverName". If only one type exists, place it in the appropriate field.
+2.  **EXTRACT CORE FIELDS:** For each invoice, extract: "no", "hawbNo", "receiverAddress", "rawOcrAddress", "receiverPhone", "receiverCompanyName", "receiverName".
 
-4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    *   Translate "receiverName" and "receiverCompanyName" to Korean if they are in English/Romanized Korean. Store them in "receiverNameKorean" and "receiverCompanyNameKorean". If already in Korean, just copy them.
+3.  **NAME TRANSLATION:** Translate names to Korean if in English/Romanized Korean.
+
+**ADDRESS PROCESSING - COMPLETE REDESIGN:**
+
+*   **STEP 1: PRESERVE RAW OCR**
+    - "rawOcrAddress": COMPLETE, UNALTERED text from address block
+    - Preserve ALL characters, spacing, and line breaks
+
+*   **STEP 2: KOREAN ADDRESS GRAMMAR-BASED PARSING**
+    - **TOKENIZE:** Break address into meaningful components
+    - **CLASSIFY:** Identify component types using Korean address grammar:
+      - Administrative: "서울", "송파구", "성남시 수정구"
+      - Road Names: "~로", "~길", "~대로" patterns  
+      - Building Numbers: Standalone numbers or ranges
+      - Building Complexes: "아파트", "빌딩", "타워"
+      - Unit Information: "동", "호", "층", "F"
     
-    *   **STEP 1 (DATA INTEGRITY): Extract Raw OCR Address.** 
-        - Create a key named "rawOcrAddress". 
-        - In this field, you MUST put the COMPLETE, UNALTERED text from the receiver address block.
-        - Preserve ALL numbers, characters, symbols, and spacing exactly as they appear.
-        - DO NOT omit any part of the address.
-        - Join words broken across lines but preserve all content.
+    - **KOREAN ADDRESS STRUCTURE RULES:**
+      Rule 1: [Administrative Area] + [Road Name] + [Building Number] = Base Address
+      Rule 2: [Everything Else] = Detail Address
+      Rule 3: NEVER split apartment units ("XXX-YYYY", "XXX동 YYY호")
+      Rule 4: Building complexes stay with their unit numbers
 
-    *   **STEP 2 (LITERAL TRANSLATION): Perform a STRICT, LITERAL TRANSLATION of the "rawOcrAddress".**
-        - Translate English words to their Korean equivalents (e.g., 'daero' -> '대로', 'gil' -> '길').
-        - Preserve ALL numbers and symbols exactly as they are.
-        - Let's call this result the "Translated Full Address".
+*   **STEP 3: CONTEXT-FREE ASSEMBLY**
+    - Apply rules WITHOUT considering specific patterns
+    - Base Address = Administrative + Road Name + Building Number (if clear)
+    - Detail Address = All remaining components in original order
 
-    *   **STEP 3 (ENHANCED 3-STEP ASSEMBLY): From the "Translated Full Address", assemble "baseAddressKorean" and "detailAddressKorean" using the following algorithm.**
+*   **STEP 4: MINIMAL CLEANING**
+    - Remove ONLY: repeated countries, postal codes, "Address"/"주소"
+    - PRESERVE: all meaningful Korean address components
 
-        *   **Rule A (Enhanced Self-Correction):** 
-            - Correct obvious OCR errors in road names (e.g., "BUILDING-RO" -> "법원로", "wiryegwa njangro" -> "위례광장로").
-            - **CRITICAL FIX:** Correct "호중대로" -> "중대로" (remove erroneous "호" prefix from road names).
-            - Correct district names: "Seocho-Gu" in Songpa-gu addresses -> "송파구".
-            - **OCR ERROR CORRECTION:** Correct common OCR errors:
-              - "goema" -> "거마" (for "거마로")
-              - "garakro1 9gil" -> "가락로19길"
-              - Other obvious misspellings based on context
-            - For all other cases, prioritize literal translation.
-
-        *   **Rule B (ENHANCED 3-STEP Address Assembly Algorithm):**
-            1.  **STEP 1 - Find Anchor:** Identify the Korean road name (도로명) OR legal dong/ri (법정동/법정리). This is your anchor.
-                - **Road Name Patterns:** "xx로", "xx길", "xx대로" (e.g., "중대로27길", "위례송파로")
-                - **Legal Dong/Ri Patterns:** "xx동", "xx리" (e.g., "가락본동", "문정동")
-                - **Road Name Priority:** Prefer road names over legal dong when both are present.
-
-            2.  **STEP 2 - Find Building/Lot Number (CRITICAL - ENHANCED LOGIC):**
-                - **PRIORITY 1 (IMMEDIATELY BEFORE anchor):** Look ONLY at the text **immediately before** the anchor.
-                  - If there is a number (or number-range) **directly preceding** the anchor, that is the building/lot number.
-                  - **ENHANCED RULE:** If multiple numbers appear before the anchor (e.g., "411, 8, 법원로8길"), use the number **CLOSEST TO THE ANCHOR** as the building number.
-                  - Examples:
-                    - "3-22, 백제고분로12길" → "3-22" (immediately before)
-                    - "411, 8, 법원로8길" → "8" (closest to anchor), "411" goes to detail
-                    - "7, 중대로27길" → "7" (immediately before)
-                
-                - **PRIORITY 2 (IMMEDIATELY AFTER anchor):** **ONLY IF** no number is found immediately before, then look at the text **immediately after** the anchor.
-                  - Example: "올림픽로 99" → "99" (immediately after)
-                  - Example: "백제고분로31길 3" → "3" (immediately after)
-                  - **CRITICAL FIX:** For "wiryeseong daero 16gil" ensure building number is included
-
-                - **CRITICAL PRESERVATION:** The building/lot number from Step 2 **MUST BE INCLUDED** in the \`baseAddressKorean\`.
-
-            3.  **STEP 3 - Extract Detail Address:**
-                - Everything else becomes the detail address.
-                - **CRITICAL:** Never include the building/lot number from Step 2 in the detail address.
-                - **UNIT NUMBER PRESERVATION:** Preserve complete unit numbers like "501호", "103-401", "211동1604호".
-                - **MULTI-UNIT HANDLING:** For ranges like "#924, 925", extract only the first unit "#924".
-                - Examples:
-                  - "3-22, 백제고분로12길 302" → detail: "302"
-                  - "501 호중대로27길 7" → detail: "501호"
-                  - "411, 8, 법원로8길" → detail: "411"
-                  - "#924, 925, 8 법원로8길" → detail: "#924"
-
-            4.  **Assemble \`baseAddressKorean\`:** Combine: [Administrative District] + [Anchor] + [Building/Lot Number from Step 2]
-                - Format: "서울 송파구 백제고분로12길 3-22"
-                - Format: "서울 송파구 중대로27길 7"
-                - Format: "서울 송파구 올림픽로 135"
-                - Format: "서울 송파구 법원로8길 8"
-
-            5.  **Assemble \`detailAddressKorean\`:** Use all remaining text after removing components used in base address.
-
-        *   **Rule C (Enhanced Detail Address Cleaning):**
-            - \`detailAddressKorean\` contains everything that remains after \`baseAddressKorean\` has been assembled.
-            - **MANDATORY CLEANING:** Remove the following from \`detailAddressKorean\`:
-                - Repeated administrative districts
-                - Country names
-                - Postal codes
-                - Generic words like "Address", "주소", "unit", "Building", "Apt"
-            - **PRESERVATION:** Keep apartment unit numbers, building names, room numbers, village names.
-            - **STANDARDIZATION:** 
-                - Format building-room combinations (e.g., "Room 401, Building 103" -> "103-401")
-                - For apartment "동-호" formats, preserve completely
-            - **MULTI-UNIT RANGE HANDLING:** For office ranges "C-819-822", "#924, 925", extract only the first unit "C-819", "#924"
-            - **CRITICAL RULE ('호' Suffix):** Only add '호' to a standalone number if the original OCR text explicitly contained "ho" or "호".
-
-        *   **Rule D (Fallback):** If no road name or legal dong can be identified, construct \`baseAddressKorean\` using available administrative information.
-
-5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+**OUTPUT REQUIREMENTS:**
+- MUST output valid JSON array
+- Same field names and structure as before
+- "baseAddressKorean", "detailAddressKorean" fields preserved
 
 **Example Output:**
 [
   {
     "no": "1",
-    "hawbNo": "SF3296642878806",
-    "receiverName": "Support Ryu",
-    "receiverNameKorean": "류 서포트",
-    "receiverPhone": "01098924075",
-    "receiverAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "rawOcrAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "baseAddressKorean": "서울 송파구 위례송파로 124",
-    "detailAddressKorean": "103-401"
+    "hawbNo": "SF3296367795545",
+    "receiverName": "Lian",
+    "receiverNameKorean": "리안",
+    "receiverPhone": "026855815",
+    "receiverAddress": "Seoul Songpa-Gu 4F, A-SUNG B/D, 462, DOGOK-RO,SONGPA-GU, SEOUL, KOREA (05574) DOGOK-RO 462",
+    "rawOcrAddress": "Seoul Songpa-Gu 4F, A-SUNG B/D, 462, DOGOK-RO,SONGPA-GU, SEOUL, KOREA (05574) DOGOK-RO 462",
+    "baseAddressKorean": "서울 송파구 도곡로 462",
+    "detailAddressKorean": "아성빌딩 4층"
   },
   {
-    "no": "2",
-    "hawbNo": "SF3275782073642",
-    "receiverName": "규은 우",
-    "receiverNameKorean": "우규은",
-    "receiverPhone": "01057191082",
-    "receiverAddress": "송파구 501 호중대로 27 길 7",
-    "rawOcrAddress": "송파구 501 호중대로 27 길 7",
-    "baseAddressKorean": "서울 송파구 중대로27길 7",
-    "detailAddressKorean": "501호"
-  },
-  {
-    "no": "13",
-    "hawbNo": "SF3296201597431",
-    "receiverName": "WONG ON KI",
-    "receiverNameKorean": "왕온기",
-    "receiverPhone": "01026245501",
-    "receiverAddress": "Seoul Songpa-Gu 411, 8, Beobwon-ro 8-gil, Songpa-gu, Seoul, Republic of Korea Beobwon-ro 8-gil 411, 8",
-    "rawOcrAddress": "Seoul Songpa-Gu 411, 8, Beobwon-ro 8-gil, Songpa-gu, Seoul, Republic of Korea Beobwon-ro 8-gil 411, 8",
-    "baseAddressKorean": "서울 송파구 법원로8길 8",
-    "detailAddressKorean": "411"
-  },
-  {
-    "no": "45",
-    "hawbNo": "SF1556005586351",
-    "receiverName": "Lim yeowoon",
-    "receiverNameKorean": "임여운",
-    "receiverPhone": "01040859319",
-    "receiverAddress": "Seoul Songpa-Gu #924, 925, 8 Beobwon-ro 8-gil, Songpa-gu, Seoul, Korea",
-    "rawOcrAddress": "Seoul Songpa-Gu #924, 925, 8 Beobwon-ro 8-gil, Songpa-gu, Seoul, Korea",
-    "baseAddressKorean": "서울 송파구 법원로8길 8",
-    "detailAddressKorean": "#924"
-  },
-  {
-    "no": "1",
-    "hawbNo": "SF3296849740330",
-    "receiverName": "Chulhee Cho",
-    "receiverNameKorean": "조철희",
-    "receiverPhone": "01048597988",
-    "receiverAddress": "Seoul Songpa-gu goema ro 56 104-201",
-    "rawOcrAddress": "Seoul Songpa-gu goema ro 56 104-201",
-    "baseAddressKorean": "서울 송파구 거마로 56",
-    "detailAddressKorean": "104-201"
+    "no": "2", 
+    "hawbNo": "SF3292901875978",
+    "receiverName": "rira seo",
+    "receiverNameKorean": "서리라",
+    "receiverPhone": "01095774279",
+    "receiverAddress": "Seoul Songpa-gu 9, Olympic-ro 30-gil 1208",
+    "rawOcrAddress": "Seoul Songpa-gu 9, Olympic-ro 30-gil 1208",
+    "baseAddressKorean": "서울 송파구 올림픽로30길 9",
+    "detailAddressKorean": "1208"
   }
 ]
 `;
