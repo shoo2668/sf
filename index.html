@@ -681,7 +681,11 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
 
 2.  **EXTRACT CORE FIELDS:** For each invoice, extract: "no", "hawbNo", "receiverAddress", "rawOcrAddress", "receiverPhone", "receiverCompanyName", "receiverName".
 
-3.  **NAME TRANSLATION:** Translate names to Korean if in English/Romanized Korean.
+3.  **NAME TRANSLATION:** 
+    - Translate names to Korean if in English/Romanized Korean
+    - For Chinese names (like "XIA YUXIN"): Convert to Korean pronunciation while preserving original order
+    - For Korean names in Western order (like "경로김"): Reorder to Korean name order ("김경로")
+    - Company names: Translate to Korean while preserving business entity indicators
 
 **ADDRESS PROCESSING - COMPLETE REDESIGN:**
 
@@ -694,29 +698,38 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
     - **CLASSIFY:** Identify component types using Korean address grammar:
       - Administrative: "서울", "송파구", "성남시 수정구"
       - Road Names: "~로", "~길", "~대로" patterns  
-      - Building Numbers: Standalone numbers or ranges
-      - Building Complexes: "아파트", "빌딩", "타워"
-      - Unit Information: "동", "호", "층", "F"
+      - Building Numbers: Standalone numbers or ranges with hyphens
+      - Building Complexes: "아파트", "빌딩", "타워", "상가"
+      - Unit Information: "동", "호", "층", "F", "Room", "Unit"
     
     - **KOREAN ADDRESS STRUCTURE RULES:**
       Rule 1: [Administrative Area] + [Road Name] + [Building Number] = Base Address
       Rule 2: [Everything Else] = Detail Address
       Rule 3: NEVER split apartment units ("XXX-YYYY", "XXX동 YYY호")
       Rule 4: Building complexes stay with their unit numbers
+      Rule 5: If building number is clear (like "19", "8-7", "12-8"), include it in base address
+      Rule 6: Building names and unit details go to detail address
 
 *   **STEP 3: CONTEXT-FREE ASSEMBLY**
     - Apply rules WITHOUT considering specific patterns
     - Base Address = Administrative + Road Name + Building Number (if clear)
     - Detail Address = All remaining components in original order
+    - If no clear detail address, leave as empty string
 
 *   **STEP 4: MINIMAL CLEANING**
-    - Remove ONLY: repeated countries, postal codes, "Address"/"주소"
+    - Remove ONLY: repeated countries, postal codes, "Address"/"주소", redundant road duplicates
     - PRESERVE: all meaningful Korean address components
+
+**COMPANY NAME PROCESSING:**
+- If company name field is empty in OCR, output empty string
+- If company name matches receiver name, it's likely personal delivery
+- Translate company names to Korean while preserving business entities ("Co., Ltd" → "주식회사")
 
 **OUTPUT REQUIREMENTS:**
 - MUST output valid JSON array
 - Same field names and structure as before
 - "baseAddressKorean", "detailAddressKorean" fields preserved
+- For empty fields, use empty strings (not null)
 
 **Example Output:**
 [
@@ -726,6 +739,8 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
     "receiverName": "Lian",
     "receiverNameKorean": "리안",
     "receiverPhone": "026855815",
+    "receiverCompanyName": "",
+    "receiverCompanyNameKorean": "",
     "receiverAddress": "Seoul Songpa-Gu 4F, A-SUNG B/D, 462, DOGOK-RO,SONGPA-GU, SEOUL, KOREA (05574) DOGOK-RO 462",
     "rawOcrAddress": "Seoul Songpa-Gu 4F, A-SUNG B/D, 462, DOGOK-RO,SONGPA-GU, SEOUL, KOREA (05574) DOGOK-RO 462",
     "baseAddressKorean": "서울 송파구 도곡로 462",
@@ -737,6 +752,8 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
     "receiverName": "rira seo",
     "receiverNameKorean": "서리라",
     "receiverPhone": "01095774279",
+    "receiverCompanyName": "",
+    "receiverCompanyNameKorean": "",
     "receiverAddress": "Seoul Songpa-gu 9, Olympic-ro 30-gil 1208",
     "rawOcrAddress": "Seoul Songpa-gu 9, Olympic-ro 30-gil 1208",
     "baseAddressKorean": "서울 송파구 올림픽로30길 9",
