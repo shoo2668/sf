@@ -1485,6 +1485,92 @@ const sendCompletionNotification = (item) => {
 
         // --- Modal & Core Logic Functions ---
 
+        // ▼▼▼ [추가 시작] 수동 카드 추가 관련 함수들 ▼▼▼
+        const openManualAddModal = () => {
+            // 1. 다음 순번을 자동으로 계산하여 입력 필드에 설정
+            const nextNo = Math.max(0, ...deliveryItems.map(item => item.no)) + 1;
+            manualNoInput.value = nextNo;
+
+            // 2. 기존 입력 내용 초기화
+            manualHawbInput.value = '';
+            manualAddressInput.value = '';
+            manualNameInput.value = '';
+            manualCompanyInput.value = '';
+            manualPhoneInput.value = '';
+
+            // 3. 모달 표시
+            document.body.classList.add('modal-open');
+            manualAddCardModal.style.display = 'flex';
+        };
+
+        const closeManualAddModal = () => {
+            document.body.classList.remove('modal-open');
+            manualAddCardModal.style.display = 'none';
+        };
+
+        const handleCreateManualCard = () => {
+            // 1. 입력 필드에서 값 가져오기
+            const no = parseInt(manualNoInput.value, 10);
+            const hawbNo = manualHawbInput.value.trim();
+            const fullAddress = manualAddressInput.value.trim();
+            const receiverName = manualNameInput.value.trim();
+            const companyName = manualCompanyInput.value.trim();
+            const phone = manualPhoneInput.value.trim();
+
+            // 2. 필수 값(순번, 주소) 유효성 검사
+            if (isNaN(no) || !fullAddress) {
+                showMessage('순번과 주소는 필수 입력 항목입니다.');
+                return;
+            }
+            if (deliveryItems.some(item => item.no === no)) {
+                showMessage(`순번 ${no}번은 이미 존재합니다. 다른 번호를 사용해주세요.`);
+                return;
+            }
+
+            // 3. 주소를 기본 주소와 상세 주소로 분리 (쉼표 기준)
+            const addressParts = fullAddress.split(',');
+            const baseAddress = addressParts[0] ? addressParts[0].trim() : '';
+            const detailAddress = addressParts[1] ? addressParts[1].trim() : '';
+
+            // 4. 새로운 카드 객체 생성
+            const newCard = {
+                no: no,
+                hawbNo: hawbNo,
+                baseAddress: baseAddress,
+                detailAddress: detailAddress,
+                feedback_status: 'USER_CORRECTED', // 수동 입력은 사용자가 수정한 것으로 간주
+                original_ocr_address: '수동 입력',
+                ai_base_address: baseAddress,
+                ai_detail_address: detailAddress,
+                companyNameOriginal: companyName,
+                receiverNameOriginal: receiverName,
+                companyNameKorean: companyName,
+                receiverNameKorean: receiverName,
+                receiverNameKoreanOriginal: receiverName,
+                receiverTelephoneNo: getCleanPhoneNumber(phone),
+                status: '배송전', // 기본 상태는 '배송전'
+                isHawbConfirmed: false,
+                deliveryCompletionTime: null,
+                completionType: null,
+                completionDetail: null,
+                addressLocation: null,
+                isStruckThrough: false,
+                isAddressValidated: false // 수동 입력은 미검증 상태로 시작
+            };
+
+            // 5. 전체 데이터에 추가하고 저장
+            deliveryItems.push(newCard);
+            deliveryItems.sort((a, b) => a.no - b.no); // 순번으로 정렬
+            saveDeliveryItemsToLocalStorage();
+
+            // 6. UI 업데이트 및 피드백
+            updateFilterCounts();
+            renderDeliveryCards(activeFilter);
+            closeManualAddModal();
+            showToastMessage(`${no}번 카드가 성공적으로 생성되었습니다.`);
+        };
+        // ▲▲▲ [추가 끝] ▲▲▲
+
         function autoResizeTextarea(event) {
             const textarea = event.target;
             textarea.style.height = 'auto';
@@ -3538,6 +3624,15 @@ const sendCompletionNotification = (item) => {
             smartEditModal.addEventListener('click', (event) => { if (event.target === smartEditModal) closeSmartEditModal(); });
             cancelSignatureBtn.addEventListener('click', closeSignatureModal);
             signatureModal.addEventListener('click', (event) => { if (event.target === signatureModal) closeSignatureModal(); });
+
+            // ▼▼▼ [추가 시작] 수동 카드 추가 모달 이벤트 리스너 ▼▼▼
+            manualAddCardButton.addEventListener('click', openManualAddModal);
+            manualAddCancelBtn.addEventListener('click', closeManualAddModal);
+            manualAddCreateBtn.addEventListener('click', handleCreateManualCard);
+            manualAddCardModal.addEventListener('click', (event) => {
+                if (event.target === manualAddCardModal) closeManualAddModal();
+            });
+            // ▲▲▲ [추가 끝] ▲▲▲
 
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
