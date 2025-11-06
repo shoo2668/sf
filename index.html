@@ -761,6 +761,8 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
       Rule 6: Building names and unit details go to detail address
       Rule 7: For apartment complexes, keep the full complex name with unit info in detail address
       Rule 8: Preserve original Korean road names - DO NOT "correct" proper nouns
+      Rule 9: **BUILDING/ROOM CONVERSION:** "Building X, Room Y" → "X동 Y호" ("Building 101, Room 302" → "101동 302호")
+      Rule 10: **UNIT RANGE SIMPLIFICATION:** For unit ranges with ALPHANUMERIC PREFIXES only ("C-819-822" → "C-819"). Preserve pure numeric ranges ("101-105") as they are likely apartment units.
 
 *   **STEP 3: CONTEXT-FREE ASSEMBLY**
     - Apply rules WITHOUT considering specific patterns
@@ -784,6 +786,8 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
 - For addresses with both building name and unit numbers, preserve the relationship
 - If OCR has obvious errors but intent is clear, correct minimally
 - **PRESERVE ORIGINAL KOREAN CHARACTERS** in road names - they are proper nouns
+- **BUILDING/ROOM CONVERSION:** Convert "Building X, Room Y" to "X동 Y호" format
+- **UNIT RANGE SIMPLIFICATION:** Simplify unit ranges ONLY for alphanumeric prefixes (e.g., "C-819-822" → "C-819"). Preserve pure numeric ranges (e.g., "101-105") as apartment units.
 
 **OUTPUT REQUIREMENTS:**
 - MUST output valid JSON array
