@@ -733,7 +733,7 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
     - For Korean names in Western order (like "경로김"): Reorder to Korean name order ("김경로")
     - Company names: Translate to Korean while preserving business entity indicators
 
-**ADDRESS PROCESSING - COMPLETE REDESIGN:**
+**ADDRESS PROCESSING - ENHANCED PARSING:**
 
 *   **STEP 1: PRESERVE RAW OCR**
     - "rawOcrAddress": COMPLETE, UNALTERED text from address block
@@ -744,38 +744,50 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
     - **CLASSIFY:** Identify component types using Korean address grammar:
       - Administrative: "서울", "송파구", "성남시 수정구"
       - Road Names: "~로", "~길", "~대로" patterns  
-      - Building Numbers: Standalone numbers or ranges with hyphens
-      - Building Complexes: "아파트", "빌딩", "타워", "상가"
-      - Unit Information: "동", "호", "층", "F", "Room", "Unit"
+      - Building Numbers: Standalone numbers, ranges with hyphens, or mixed formats like "12-3"
+      - Building Complexes: "아파트", "빌딩", "타워", "상가", "APT", "B/D"
+      - Unit Information: "동", "호", "층", "F", "Room", "Unit", "Dong", "Ho"
     
-    - **KOREAN ADDRESS STRUCTURE RULES:**
+    - **ENHANCED KOREAN ADDRESS STRUCTURE RULES:**
       Rule 1: [Administrative Area] + [Road Name] + [Building Number] = Base Address
       Rule 2: [Everything Else] = Detail Address
       Rule 3: NEVER split apartment units ("XXX-YYYY", "XXX동 YYY호")
       Rule 4: Building complexes stay with their unit numbers
-      Rule 5: If building number is clear (like "19", "8-7", "12-8"), include it in base address
+      Rule 5: Building number detection improvements:
+        - Recognize hyphenated numbers as single building numbers ("12-3", "20-16")
+        - If multiple numbers appear, the one immediately after road name is building number
+        - Preserve original hyphenated format in base address
       Rule 6: Building names and unit details go to detail address
+      Rule 7: For apartment complexes, keep the full complex name with unit info in detail address
+      Rule 8: If no clear building number is found after road name, use the first standalone number
 
 *   **STEP 3: CONTEXT-FREE ASSEMBLY**
     - Apply rules WITHOUT considering specific patterns
-    - Base Address = Administrative + Road Name + Building Number (if clear)
-    - Detail Address = All remaining components in original order
-    - If no clear detail address, leave as empty string
+    - Base Address = Administrative + Road Name + Building Number (preserve original format)
+    - Detail Address = All remaining components in logical order
+    - NEVER leave detail address empty if there are clear unit indicators (동, 호, 층, Room, Unit, etc.)
 
 *   **STEP 4: MINIMAL CLEANING**
     - Remove ONLY: repeated countries, postal codes, "Address"/"주소", redundant road duplicates
     - PRESERVE: all meaningful Korean address components
+    - Normalize Korean building indicators: "APT" → "아파트", "B/D" → "빌딩"
 
 **COMPANY NAME PROCESSING:**
 - If company name field is empty in OCR, output empty string
 - If company name matches receiver name, it's likely personal delivery
 - Translate company names to Korean while preserving business entities ("Co., Ltd" → "주식회사")
 
+**SPECIAL CASES HANDLING:**
+- For addresses with "XXX-XXX" pattern after building number, treat as "동-호" in detail address
+- For addresses with both building name and unit numbers, preserve the relationship
+- If OCR has obvious errors but intent is clear, correct minimally (e.g., "Hyndai" → "현대")
+
 **OUTPUT REQUIREMENTS:**
 - MUST output valid JSON array
 - Same field names and structure as before
 - "baseAddressKorean", "detailAddressKorean" fields preserved
 - For empty fields, use empty strings (not null)
+- Ensure detail address is never empty when unit information exists
 
 **Example Output:**
 [
@@ -804,6 +816,19 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
     "rawOcrAddress": "Seoul Songpa-gu 9, Olympic-ro 30-gil 1208",
     "baseAddressKorean": "서울 송파구 올림픽로30길 9",
     "detailAddressKorean": "1208"
+  },
+  {
+    "no": "3",
+    "hawbNo": "SF3292239044053", 
+    "receiverName": "Minji Kang",
+    "receiverNameKorean": "강민지",
+    "receiverPhone": "01031241562",
+    "receiverCompanyName": "",
+    "receiverCompanyNameKorean": "",
+    "receiverAddress": "Seoul Songpa-gu 12-3, Songi-ro 19-gil 103-602",
+    "rawOcrAddress": "Seoul Songpa-gu 12-3, Songi-ro 19-gil 103-602",
+    "baseAddressKorean": "서울 송파구 송이로19길 12-3",
+    "detailAddressKorean": "103동 602호"
   }
 ]
 `;
