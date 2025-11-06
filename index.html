@@ -753,10 +753,11 @@ This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT in
       Rule 2: [Everything Else] = Detail Address
       Rule 3: NEVER split apartment units ("XXX-YYYY", "XXX동 YYY호")
       Rule 4: Building complexes stay with their unit numbers
-      Rule 5: **BUILDING NUMBER DETECTION PRIORITY:**
-        - Primary: Numbers immediately following road name
-        - Secondary: Hyphenated numbers ("104-7", "20-13") take precedence over standalone numbers
-        - If multiple numbers: prefer the one that makes geographical sense
+      Rule 5: **BUILDING NUMBER DETECTION PRIORITY (CRITICAL UPDATE):**
+        - **PRIMARY:** Number immediately PRECEDING road name ("12-8, Saemal-ro 17-gil" → "새말로17길 12-8")
+        - **SECONDARY:** Number immediately FOLLOWING road name (if no primary found)
+        - **CONTEXTUAL:** Only if above fail, use contextual clues
+        - **UNIT PATTERNS:** "XXX-XXX" patterns after building number = 동호수 (detail address)
       Rule 6: Building names and unit details go to detail address
       Rule 7: For apartment complexes, keep the full complex name with unit info in detail address
       Rule 8: Preserve original Korean road names - DO NOT "correct" proper nouns
