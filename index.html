@@ -716,66 +716,113 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 // ▲▲▲▲▲ [수정 끝] ▲▲▲▲▲
 
 
-const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array. Your primary goals are 1) Flawless OCR of ALL text including tracking numbers, and 2) Assembling addresses based on proven Korean address rules.
+const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array.
 
-**CRITICAL DATA INTEGRITY RULES:**
-- **PRESERVE ALL TEXT EXACTLY:** Never modify, deduplicate, or alter any characters in tracking numbers, phone numbers, or addresses
-- **HAWB NUMBER PRESERVATION:** Keep ALL digits in tracking numbers exactly as recognized (e.g., "123345" must remain "123345", NOT "12345")
-- **NO SPACE INSERTION:** Preserve original spacing in all fields, especially tracking numbers
+**CRITICAL PHILOSOPHY CHANGE:**
+This is a COMPLETE REDESIGN based on Korean address grammar fundamentals, NOT incremental fixes.
 
 **FUNDAMENTAL RULES:**
 
-1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item. An "no" is essential for each item.
+1.  **IDENTIFY EACH INVOICE:** Treat each logical invoice area as a separate item.
 
 2.  **EXTRACT CORE FIELDS:** For each invoice, extract: "no", "hawbNo", "receiverAddress", "rawOcrAddress", "receiverPhone", "receiverCompanyName", "receiverName".
 
-3.  **SEPARATE COMPANY AND PERSONAL NAME:**
-    *   Intelligently separate company/organization names and personal names. If separation is impossible, place the entire text in both fields.
+3.  **NAME TRANSLATION:** 
+    - Translate names to Korean if in English/Romanized Korean
+    - For Chinese names: Convert to Korean pronunciation while preserving original order
+    - For Korean names in Western order: Reorder to Korean name order
+    - Company names: Translate to Korean while preserving business entity indicators
 
-4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    *   Translate names to Korean if in English/Romanized Korean.
+**ADDRESS PROCESSING - ENHANCED PARSING:**
+
+*   **STEP 1: PRESERVE RAW OCR**
+    - "rawOcrAddress": COMPLETE, UNALTERED text from address block
+    - Preserve ALL characters, spacing, and line breaks
+
+*   **STEP 2: KOREAN ADDRESS GRAMMAR-BASED PARSING**
+    - **TOKENIZE:** Break address into meaningful components
+    - **CLASSIFY:** Identify component types using Korean address grammar:
+      - Administrative: "경기", "화성시", "봉담읍", "양감면", "향남읍", "정남면"
+      - Road Names: "~로", "~길", "~번길", "~대로" patterns  
+      - Building Numbers: Standalone numbers, ranges with hyphens, or mixed formats like "104-7", "20-13"
+      - Building Complexes: "아파트", "빌딩", "타워", "상가", "APT", "B/D", "프라자"
+      - Unit Information: "동", "호", "층", "F", "Room", "Unit", "Dong", "Ho"
     
-    *   **STEP 1 (DATA INTEGRITY): Extract Raw OCR Address.** 
-        - "rawOcrAddress": COMPLETE, UNALTERED text from receiver address block
-        - Preserve ALL characters, spacing exactly as they appear
-
-    *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
-        - Translate English words to Korean equivalents
-        - Preserve ALL numbers and symbols exactly
-
-    *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
-
-        **BUILDING NUMBER DETECTION (PROVEN RULES):**
+    - **ENHANCED KOREAN ADDRESS STRUCTURE RULES:**
+      Rule 1: [Administrative Area] + [Road Name] + [Building Number] = Base Address
+      Rule 2: [Everything Else] = Detail Address
+      Rule 3: NEVER split apartment units ("XXX-YYYY", "XXX동 YYY호")
+      Rule 4: Building complexes stay with their unit numbers
+      Rule 5: **BUILDING NUMBER DETECTION PRIORITY (CRITICAL UPDATE):**
         - **PRIMARY:** Number immediately PRECEDING road name ("12-8, Saemal-ro 17-gil" → "새말로17길 12-8")
         - **SECONDARY:** Number immediately FOLLOWING road name (if no primary found)
-        - **CLOSEST TO ANCHOR:** If multiple numbers before anchor, use closest one
+        - **CONTEXTUAL:** Only if above fail, use contextual clues
+        - **UNIT PATTERNS:** "XXX-XXX" patterns after building number = 동호수 (detail address)
+      Rule 6: Building names and unit details go to detail address
+      Rule 7: For apartment complexes, keep the full complex name with unit info in detail address
+      Rule 8: Preserve original Korean road names - DO NOT "correct" proper nouns
+      Rule 9: **BUILDING/ROOM CONVERSION:** "Building X, Room Y" → "X동 Y호" ("Building 101, Room 302" → "101동 302호")
+      Rule 10: **UNIT RANGE SIMPLIFICATION:** For unit ranges with ALPHANUMERIC PREFIXES only ("C-819-822" → "C-819"). Preserve pure numeric ranges ("101-105") as they are likely apartment units.
 
-        **ADDRESS ASSEMBLY:**
-        - Base Address = [Administrative District] + [Road Name] + [Building Number]
-        - Detail Address = Everything else (unit numbers, building names, etc.)
-        - **CRITICAL:** Never include building number from base address in detail address
+*   **STEP 3: CONTEXT-FREE ASSEMBLY**
+    - Apply rules WITHOUT considering specific patterns
+    - Base Address = Administrative + Road Name + Building Number (preserve original format)
+    - Detail Address = All remaining components in logical order
+    - **CRITICAL:** NEVER leave detail address empty if there are clear unit indicators (동, 호, 층, Room, Unit, etc.)
 
-        **UNIT PROCESSING:**
-        - Preserve complete unit numbers: "501호", "103-401", "211동1604호"
-        - For office ranges "C-819-822", use first unit "C-819"
-        - For apartment ranges "101-105", preserve completely
+*   **STEP 4: OCR ERROR CORRECTION & VALIDATION**
+    - **PRESERVE KOREAN PROPER NOUNS:** Do NOT "correct" Korean road names (e.g., "샘마을길", "작은돌래길")
+    - Only correct obvious OCR errors in administrative units (e.g., "bondam" → "bongdam")
+    - Validate building number patterns: "XXX-XX" format should be preserved as building number
+    - If address contains both "XXX-XXX" and building number, treat "XXX-XXX" as detail address
 
-5.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+**COMPANY NAME PROCESSING:**
+- If company name field is empty in OCR, output empty string
+- If company name matches receiver name, it's likely personal delivery
+- Translate company names to Korean while preserving business entities ("Co., Ltd" → "주식회사")
+
+**SPECIAL CASES HANDLING:**
+- For addresses with "XXX-XXX" pattern after building number, treat as "동-호" in detail address
+- For addresses with both building name and unit numbers, preserve the relationship
+- If OCR has obvious errors but intent is clear, correct minimally
+- **PRESERVE ORIGINAL KOREAN CHARACTERS** in road names - they are proper nouns
+- **BUILDING/ROOM CONVERSION:** Convert "Building X, Room Y" to "X동 Y호" format
+- **UNIT RANGE SIMPLIFICATION:** Simplify unit ranges ONLY for alphanumeric prefixes (e.g., "C-819-822" → "C-819"). Preserve pure numeric ranges (e.g., "101-105") as apartment units.
+
+**OUTPUT REQUIREMENTS:**
+- MUST output valid JSON array
+- Same field names and structure as before
+- "baseAddressKorean", "detailAddressKorean" fields preserved
+- For empty fields, use empty strings (not null)
+- Ensure detail address is never empty when unit information exists
 
 **Example Output:**
 [
   {
     "no": "1",
-    "hawbNo": "SF3296642878806",
-    "receiverName": "Support Ryu",
-    "receiverNameKorean": "류 서포트",
-    "receiverPhone": "01098924075",
-    "receiverCompanyName": "",
-    "receiverCompanyNameKorean": "",
-    "receiverAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "rawOcrAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "baseAddressKorean": "서울 송파구 위례송파로 124",
-    "detailAddressKorean": "103-401"
+    "hawbNo": "SF3189975401859",
+    "receiverName": "DONGGI Jo",
+    "receiverNameKorean": "조동기",
+    "receiverPhone": "01033542581",
+    "receiverCompanyName": "DONGGI Jo",
+    "receiverCompanyNameKorean": "DONGGI Jo",
+    "receiverAddress": "Hwaseong-si 31, Byeongjeomnoeul-ro, Hwaseong-si, 124dong 704ho",
+    "rawOcrAddress": "Hwaseong-si 31, Byeongjeomnoeul-ro, Hwaseong-si, 124dong 704ho",
+    "baseAddressKorean": "경기 화성시 병점노을로 31",
+    "detailAddressKorean": "124동 704호"
+  },
+  {
+    "no": "14",
+    "hawbNo": "SF1534209692767", 
+    "receiverName": "Choi Yong Tae",
+    "receiverNameKorean": "최용태",
+    "receiverPhone": "087596189",
+    "receiverCompanyName": "Choi Yong Tae",
+    "receiverCompanyNameKorean": "Choi Yong Tae",
+    "receiverAddress": "Gyeonggi-Do Hwaseong-Si 202, 104-7, Tteokjeongol-ro, Hwaseong-si, Gyeonggi-do, Republic of Korea",
+    "rawOcrAddress": "Gyeonggi-Do Hwaseong-Si 202, 104-7, Tteokjeongol-ro, Hwaseong-si, Gyeonggi-do, Republic of Korea",
+    "baseAddressKorean": "경기 화성시 떡전골로 104-7",
+    "detailAddressKorean": "202"
   }
 ]
 `;
