@@ -2877,7 +2877,18 @@ const sendCompletionNotification = (item) => {
                         contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
                         generationConfig: { temperature: 0, responseMimeType: "application/json" }
                     };
-                    const tempApiKeyForLocalTest = "AIzaSyDYHHad8csblHGH4GCMMPQNZtWYl1DClNE";
+                    // 1. 브라우저 저장소에서 키를 가져옴
+let tempApiKeyForLocalTest = localStorage.getItem('gemini_api_key');
+
+// 2. 저장된 키가 없으면 화면에 입력창을 띄움
+if (!tempApiKeyForLocalTest) {
+    tempApiKeyForLocalTest = prompt("Gemini API 키를 입력해주세요 (한 번만 입력하면 저장됩니다):");
+    if (tempApiKeyForLocalTest) {
+        localStorage.setItem('gemini_api_key', tempApiKeyForLocalTest);
+    } else {
+        alert("API 키가 없으면 스캔 기능을 사용할 수 없습니다.");
+    }
+}
                     const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                     const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
