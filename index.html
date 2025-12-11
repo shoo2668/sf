@@ -2853,7 +2853,7 @@ const sendCompletionNotification = (item) => {
                         contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
                         generationConfig: { temperature: 0, responseMimeType: "application/json" }
                     };
-                    const tempApiKeyForLocalTest = "AIzaSyD8ZGE4WyIGatmPzRkJijnOt8PqtnLFyds";
+                    const tempApiKeyForLocalTest = "AIzaSyBWVr60kCgEa9zy5XR7q88vMi8zEH7RQCQ";
                     const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                     const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
