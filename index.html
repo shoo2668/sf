@@ -720,6 +720,11 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
 **CRITICAL DATA INTEGRITY RULES:**
 - **PRESERVE ALL TEXT EXACTLY:** Never modify, deduplicate, or alter any characters in phone numbers or addresses
+- **LINE BREAK NORMALIZATION (NEW RULE):**
+  * Preserve line breaks in initial OCR recognition
+  * During text processing, intelligently rejoin words broken by line breaks
+  * Example: "YEONGHW\\nAN AN" → "YEONGHWAN AN" → "영환 안"
+  * Rule: If a word is split across lines without spaces, rejoin it before processing
 - **HAWB NUMBER PROCESSING:** 
   * Extract ALL digits and letters from tracking numbers exactly as recognized
   * **REMOVE ALL SPACES from hawNo field** (e.g., "SF329664287 8806" → "SF3296642878806")
@@ -732,21 +737,30 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
 2.  **EXTRACT CORE FIELDS:** For each invoice, extract: "no", "hawbNo", "receiverAddress", "rawOcrAddress", "receiverPhone", "receiverCompanyName", "receiverName".
 
-3.  **SEPARATE COMPANY AND PERSONAL NAME:**
-    *   Intelligently separate company/organization names and personal names. If separation is impossible, place the entire text in both fields.
+3.  **TEXT NORMALIZATION FOR KOREAN NAMES:**
+    * **STEP 1 - LINE BREAK HANDLING:** Rejoin words broken by line breaks before any processing
+    * **STEP 2 - KOREAN NAME DETECTION:** Recognize common Korean name patterns (2-4 characters, consonant+vowel structure)
+    * **STEP 3 - ROMANIZED KOREAN PROCESSING:** When detecting Romanized Korean names:
+      - Rejoin split words: "YEONGHW\\nAN" → "YEONGHWAN"
+      - Apply standard Romanization reversal rules
+    * **STEP 4 - TRANSLATION:** Translate Romanized Korean to Hangul using standard conversion rules
 
 4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    *   Translate names to Korean if in English/Romanized Korean.
+    * Translate names to Korean if in English/Romanized Korean.
     
     *   **STEP 1 (DATA INTEGRITY): Extract Raw OCR Address.** 
         - "rawOcrAddress": COMPLETE, UNALTERED text from receiver address block
-        - Preserve ALL characters, spacing exactly as they appear
+        - Preserve line break markers for later processing
 
-    *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
+    *   **STEP 2 (LINE BREAK NORMALIZATION):**
+        - Process line breaks in addresses: rejoin words that are clearly split
+        - Example: "Songpa-\\ngu Wirye-\\nsongpa-ro" → "Songpa-gu Wirye-songpa-ro"
+
+    *   **STEP 3 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of normalized address
         - Translate English words to Korean equivalents
         - Preserve ALL numbers and symbols exactly
 
-    *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
+    *   **STEP 4 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
         **BUILDING NUMBER DETECTION (PROVEN RULES):**
         - **PRIMARY:** Number immediately PRECEDING road name ("12-8, Saemal-ro 17-gil" → "새말로17길 12-8")
@@ -769,21 +783,31 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     *   Example: "SF 329664287 8806" → "SF3296642878806"
     *   Example: "123 456 789" → "123456789"
 
-6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+6.  **ROMANIZED KOREAN NAME PATTERNS:**
+    * Common patterns to recognize and rejoin:
+      - Last name + first name split: "KIM\\nMINHO" → "KIM MINHO" → "김민호"
+      - First name split: "YEONGHW\\nAN" → "YEONGHWAN" → "영환"
+      - Two-character names: "SU\\nJI" → "SUJI" → "수지"
+    
+    * Apply standard Romanization rules:
+      - "EO" = "어", "EU" = "으", "AE" = "애"
+      - Double consonants: "BB" = "ㅃ", "JJ" = "ㅉ", etc.
 
-**Example Output:**
+7.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
+
+**Example Output with Line Break Handling:**
 [
   {
     "no": "1",
     "hawbNo": "SF3296642878806",
-    "receiverName": "Support Ryu",
-    "receiverNameKorean": "류 서포트",
+    "receiverName": "YEONGHWAN AN",
+    "receiverNameKorean": "안영환",
     "receiverPhone": "01098924075",
     "receiverCompanyName": "",
     "receiverCompanyNameKorean": "",
-    "receiverAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "rawOcrAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "baseAddressKorean": "서울 송파구 위례송파로 124",
+    "receiverAddress": "seoul Songpa-gu Wiryesongpa-ro, Songpa-gu, SeoulRoom 401, Building 103",
+    "rawOcrAddress": "seoul Songpa-gu\\nWiryesongpa-ro, Songpa-gu, Seoul\\nRoom 401, Building 103",
+    "baseAddressKorean": "서울 송파구 위례송파로",
     "detailAddressKorean": "103-401"
   }
 ]
