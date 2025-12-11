@@ -2850,7 +2850,7 @@ const sendCompletionNotification = (item) => {
                 if (isScanCancelled) throw new Error("Scan cancelled");
                 try {
                     const payload = {
-                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inline_Data: { mime_Type: 'image/jpeg', data: base64ImageData } }] }],
+                        contents: [{ role: "user", parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: 'image/jpeg', data: base64ImageData } }] }],
                         generationConfig: { temperature: 0, responseMimeType: "application/json" }
                     };
                     const tempApiKeyForLocalTest = "AIzaSyDYHHad8csblHGH4GCMMPQNZtWYl1DClNEv";
