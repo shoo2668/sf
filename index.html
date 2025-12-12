@@ -720,15 +720,10 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
 **CRITICAL DATA INTEGRITY RULES:**
 - **PRESERVE ALL TEXT EXACTLY:** Never modify, deduplicate, or alter any characters in phone numbers or addresses
-- **LINE BREAK CORRECTION FOR NAMES (NEW RULE):**
-  * Recognize and fix common Korean name splitting errors caused by line breaks
-  * "BOKYOUN G AN" → "BOKYOUNG AN" (most common pattern: G/Y split)
-  * "YEONGHW AN AN" → "YEONGHWAN AN"
-  * "MINJ I" → "MINJI"
-  * "JUNGH YUN" → "JUNGHYUN"
+- **LINE BREAK PROCESSING:** When text is split across multiple lines, concatenate without adding spaces
 - **HAWB NUMBER PROCESSING:** 
   * Extract ALL digits and letters from tracking numbers exactly as recognized
-  * **REMOVE ALL SPACES from hawNo field** (e.g., "SF327469962 8843" → "SF3274699628843")
+  * **REMOVE ALL SPACES from hawNo field** (e.g., "SF329664287 8806" → "SF3296642878806")
   * Never add or insert spaces in tracking numbers
 - **NO SPACE INSERTION IN OTHER FIELDS:** Preserve original spacing in all other fields (addresses, names, etc.)
 
@@ -738,27 +733,15 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 
 2.  **EXTRACT CORE FIELDS:** For each invoice, extract: "no", "hawbNo", "receiverAddress", "rawOcrAddress", "receiverPhone", "receiverCompanyName", "receiverName".
 
-3.  **KOREAN NAME SPECIFIC PROCESSING:**
-    * **STEP 1 - LINE BREAK FIXING:** Apply these specific fixes for common OCR errors in Korean names:
-      - Pattern 1: "BOKYOUN G AN" → "BOKYOUNG AN" (G/Y correction)
-      - Pattern 2: "YEONGHW AN AN" → "YEONGHWAN AN" (missing N/Y)
-      - Pattern 3: Single letter between two words → merge with previous word
-      - Pattern 4: Duplicated last character → remove duplicate
-    * **STEP 2 - NAME SEPARATION:**
-      - Split into surname and given name based on Korean naming conventions
-      - Common Korean surnames: AN, LEE, KIM, PARK, CHOI, JUNG, etc.
-      - "BOKYOUNG AN" → surname: "AN", given name: "BOKYOUNG"
-    * **STEP 3 - KOREAN TRANSLATION:**
-      - Apply standard Revised Romanization to Hangul conversion
-      - "AN" → "안"
-      - "BOKYOUNG" → "보경"
-      - Combine: "보경 안" (given name + surname order)
+3.  **SEPARATE COMPANY AND PERSONAL NAME:**
+    *   Intelligently separate company/organization names and personal names. If separation is impossible, place the entire text in both fields.
 
 4.  **TRANSLATE AND SEPARATE ADDRESS:**
-    * Translate names to Korean if in English/Romanized Korean.
+    *   Translate names to Korean if in English/Romanized Korean.
     
     *   **STEP 1 (DATA INTEGRITY): Extract Raw OCR Address.** 
         - "rawOcrAddress": COMPLETE, UNALTERED text from receiver address block
+        - Preserve ALL characters, spacing exactly as they appear
 
     *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
         - Translate English words to Korean equivalents
@@ -767,7 +750,7 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
         **BUILDING NUMBER DETECTION (PROVEN RULES):**
-        - **PRIMARY:** Number immediately PRECEDING road name ("112, Jeongja-ro" → "정자로 112")
+        - **PRIMARY:** Number immediately PRECEDING road name ("12-8, Saemal-ro 17-gil" → "새말로17길 12-8")
         - **SECONDARY:** Number immediately FOLLOWING road name (if no primary found)
         - **CLOSEST TO ANCHOR:** If multiple numbers before anchor, use closest one
 
@@ -784,47 +767,28 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
 5.  **HAWB NO SPECIFIC PROCESSING:**
     *   After OCR recognition, remove ANY spaces within the tracking number
     *   Ensure hawNo contains only alphanumeric characters without spaces
-    *   Example: "SF327469962 8843" → "SF3274699628843"
+    *   Example: "SF 329664287 8806" → "SF3296642878806"
     *   Example: "123 456 789" → "123456789"
 
-6.  **COMMON KOREAN NAME PATTERNS & CORRECTIONS:**
-    * **FREQUENT LINE BREAK ERRORS TO FIX:**
-      - "BOKYOUN G AN" → "BOKYOUNG AN" → "보경 안"
-      - "YEONGHW AN AN" → "YEONGHWAN AN" → "영환 안"
-      - "MINJ I" → "MINJI" → "민지"
-      - "JUNGH YUN" → "JUNGHYUN" → "정현"
-      - "SUJI N" → "SUJIN" → "수진"
-    * **ROMANIZATION RULES:**
-      - "EO" = "어", "EU" = "으", "AE" = "애"
-      - Double consonants: "BB" = "ㅃ", "JJ" = "ㅉ", "GG" = "ㄲ"
-      - Final consonants: "NG" = "ㅇ", "N" = "ㄴ"
+6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
-7.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
-
-**Example Output for Provided Data:**
+**Example Output:**
 [
   {
-    "no": "19",
-    "hawbNo": "SF3274699628843",
-    "receiverName": "BOKYOUNG AN",
-    "receiverNameKorean": "보경 안",
-    "receiverPhone": "01032415719",
+    "no": "1",
+    "hawbNo": "SF3296642878806",
+    "receiverName": "Support Ryu",
+    "receiverNameKorean": "류 서포트",
+    "receiverPhone": "01098924075",
     "receiverCompanyName": "",
     "receiverCompanyNameKorean": "",
-    "receiverAddress": "Gyeonggi-do Seongnam-si Bundang-gu 112, Jeongja-ro 507-101",
-    "rawOcrAddress": "Gyeonggi-do Seongnam-si Bundang-gu 112, Jeongja-ro 507-101",
-    "baseAddressKorean": "경기도 성남시 분당구 정자로 112",
-    "detailAddressKorean": "507-101"
+    "receiverAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
+    "rawOcrAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
+    "baseAddressKorean": "서울 송파구 위례송파로 124",
+    "detailAddressKorean": "103-401"
   }
-]
-
-**SPECIAL INSTRUCTION FOR THE PROVIDED IMAGE:**
-When processing the image containing "BOKYOUN G AN", you MUST:
-1. Recognize this as a line break error
-2. Correct it to "BOKYOUNG AN"
-3. Translate to "보경 안" (NOT "박영안" or "안보경")
-4. The correct output should show: "보경 안" as receiverNameKorean
-`;
+]`
+;
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
