@@ -1250,6 +1250,7 @@ const sendCompletionNotification = (item) => {
             let cleaned = phoneNumber.replace(/\D/g, '');
 
             if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
+            else if (cleaned.startsWith('008210')) { cleaned = '010' + cleaned.substring(6); }
             else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
