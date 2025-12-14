@@ -728,13 +728,15 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 const GEMINI_PROMPT = `Analyze the provided image containing one or more delivery invoices. Your task is to identify each distinct invoice block and extract its key information into a valid JSON array. Your primary goals are 1) Flawless OCR of ALL text including tracking numbers, and 2) Assembling addresses based on proven Korean address rules.
 
 **CRITICAL DATA INTEGRITY RULES:**
-- **PRESERVE ALL TEXT EXACTLY:** Never modify, deduplicate, or alter any characters in phone numbers or addresses
-- **LINE BREAK PROCESSING:** When text is split across multiple lines, concatenate without adding spaces
+- **PRESERVE ALL TEXT EXACTLY:** Never modify, deduplicate, or alter any characters in phone numbers or addresses.
+- **LINE BREAK PROCESSING (CRITICAL):** 
+  * **KOREAN TEXT:** When Korean text is split across multiple lines, **concatenate it directly WITHOUT adding a space**. (e.g., "성남\n시" → "성남시", "센트\n럴" → "센트럴").
+  * **ENGLISH TEXT:** For English text, treat line breaks as spaces.
 - **HAWB NUMBER PROCESSING:** 
-  * Extract ALL digits and letters from tracking numbers exactly as recognized
-  * **REMOVE ALL SPACES from hawNo field** (e.g., "SF329664287 8806" → "SF3296642878806")
-  * Never add or insert spaces in tracking numbers
-- **NO SPACE INSERTION IN OTHER FIELDS:** Preserve original spacing in all other fields (addresses, names, etc.)
+  * Extract ALL digits and letters from tracking numbers exactly as recognized.
+  * **REMOVE ALL SPACES from hawNo field** (e.g., "SF329664287 8806" → "SF3296642878806").
+  * Never add or insert spaces in tracking numbers.
+- **NO SPACE INSERTION IN OTHER FIELDS:** Preserve original spacing in all other fields (addresses, names, etc.) unless it's a Korean line break.
 
 **FUNDAMENTAL RULES:**
 
@@ -749,12 +751,13 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     *   Translate names to Korean if in English/Romanized Korean.
     
     *   **STEP 1 (DATA INTEGRITY): Extract Raw OCR Address.** 
-        - "rawOcrAddress": COMPLETE, UNALTERED text from receiver address block
-        - Preserve ALL characters, spacing exactly as they appear
+        - "rawOcrAddress": COMPLETE, UNALTERED text from receiver address block.
+        - **IMPORTANT:** Apply the Korean line break rule here. Do NOT insert spaces for Korean line breaks.
+        - Do NOT autocorrect words (e.g., read "센트럴" as "센트럴", do not change to "센터").
 
     *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
-        - Translate English words to Korean equivalents
-        - Preserve ALL numbers and symbols exactly
+        - Translate English words to Korean equivalents.
+        - Preserve ALL numbers and symbols exactly.
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
