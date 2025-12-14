@@ -184,6 +184,8 @@
         }
 
         .confirmation-modal { z-index: 51; }
+        /* ▼▼▼ [수정] 알림창(ID)이 다른 모달보다 항상 위에 뜨도록 z-index를 높임 ▼▼▼ */
+        #confirmation-modal { z-index: 100 !important; }
 
         /* ▼▼▼ [수정] 모달 배경색에 CSS 변수 적용 ▼▼▼ */
         .signature-modal-content, .confirmation-modal-content, .smart-edit-modal-content, .number-jump-modal-content {
