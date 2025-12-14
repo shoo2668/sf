@@ -1245,12 +1245,17 @@ const sendCompletionNotification = (item) => {
             return R * c; // Distance in km
         };
 
-        const formatSinglePhoneNumber = (phoneNumber) => {
+const formatSinglePhoneNumber = (phoneNumber) => {
             if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
             let cleaned = phoneNumber.replace(/\D/g, '');
 
-            if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
-            else if (cleaned.startsWith('008210')) { cleaned = '010' + cleaned.substring(6); }
+            // ▼▼▼ [수정] 0082로 시작하면 0082를 0으로 변경 (008210->010, 00822->02, 008231->031 모두 해결) ▼▼▼
+            if (cleaned.startsWith('0082')) { 
+                cleaned = '0' + cleaned.substring(4); 
+            }
+            // ▲▲▲ [수정 끝] ▲▲▲
+            
+            else if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
             else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
@@ -1289,14 +1294,20 @@ const sendCompletionNotification = (item) => {
             return formatSinglePhoneNumber(phoneNumber.replace(/\D/g, ''));
         };
 
-        const getCleanPhoneNumber = (phoneNumber) => {
+const getCleanPhoneNumber = (phoneNumber) => {
             if (typeof phoneNumber !== 'string' || !phoneNumber) return '';
             const rangeMatch = phoneNumber.match(/^(\d+)-(\d+)$/);
             if (rangeMatch) phoneNumber = rangeMatch[1];
             
             let cleaned = phoneNumber.replace(/\D/g, '');
 
-            if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
+            // ▼▼▼ [수정] 0082로 시작하면 0082를 0으로 변경 (모든 지역번호 통합 처리) ▼▼▼
+            if (cleaned.startsWith('0082')) { 
+                cleaned = '0' + cleaned.substring(4); 
+            }
+            // ▲▲▲ [수정 끝] ▲▲▲
+
+            else if (cleaned.startsWith('+82010')) { cleaned = '010' + cleaned.substring(6); }
             else if (cleaned.startsWith('82010')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('+8210')) { cleaned = '010' + cleaned.substring(5); }
             else if (cleaned.startsWith('8210')) { cleaned = '010' + cleaned.substring(4); }
