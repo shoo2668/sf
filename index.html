@@ -761,6 +761,12 @@ const GEMINI_PROMPT = `Analyze the provided image containing one or more deliver
     *   **STEP 1 (DATA INTEGRITY): Extract Raw OCR Address.** 
         - "rawOcrAddress": COMPLETE, UNALTERED text from receiver address block
         - Preserve ALL characters, spacing exactly as they appear
+        
+    *   **FIX BROKEN NUMBERS (CRITICAL):**
+        - Detect numbers split across lines or by spaces within the address block.
+        - **MERGE DANGLING DIGITS:** If a line ends/starts with **1-2 digits** that clearly belong to a number sequence, **concatenate them WITHOUT spaces**.
+        - Example: "Jamsildong2" + "7" → "Jamsildong27"
+        - Example: "525-" + "309" → "525-309"
 
     *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
         - Translate English words to Korean equivalents
