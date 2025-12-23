@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.2";
+            const version = "v2.0.3";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -3524,6 +3524,12 @@ if (!tempApiKeyForLocalTest) {
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
+                    // 앱으로 돌아왔을 때 URL 확인
+                    const currentUrl = new URL(window.location.href);
+                    if (currentUrl.searchParams.has('hawb')) {
+                        handleUrlParams(currentUrl);
+                    }
+                    
                     justReturnedFromExternalApp = true;
                     setTimeout(() => { justReturnedFromExternalApp = false; }, 500);
                 }
