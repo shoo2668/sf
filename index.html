@@ -972,6 +972,83 @@ const sendCompletionNotification = (item) => {
                 window.location.href = scannerUrl;
             };
 
+            // ▼▼▼ [신규] 연속 완료 처리 함수 (3단계 핵심 로직) ▼▼▼
+        const startSequentialCompletion = (itemNo, completionType, completionDetail) => {
+            const item = deliveryItems.find(i => i.no === itemNo);
+            if (!item) return;
+
+            // 전체 송장 리스트 (어미 + 자식들)
+            const allHawbs = [item.hawbNo, ...(item.childHawbs || [])];
+            const totalCount = allHawbs.length;
+            let currentIndex = 0;
+
+            // 모달 제목과 버튼 설정
+            confirmationModalTitle.textContent = `${itemNo}번 배송 완료 처리`;
+            const okBtn = document.getElementById('confirmOkButton');
+            const cancelBtn = document.getElementById('confirmCancelButton');
+            
+            // 버튼 텍스트 변경
+            okBtn.textContent = "확인 (전송)";
+
+            const updateModalContent = () => {
+                const currentHawb = allHawbs[currentIndex];
+                confirmationModalBody.innerHTML = `
+                    <div class="text-center space-y-3">
+                        <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                            총 ${totalCount}개 중 ${currentIndex + 1}번째 처리 중
+                        </p>
+                        <div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1 text-left">송장번호</p>
+                            <p class="font-mono font-bold text-xl text-gray-800 dark:text-gray-200">${currentHawb}</p>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            확인을 누르면 번호 복사 및 웹훅 전송 후<br>
+                            ${currentIndex + 1 === totalCount ? '완료 탭으로 이동합니다.' : '다음 번호로 넘어갑니다.'}
+                        </p>
+                    </div>
+                `;
+            };
+
+            // 확인 버튼 클릭 시 실행될 로직
+            const handleNext = () => {
+                const currentHawb = allHawbs[currentIndex];
+                
+                // 1. 클립보드 복사
+                navigator.clipboard.writeText(currentHawb);
+                
+                // 2. 웹훅 전송 (송장번호만 교체해서 전송)
+                sendWebhook({ ...item, hawbNo: currentHawb });
+                
+                triggerVibration();
+                showToastMessage(`${currentIndex + 1}/${totalCount} 전송 완료`);
+
+                currentIndex++;
+
+                if (currentIndex < totalCount) {
+                    // 아직 남았으면 내용만 업데이트
+                    updateModalContent();
+                } else {
+                    // 마지막 번호까지 끝났으면 진짜 완료 처리
+                    const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                    handleStatusChange(itemNo, '완료', currentTime, completionType, completionDetail);
+                    sortItemsByDistanceSilent();
+                    
+                    closeConfirmationModal();
+                    // 버튼 이벤트 원상복구 (중요)
+                    okBtn.onclick = () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); };
+                    okBtn.textContent = "확인";
+                }
+            };
+
+            // 초기 화면 표시
+            updateModalContent();
+            okBtn.onclick = handleNext; // 확인 버튼에 연속 처리 로직 연결
+            
+            confirmationModalButtons.style.display = 'flex';
+            document.body.classList.add('modal-open');
+            confirmationModal.style.display = 'flex';
+        };
+
                 const setupDelegatedEventListeners = () => {
             let touchTarget = null;
 
@@ -1183,16 +1260,8 @@ const sendCompletionNotification = (item) => {
                         });
                         break;
                     case 'identity-verification':
-                        openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
-                            copyHawbOnComplete(itemNo);
-                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
-                            sortItemsByDistanceSilent();
-                            
-                            // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
-                            const updatedItem = deliveryItems.find(i => i.no === itemNo);
-                            if (updatedItem) sendWebhook(updatedItem);
-                        });
+                        // 연속 처리 함수 호출
+                        startSequentialCompletion(itemNo, '본인전달', '신분증');
                         break;
                     case 'open-location-modal':
                         openDeliveryLocationModal(itemNo);
@@ -3384,45 +3453,10 @@ if (!tempApiKeyForLocalTest) {
                     }
 
                     const itemNo = currentLocationEditItemNo;
-                    const currentItem = deliveryItems.find(i => i.no === itemNo);
-                    if (!currentItem) return;
-
-                    const isNewCompletion = currentItem.status !== '완료';
-
-                    if (isNewCompletion) {
-                        copyHawbOnComplete(itemNo);
-                    }
-
-                    const completionTime = isNewCompletion ? new Date().toLocaleString('ko-KR', dateTimeFormatOptions) : currentItem.deliveryCompletionTime;
-                    handleStatusChange(itemNo, '완료', completionTime, location, location);
-
-                    sortItemsByDistanceSilent();
-                    showToastMessage(`${itemNo}번: ${location} 완료`);
-
-                    if (isNewCompletion) {
-                        const updatedItem = deliveryItems.find(i => i.no === itemNo);
-                        if (updatedItem) {
-                            sendCompletionNotification(updatedItem);
-                            
-                            // ▼▼▼ [추가] 웹훅 전송 (문자보내기 버튼 제외) ▼▼▼
-                            if (buttonId !== 'location-modal-confirm-with-sms') {
-                                sendWebhook(updatedItem);
-                            }
-                        }
-
-                        // '문자 보내기' 버튼을 눌렀을 때만 SMS 실행
-                        if (buttonId === 'location-modal-confirm-with-sms') {
-                            const cleanPhoneNumber = getCleanPhoneNumber(currentItem.receiverTelephoneNo);
-                            if (cleanPhoneNumber && cleanPhoneNumber.startsWith('010')) {
-                                setTimeout(() => {
-                                    const messageBody = `SF택배 퀵배송 왔습니다. (${location})`;
-                                    window.location.href = `sms:${cleanPhoneNumber}?body=${encodeURIComponent(messageBody)}`;
-                                }, 500);
-                            }
-                        }
-                    }
                     
+                    // 위치 모달은 닫고, 연속 처리 모달을 켭니다.
                     closeDeliveryLocationModal();
+                    startSequentialCompletion(itemNo, location, location);
                 }
             });
             // ▲▲▲ [수정 끝] ▲▲▲
