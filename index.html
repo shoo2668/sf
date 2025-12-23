@@ -956,21 +956,18 @@ const sendCompletionNotification = (item) => {
         };
 
         const openBarcodeScanner = (targetNo = null) => {
-                // 기본 URL (쿼리 스트링 제외)
-                const baseUrl = "https://shoo2668.github.io/sf/";
-                let returnUrl;
-
+                // 1. 메모 남기기 (어떤 모드인지, 타겟 번호가 뭔지)
                 if (targetNo) {
-                    // 자식 추가: 파라미터를 미리 인코딩해서 붙임
-                    // {CODE}는 스캐너가 나중에 바꿔치기하므로 그대로 둠
-                    returnUrl = `${baseUrl}?hawb={CODE}&action=add-child&target=${targetNo}`;
+                    localStorage.setItem('scanMode', 'add-child');
+                    localStorage.setItem('scanTargetNo', targetNo);
                 } else {
-                    // 일반 검색
-                    returnUrl = `${baseUrl}?hawb={CODE}&filter=전체`;
+                    localStorage.removeItem('scanMode');
+                    localStorage.removeItem('scanTargetNo');
                 }
 
-                // 전체 URL을 인코딩하여 ret 파라미터에 넣음
-                const encodedReturnUrl = encodeURIComponent(returnUrl);
+                // 2. URL은 최대한 단순하게 (파라미터 다 빼버림)
+                const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}`;
+                const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
                 const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
                 
                 showToastMessage('스캐너 앱을 실행합니다...', 1000);
@@ -3779,12 +3776,18 @@ if (!tempApiKeyForLocalTest) {
             const handleUrlParams = (url) => {
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
-                const action = urlParams.get('action');
-                const targetNo = parseInt(urlParams.get('target'), 10);
+                
+                // 저장된 메모 확인
+                const scanMode = localStorage.getItem('scanMode');
+                const targetNo = parseInt(localStorage.getItem('scanTargetNo'), 10);
 
                 if (hawbFromUrl) {
-                    // ▼▼▼ [추가] 자식 송장 추가 로직 ▼▼▼
-                    if (action === 'add-child' && !isNaN(targetNo)) {
+                    // ▼▼▼ [수정] 로컬 스토리지 기반 자식 추가 로직 ▼▼▼
+                    if (scanMode === 'add-child' && !isNaN(targetNo)) {
+                        // 메모 삭제 (일회용이므로)
+                        localStorage.removeItem('scanMode');
+                        localStorage.removeItem('scanTargetNo');
+
                         const itemIndex = deliveryItems.findIndex(i => i.no === targetNo);
                         if (itemIndex > -1) {
                             if (!deliveryItems[itemIndex].childHawbs) {
@@ -3816,8 +3819,9 @@ if (!tempApiKeyForLocalTest) {
                             return;
                         }
                     }
-                    // ▲▲▲ [추가 끝] ▲▲▲
+                    // ▲▲▲ [수정 끝] ▲▲▲
 
+                    // 일반 검색 로직 (메모가 없으면 여기로 옴)
                     changeFilter('전체', '', true);
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
