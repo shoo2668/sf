@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.6";
+            const version = "v2.0.7";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -3509,31 +3509,34 @@ if (!tempApiKeyForLocalTest) {
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
-                const action = urlParams.get('action'); // action 값 확인
+                const action = urlParams.get('action');
 
-                // 1. 자식 송장 추가 모드라면? -> 검색하지 말고 handleUrlParams에게 넘김
+                // 자식 추가 모드이거나 연속 처리 중이라면 여기서 처리하지 않고 handleUrlParams에게 맡김
                 if (hawbFromUrl && action === 'add-child') {
-                    const currentUrl = new URL(window.location.href);
-                    handleUrlParams(currentUrl); // 즉시 실행!
-                    return; // 여기서 끝냄 (밑으로 안 내려감)
+                    handleUrlParams(new URL(window.location.href));
+                    return;
+                }
+                
+                if (localStorage.getItem('seq_itemNo')) {
+                    handleUrlParams(new URL(window.location.href));
+                    return;
                 }
 
-                // 2. 일반 검색 모드라면? -> 검색 실행
+                // 일반 검색 처리
                 if (hawbFromUrl) {
                     changeFilter('전체', '', true);
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
                     renderDeliveryCards('전체');
-                    // URL 청소 (검색 후에는 파라미터 제거)
                     const cleanUrl = `${window.location.origin}${window.location.pathname}`;
                     window.history.replaceState({}, '', cleanUrl);
                 } else {
-                    // 3. 아무것도 없으면 -> 필터 설정
                     const filterFromUrl = urlParams.get('filter');
                     if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                         changeFilter(filterFromUrl, '', true);
                     } else {
-                        changeFilter('배송준비', '', true);
+                        const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
+                        changeFilter(lastFilter, '', true);
                     }
                 }
             }, 0);
@@ -3868,41 +3871,64 @@ if (!tempApiKeyForLocalTest) {
             }
 
             const handleUrlParams = (url) => {
-                // ▼▼▼ [1순위] 연속 처리 복구 로직 ▼▼▼
-                const seqItemNo = localStorage.getItem('seq_itemNo');
-                if (seqItemNo) {
-                    const seqType = localStorage.getItem('seq_type');
-                    const seqDetail = localStorage.getItem('seq_detail');
-                    
-                    // 즉시 연속 처리 창을 다시 띄움 (사용자는 창이 안 닫힌 것처럼 느끼게 됨)
-                    startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail);
-                    
-                    // URL에 hawb가 있어도 검색하지 않도록 청소
-                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                    window.history.replaceState({}, '', cleanUrl);
-                    return; 
-                }
-
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const action = urlParams.get('action');
                 const targetNo = parseInt(urlParams.get('target'), 10);
 
-                if (hawbFromUrl) {
-                    // [2순위] 자식 송장 추가 로직
-                    if (action === 'add-child' && !isNaN(targetNo)) {
-                        // ... (기존 자식 추가 코드 그대로) ...
-                        return;
-                    }
+                if (!hawbFromUrl) return;
 
-                    // [3순위] 일반 검색 로직
-                    changeFilter('전체', '', true);
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
-                    renderDeliveryCards('전체');
+                // [1순위] 자식 송장 추가 로직 (가장 먼저 체크)
+                if (action === 'add-child' && !isNaN(targetNo)) {
+                    // Number(i.no)를 사용하여 문자열/숫자 상관없이 비교하도록 수정
+                    const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
+                    
+                    if (itemIndex > -1) {
+                        if (!deliveryItems[itemIndex].childHawbs) {
+                            deliveryItems[itemIndex].childHawbs = [];
+                        }
+                        // 중복 체크
+                        if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
+                            deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
+                            saveDeliveryItemsToLocalStorage();
+                            showToastMessage(`${targetNo}번 카드에 송장 추가 완료`);
+                        } else {
+                            showToastMessage('이미 등록된 송장번호입니다.');
+                        }
+                        
+                        // URL 청소 및 해당 필터로 이동
+                        const targetStatus = deliveryItems[itemIndex].status;
+                        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                        window.history.replaceState({}, '', cleanUrl);
+                        changeFilter(targetStatus === '배송전' ? '배송전' : '배송중', '', true);
+                        
+                        // 해당 카드로 스크롤
+                        setTimeout(() => {
+                            const card = document.querySelector(`div[data-no="${targetNo}"]`);
+                            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 300);
+                        return; 
+                    }
+                }
+
+                // [2순위] 연속 처리 복구 로직
+                const seqItemNo = localStorage.getItem('seq_itemNo');
+                if (seqItemNo) {
+                    const seqType = localStorage.getItem('seq_type');
+                    const seqDetail = localStorage.getItem('seq_detail');
+                    startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail);
                     const cleanUrl = `${window.location.origin}${window.location.pathname}`;
                     window.history.replaceState({}, '', cleanUrl);
+                    return; 
                 }
+
+                // [3순위] 일반 검색 로직
+                changeFilter('전체', '', true);
+                searchTerm = hawbFromUrl;
+                invoiceNumberInput.value = hawbFromUrl;
+                renderDeliveryCards('전체');
+                const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                window.history.replaceState({}, '', cleanUrl);
             };
 
             if ('launchQueue' in window) {
