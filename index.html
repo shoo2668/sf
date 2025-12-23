@@ -1141,6 +1141,12 @@ const sendCompletionNotification = (item) => {
                             }
                         }
                         break;
+                        // ▼▼▼ [추가] 자식 송장 추가 버튼 클릭 시 ▼▼▼
+                    case 'add-child-hawb':
+                        triggerVibration();
+                        openBarcodeScanner(itemNo); 
+                        break;
+                    // ▲▲▲ [추가 끝] ▲▲▲
                     case 'copy-hawb':
                         {
                             const hawbToCopy = target.dataset.hawbNo;
@@ -3302,8 +3308,15 @@ if (!tempApiKeyForLocalTest) {
     // ▲▲▲ [수정 끝] ▲▲▲
 
             // ▼▼▼ [수정] 바코드 스캐너 실행 로직을 함수로 분리하여 재사용 ▼▼▼
-            const openBarcodeScanner = () => {
-                const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
+            const openBarcodeScanner = (targetNo = null) => {
+                let returnUrlFormat;
+                if (targetNo) {
+                    // 자식 송장 추가 모드
+                    returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&action=add-child&target=${targetNo}`;
+                } else {
+                    // 일반 검색 모드
+                    returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
+                }
                 const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
                 const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
                 showToastMessage('스캐너 앱을 실행합니다...', 1000);
@@ -3759,7 +3772,45 @@ if (!tempApiKeyForLocalTest) {
             const handleUrlParams = (url) => {
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
+                const action = urlParams.get('action');
+                const targetNo = parseInt(urlParams.get('target'), 10);
+
                 if (hawbFromUrl) {
+                    // ▼▼▼ [추가] 자식 송장 추가 로직 ▼▼▼
+                    if (action === 'add-child' && !isNaN(targetNo)) {
+                        const itemIndex = deliveryItems.findIndex(i => i.no === targetNo);
+                        if (itemIndex > -1) {
+                            if (!deliveryItems[itemIndex].childHawbs) {
+                                deliveryItems[itemIndex].childHawbs = [];
+                            }
+                            // 중복 체크
+                            if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
+                                deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
+                                saveDeliveryItemsToLocalStorage();
+                                showToastMessage(`${targetNo}번 카드에 송장(${hawbFromUrl})이 추가되었습니다.`);
+                            } else {
+                                showToastMessage('이미 등록된 송장번호입니다.');
+                            }
+                            
+                            // 해당 카드가 있는 탭으로 이동
+                            const targetStatus = deliveryItems[itemIndex].status;
+                            const targetFilter = targetStatus === '배송전' ? '배송전' : '배송중';
+                            
+                            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                            window.history.replaceState({}, '', cleanUrl);
+                            
+                            changeFilter(targetFilter, '', true);
+                            
+                            // 스크롤 이동
+                            setTimeout(() => {
+                                const card = document.querySelector(`div[data-no="${targetNo}"]`);
+                                if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 300);
+                            return;
+                        }
+                    }
+                    // ▲▲▲ [추가 끝] ▲▲▲
+
                     changeFilter('전체', '', true);
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
