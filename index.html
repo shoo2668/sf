@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.4";
+            const version = "v2.0.5";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1932,29 +1932,21 @@ const getCleanPhoneNumber = (phoneNumber) => {
             }
 
             if (currentSignatureItemNo !== null) {
-                const item = deliveryItems.find(i => i.no === currentSignatureItemNo);
+                const itemNo = currentSignatureItemNo;
+                const item = deliveryItems.find(i => i.no === itemNo);
+                
                 if (item) {
-                    let completionTime = null;
-                    let completionType = item.completionType;
-
-                    if (item.status !== '완료') {
-                        copyHawbOnComplete(currentSignatureItemNo);
-                        completionTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                        completionType = '직접입력'; 
-                    }
-                    
+                    // 본인전달 모드에서 이름을 수정한 경우 데이터 반영
                     if (item.completionType === '본인전달') {
-                        deliveryItems = deliveryItems.map(i => i.no === currentSignatureItemNo ? { ...i, receiverNameKorean: signatureText } : i);
+                        deliveryItems = deliveryItems.map(i => i.no === itemNo ? { ...i, receiverNameKorean: signatureText } : i);
                     }
 
-                    handleStatusChange(currentSignatureItemNo, '완료', completionTime, completionType, signatureText);
+                    // 서명 모달 닫기
+                    closeSignatureModal();
                     
-                    // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
-                    const updatedItem = deliveryItems.find(i => i.no === currentSignatureItemNo);
-                    if (updatedItem) sendWebhook(updatedItem);
+                    // 연속 완료 처리 시작 (직접입력 타입으로)
+                    startSequentialCompletion(itemNo, '직접입력', signatureText);
                 }
-                sortItemsByDistanceSilent();
-                closeSignatureModal();
             }
         };
 
@@ -2475,9 +2467,15 @@ const getCleanPhoneNumber = (phoneNumber) => {
             let dataToRender = searchTerm
                 ? baseData.filter(item => {
                     const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
+                    // 어미 송장번호 매칭
                     const hawbMatch = item.hawbNo?.replace(/[\s-]/g, '').toLowerCase().includes(cleanedSearchTerm);
+                    // 자식 송장번호들 중 매칭되는 게 있는지 확인
+                    const childHawbMatch = item.childHawbs?.some(child => 
+                        child.replace(/[\s-]/g, '').toLowerCase().includes(cleanedSearchTerm)
+                    );
                     const phoneMatch = item.receiverTelephoneNo?.includes(cleanedSearchTerm);
-                    return hawbMatch || phoneMatch;
+                    
+                    return hawbMatch || childHawbMatch || phoneMatch; // 셋 중 하나라도 맞으면 표시
                 })
                 : baseData;
             
