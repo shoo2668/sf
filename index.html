@@ -956,20 +956,27 @@ const sendCompletionNotification = (item) => {
         };
 
         const openBarcodeScanner = (targetNo = null) => {
-                let returnUrlFormat;
+                // 기본 URL (쿼리 스트링 제외)
+                const baseUrl = "https://shoo2668.github.io/sf/";
+                let returnUrl;
+
                 if (targetNo) {
-                    // 자식 송장 추가 모드
-                    returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&action=add-child&target=${targetNo}`;
+                    // 자식 추가: 파라미터를 미리 인코딩해서 붙임
+                    // {CODE}는 스캐너가 나중에 바꿔치기하므로 그대로 둠
+                    returnUrl = `${baseUrl}?hawb={CODE}&action=add-child&target=${targetNo}`;
                 } else {
-                    // 일반 검색 모드
-                    returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&filter=전체`;
+                    // 일반 검색
+                    returnUrl = `${baseUrl}?hawb={CODE}&filter=전체`;
                 }
-                const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
+
+                // 전체 URL을 인코딩하여 ret 파라미터에 넣음
+                const encodedReturnUrl = encodeURIComponent(returnUrl);
                 const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
+                
                 showToastMessage('스캐너 앱을 실행합니다...', 1000);
                 window.location.href = scannerUrl;
             };
-            
+
                 const setupDelegatedEventListeners = () => {
             let touchTarget = null;
 
