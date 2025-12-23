@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.9";
+            const version = "v2.0.10";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1285,7 +1285,11 @@ const sendCompletionNotification = (item) => {
                         {
                             const hawbToCopy = target.dataset.hawbNo;
                             if (hawbToCopy) {
-                                navigator.clipboard.writeText(hawbToCopy).catch(err => {
+                                triggerVibration(); // 진동 피드백
+                                navigator.clipboard.writeText(hawbToCopy).then(() => {
+                                    // 복사 성공 시 토스트 메시지 표시
+                                    showToastMessage(`송장번호 복사 완료: ${hawbToCopy}`);
+                                }).catch(err => {
                                     console.error('송장번호 복사 실패:', err);
                                     showMessage('송장번호 복사에 실패했습니다.');
                                 });
@@ -2654,7 +2658,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
             <button data-action="delete-child-hawb" data-no="${data.no}" data-child-hawb="${child}" class="mr-2 text-red-500 hover:text-red-700 flex-shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
-            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${child}</span>
+<span data-action="copy-hawb" data-hawb-no="${child}" data-no="${data.no}" class="text-sm font-medium text-gray-600 dark:text-gray-300 cursor-pointer hover:text-blue-500 active:text-blue-700 transition-colors">${child}</span>
         </div>
     `).join('') 
     : ''}
