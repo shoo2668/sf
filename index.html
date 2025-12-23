@@ -956,25 +956,23 @@ const sendCompletionNotification = (item) => {
         };
 
         const openBarcodeScanner = (targetNo = null) => {
-                // targetNo가 '숫자' 타입인지 확인 (0번 카드도 인식하기 위해)
                 const isChildMode = typeof targetNo === 'number';
+                
+                // ▼▼▼ 디버깅용 알림창 ▼▼▼
+                alert(`스캐너 호출됨! targetNo: ${targetNo}, 모드: ${isChildMode ? '자식추가' : '검색'}`);
 
                 if (isChildMode) {
-                    // 자식 추가 모드
                     localStorage.setItem('scanMode', 'add-child');
                     localStorage.setItem('scanTargetNo', targetNo);
                 } else {
-                    // 일반 검색 모드
                     localStorage.removeItem('scanMode');
                     localStorage.removeItem('scanTargetNo');
                 }
 
-                // URL은 최대한 단순하게
                 const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}`;
                 const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
                 const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
                 
-                showToastMessage('스캐너 앱을 실행합니다...', 1000);
                 window.location.href = scannerUrl;
             };
 
