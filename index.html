@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.5";
+            const version = "v2.0.6";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1257,6 +1257,23 @@ const sendCompletionNotification = (item) => {
                     case 'add-child-hawb':
                         triggerVibration();
                         openBarcodeScanner(itemNo); 
+                        break;
+                    // ▲▲▲ [추가 끝] ▲▲▲
+                    // ▼▼▼ [추가] 자식 송장 삭제 로직 ▼▼▼
+                    case 'delete-child-hawb':
+                        {
+                            const childToDelete = target.dataset.childHawb;
+                            openConfirmationModal(`송장번호 [${childToDelete}]를 삭제하시겠습니까?`, () => {
+                                const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
+                                if (itemIndex > -1) {
+                                    // 해당 번호만 제외하고 다시 배열 구성
+                                    deliveryItems[itemIndex].childHawbs = deliveryItems[itemIndex].childHawbs.filter(h => h !== childToDelete);
+                                    saveDeliveryItemsToLocalStorage();
+                                    renderDeliveryCards(activeFilter);
+                                    showToastMessage('삭제되었습니다.');
+                                }
+                            });
+                        }
                         break;
                     // ▲▲▲ [추가 끝] ▲▲▲
                     case 'copy-hawb':
@@ -2626,8 +2643,16 @@ const getCleanPhoneNumber = (phoneNumber) => {
                                                     ${highlightHawbNo(data.hawbNo, searchTerm)}
                                                 </span>
                                                 ${data.childHawbs && data.childHawbs.length > 0 ? 
-                                                    data.childHawbs.map(child => `<span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">└ ${child}</span>`).join('') 
-                                                    : ''}
+    data.childHawbs.map(child => `
+        <div class="flex items-center mt-1">
+            <!-- 빨간색 마이너스 삭제 버튼 -->
+            <button data-action="delete-child-hawb" data-no="${data.no}" data-child-hawb="${child}" class="mr-2 text-red-500 hover:text-red-700 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${child}</span>
+        </div>
+    `).join('') 
+    : ''}
                                             </div>
                                             <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
                                         </div>
