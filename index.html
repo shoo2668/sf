@@ -3774,6 +3774,13 @@ if (!tempApiKeyForLocalTest) {
             }
 
             const handleUrlParams = (url) => {
+                // ▼▼▼ [디버깅] 현재 URL을 눈으로 확인하기 위한 코드 ▼▼▼
+                // 송장번호가 있는 경우에만 알림창을 띄웁니다.
+                if (url.search.includes('hawb')) {
+                     alert("전체 URL: " + url.href);
+                }
+                // ▲▲▲ [디버깅 끝] ▲▲▲
+
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const action = urlParams.get('action');
