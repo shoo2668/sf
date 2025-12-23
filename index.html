@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.8";
+            const version = "v2.0.9";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -989,23 +989,21 @@ const sendCompletionNotification = (item) => {
                 localStorage.setItem('seq_index', '0');
                 localStorage.setItem('seq_type', completionType);
                 localStorage.setItem('seq_detail', completionDetail);
-                localStorage.setItem('seq_isSms', isSms ? 'true' : 'false'); // SMS 모드 저장
+                localStorage.setItem('seq_isSms', isSms ? 'true' : 'false');
             }
 
-            // 저장된 SMS 모드 불러오기
             const currentIsSms = localStorage.getItem('seq_isSms') === 'true';
-
-            if (currentIndex >= totalCount) {
-                finishSequentialProcess(itemNo, completionType, completionDetail);
-                return;
-            }
 
             confirmationModalTitle.textContent = `${itemNo}번 배송 완료 처리`;
             const okBtn = document.getElementById('confirmOkButton');
-            okBtn.textContent = currentIsSms ? "확인 (문자)" : "확인 (전송)";
 
             const updateModalContent = () => {
                 const currentHawb = allHawbs[currentIndex];
+                
+                // ▼▼▼ [수정] 현재 순서에 따라 버튼 텍스트와 안내 문구 변경 ▼▼▼
+                const isFirstSms = (currentIsSms && currentIndex === 0);
+                okBtn.textContent = isFirstSms ? "확인 (문자)" : "확인 (전송)";
+
                 confirmationModalBody.innerHTML = `
                     <div class="text-center space-y-3">
                         <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
@@ -1016,7 +1014,7 @@ const sendCompletionNotification = (item) => {
                             <p class="font-mono font-bold text-xl text-gray-800 dark:text-gray-200">${currentHawb}</p>
                         </div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                            확인을 누르면 번호 복사 및 ${currentIsSms ? '문자 앱이 실행' : '웹훅이 전송'}되며<br>
+                            확인을 누르면 번호 복사 및 ${isFirstSms ? '문자 앱이 실행' : '웹훅이 전송'}되며<br>
                             ${currentIndex + 1 === totalCount ? '완료 탭으로 이동합니다.' : '다음 번호로 자동 연결됩니다.'}
                         </p>
                     </div>
@@ -1032,14 +1030,14 @@ const sendCompletionNotification = (item) => {
                 navigator.clipboard.writeText(currentHawb);
                 triggerVibration();
 
-                // 2. 모드에 따른 동작
-                if (currentIsSms) {
-                    // [SMS 모드] 문자 앱 실행
+                // 2. [핵심 로직] 첫 번째이면서 SMS 모드일 때만 문자, 나머지는 웹훅
+                if (currentIsSms && currentIndex === 0) {
+                    // [1번째] 문자 앱 실행
                     const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
                     const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
                     window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
                 } else {
-                    // [일반 모드] 웹훅 전송
+                    // [2번째부터 또는 일반모드] 웹훅 전송
                     sendWebhook({ ...item, hawbNo: currentHawb });
                 }
 
@@ -1060,7 +1058,7 @@ const sendCompletionNotification = (item) => {
                 localStorage.removeItem('seq_index');
                 localStorage.removeItem('seq_type');
                 localStorage.removeItem('seq_detail');
-                localStorage.removeItem('seq_isSms'); // SMS 메모리 삭제
+                localStorage.removeItem('seq_isSms');
 
                 closeConfirmationModal();
                 okBtn.onclick = () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); };
