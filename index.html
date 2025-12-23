@@ -958,15 +958,12 @@ const sendCompletionNotification = (item) => {
         const openBarcodeScanner = (targetNo = null) => {
                 const isChildMode = typeof targetNo === 'number';
                 
-                // 기본 URL
-                let returnUrl = "https://shoo2668.github.io/sf/";
-                
+                let returnUrl;
                 if (isChildMode) {
-                    // 자식 추가: URL 뒤에 #child-15 처럼 꼬리표를 붙임
-                    returnUrl += `?hawb={CODE}#child-${targetNo}`;
+                    // action과 target을 맨 앞에 둠 (안전빵)
+                    returnUrl = `https://shoo2668.github.io/sf/?action=add-child&target=${targetNo}&hawb={CODE}`;
                 } else {
-                    // 일반 검색
-                    returnUrl += `?hawb={CODE}#search`;
+                    returnUrl = `https://shoo2668.github.io/sf/?filter=전체&hawb={CODE}`;
                 }
 
                 const encodedReturnUrl = encodeURIComponent(returnUrl);
@@ -3779,49 +3776,43 @@ if (!tempApiKeyForLocalTest) {
             const handleUrlParams = (url) => {
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
-                const hash = url.hash; // #child-15 같은 값을 가져옴
+                const action = urlParams.get('action');
+                const targetNo = parseInt(urlParams.get('target'), 10);
+
+                // 디버깅용: 화면에 뿌려보기 (테스트 후 삭제하세요)
+                // alert(`URL 분석: hawb=${hawbFromUrl}, action=${action}, target=${targetNo}`);
 
                 if (hawbFromUrl) {
-                    // ▼▼▼ [수정] 해시(Hash) 기반 자식 추가 로직 ▼▼▼
-                    if (hash && hash.startsWith('#child-')) {
-                        const targetNo = parseInt(hash.replace('#child-', ''), 10);
-                        
-                        if (!isNaN(targetNo)) {
-                            const itemIndex = deliveryItems.findIndex(i => i.no === targetNo);
-                            if (itemIndex > -1) {
-                                if (!deliveryItems[itemIndex].childHawbs) {
-                                    deliveryItems[itemIndex].childHawbs = [];
-                                }
-                                // 중복 체크
-                                if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
-                                    deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
-                                    saveDeliveryItemsToLocalStorage();
-                                    showToastMessage(`${targetNo}번 카드에 송장(${hawbFromUrl})이 추가되었습니다.`);
-                                } else {
-                                    showToastMessage('이미 등록된 송장번호입니다.');
-                                }
-                                
-                                // 해당 카드가 있는 탭으로 이동
-                                const targetStatus = deliveryItems[itemIndex].status;
-                                const targetFilter = targetStatus === '배송전' ? '배송전' : '배송중';
-                                
-                                const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                                window.history.replaceState({}, '', cleanUrl);
-                                
-                                changeFilter(targetFilter, '', true);
-                                
-                                // 스크롤 이동
-                                setTimeout(() => {
-                                    const card = document.querySelector(`div[data-no="${targetNo}"]`);
-                                    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }, 300);
-                                return;
+                    if (action === 'add-child' && !isNaN(targetNo)) {
+                        const itemIndex = deliveryItems.findIndex(i => i.no === targetNo);
+                        if (itemIndex > -1) {
+                            if (!deliveryItems[itemIndex].childHawbs) {
+                                deliveryItems[itemIndex].childHawbs = [];
                             }
+                            if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
+                                deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
+                                saveDeliveryItemsToLocalStorage();
+                                showToastMessage(`${targetNo}번 카드에 송장(${hawbFromUrl})이 추가되었습니다.`);
+                            } else {
+                                showToastMessage('이미 등록된 송장번호입니다.');
+                            }
+                            
+                            const targetStatus = deliveryItems[itemIndex].status;
+                            const targetFilter = targetStatus === '배송전' ? '배송전' : '배송중';
+                            
+                            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                            window.history.replaceState({}, '', cleanUrl);
+                            
+                            changeFilter(targetFilter, '', true);
+                            
+                            setTimeout(() => {
+                                const card = document.querySelector(`div[data-no="${targetNo}"]`);
+                                if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 300);
+                            return;
                         }
                     }
-                    // ▲▲▲ [수정 끝] ▲▲▲
 
-                    // 일반 검색 로직
                     changeFilter('전체', '', true);
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
