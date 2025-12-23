@@ -956,16 +956,20 @@ const sendCompletionNotification = (item) => {
         };
 
         const openBarcodeScanner = (targetNo = null) => {
-                // 1. 메모 남기기 (어떤 모드인지, 타겟 번호가 뭔지)
-                if (targetNo) {
+                // targetNo가 '숫자' 타입인지 확인 (0번 카드도 인식하기 위해)
+                const isChildMode = typeof targetNo === 'number';
+
+                if (isChildMode) {
+                    // 자식 추가 모드
                     localStorage.setItem('scanMode', 'add-child');
                     localStorage.setItem('scanTargetNo', targetNo);
                 } else {
+                    // 일반 검색 모드
                     localStorage.removeItem('scanMode');
                     localStorage.removeItem('scanTargetNo');
                 }
 
-                // 2. URL은 최대한 단순하게 (파라미터 다 빼버림)
+                // URL은 최대한 단순하게
                 const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}`;
                 const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
                 const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
@@ -3329,12 +3333,14 @@ if (!tempApiKeyForLocalTest) {
             // ▼▼▼ [수정] 바코드 스캐너 실행 로직을 함수로 분리하여 재사용 ▼▼▼
             const barcodeScanButton = document.getElementById('barcode-scan-button');
             if (barcodeScanButton) {
-                barcodeScanButton.addEventListener('click', openBarcodeScanner);
+                // ▼▼▼ [수정] 인자 없이 호출되도록 화살표 함수 사용 ▼▼▼
+                barcodeScanButton.addEventListener('click', () => openBarcodeScanner());
             }
 
             const searchScanButton = document.getElementById('search-scan-button');
             if (searchScanButton) {
-                searchScanButton.addEventListener('click', openBarcodeScanner);
+                // ▼▼▼ [수정] 인자 없이 호출되도록 화살표 함수 사용 ▼▼▼
+                searchScanButton.addEventListener('click', () => openBarcodeScanner());
             }
             // ▲▲▲ [수정 끝] ▲▲▲
 
