@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.1";
+            const version = "v2.0.2";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -958,19 +958,18 @@ const sendCompletionNotification = (item) => {
         const openBarcodeScanner = (targetNo = null) => {
                 const isChildMode = typeof targetNo === 'number';
                 
-                // ▼▼▼ 디버깅용 알림창 ▼▼▼
-                alert(`스캐너 호출됨! targetNo: ${targetNo}, 모드: ${isChildMode ? '자식추가' : '검색'}`);
-
+                // 기본 URL
+                let returnUrl = "https://shoo2668.github.io/sf/";
+                
                 if (isChildMode) {
-                    localStorage.setItem('scanMode', 'add-child');
-                    localStorage.setItem('scanTargetNo', targetNo);
+                    // 자식 추가: URL 뒤에 #child-15 처럼 꼬리표를 붙임
+                    returnUrl += `?hawb={CODE}#child-${targetNo}`;
                 } else {
-                    localStorage.removeItem('scanMode');
-                    localStorage.removeItem('scanTargetNo');
+                    // 일반 검색
+                    returnUrl += `?hawb={CODE}#search`;
                 }
 
-                const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}`;
-                const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
+                const encodedReturnUrl = encodeURIComponent(returnUrl);
                 const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
                 
                 window.location.href = scannerUrl;
