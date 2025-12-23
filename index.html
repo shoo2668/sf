@@ -3434,14 +3434,27 @@ if (!tempApiKeyForLocalTest) {
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
-                const filterFromUrl = urlParams.get('filter');
+                const action = urlParams.get('action'); // action 값 확인
 
+                // 1. 자식 송장 추가 모드라면? -> 검색하지 말고 handleUrlParams에게 넘김
+                if (hawbFromUrl && action === 'add-child') {
+                    const currentUrl = new URL(window.location.href);
+                    handleUrlParams(currentUrl); // 즉시 실행!
+                    return; // 여기서 끝냄 (밑으로 안 내려감)
+                }
+
+                // 2. 일반 검색 모드라면? -> 검색 실행
                 if (hawbFromUrl) {
                     changeFilter('전체', '', true);
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
                     renderDeliveryCards('전체');
+                    // URL 청소 (검색 후에는 파라미터 제거)
+                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                    window.history.replaceState({}, '', cleanUrl);
                 } else {
+                    // 3. 아무것도 없으면 -> 필터 설정
+                    const filterFromUrl = urlParams.get('filter');
                     if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
                         changeFilter(filterFromUrl, '', true);
                     } else {
