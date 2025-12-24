@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.1";
+            const version = "v2.0.2";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1055,34 +1055,44 @@ const sendCompletionNotification = (item) => {
         };
 
         const handleNext = () => {
-            const currentHawb = allHawbs[currentIndex];
-            const nextIndex = currentIndex + 1;
-            
-            // 다음 인덱스를 localStorage에 저장
-            localStorage.setItem('seq_index', nextIndex);
+    const currentHawb = allHawbs[currentIndex];
+    const nextIndex = currentIndex + 1;
+    localStorage.setItem('seq_index', nextIndex);
 
-            // 1. 공통: 번호 복사
-            navigator.clipboard.writeText(currentHawb);
-            triggerVibration();
+    // 1. 공통: 번호 복사
+    navigator.clipboard.writeText(currentHawb);
+    triggerVibration();
 
-            // 2. [핵심 로직] 첫 번째이면서 SMS 모드일 때만 문자, 나머지는 웹훅
-            if (currentIsSms && currentIndex === 0) {
-                // [1번째] 문자 앱 실행
-                const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
-                const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
-                window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
-            } else {
-                // [2번째부터 또는 일반모드] 웹훅 전송
-                sendWebhook({ ...item, hawbNo: currentHawb });
-            }
+    // 2. [핵심 로직] 첫 번째이면서 SMS 모드일 때만 문자, 나머지는 웹훅
+    if (currentIsSms && currentIndex === 0) {
+        // [1번째] 문자 앱 실행 (이 부분은 페이지 이동이 필요)
+        const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
+        const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
+        window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
+        
+        // SMS 앱 실행 후에도 연속 처리를 계속하기 위해 상태 저장
+        localStorage.setItem('pending_sequential', 'true');
+        localStorage.setItem('pending_itemNo', itemNo);
+        localStorage.setItem('pending_completionType', completionType);
+        localStorage.setItem('pending_completionDetail', completionDetail);
+        
+    } else {
+        // [2번째부터 또는 일반모드] 웹훅 전송 (페이지 이동 없음)
+        sendWebhook({ ...item, hawbNo: currentHawb }, true);
+    }
 
-            if (nextIndex < totalCount) {
-                currentIndex = nextIndex;
-                updateModalContent();
-            } else {
-                finishSequentialProcess(itemNo, completionType, completionDetail);
-            }
-        };
+    if (nextIndex < totalCount) {
+        currentIndex = nextIndex;
+        // 약간의 지연 후 모달 업데이트 (웹훅 요청이 완료될 시간을 줌)
+        setTimeout(() => {
+            updateModalContent();
+        }, 300);
+    } else {
+        setTimeout(() => {
+            finishSequentialProcess(itemNo, completionType, completionDetail);
+        }, 300);
+    }
+};
 
         const finishSequentialProcess = (no, type, detail) => {
             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
@@ -2393,34 +2403,37 @@ const getCleanPhoneNumber = (phoneNumber) => {
         };
 
         // ▼▼▼ [추가 시작] 웹훅 전송 함수 ▼▼▼
-        const sendWebhook = (item) => {
-            const webhookUrl = localStorage.getItem('webhookUrl');
-            if (!webhookUrl) {
-                console.log("웹훅 URL이 설정되지 않아 전송을 건너뜁니다.");
-                return;
-            }
+        const sendWebhook = (item, isSequentialMode = false) => {
+    const webhookUrl = localStorage.getItem('webhookUrl');
+    if (!webhookUrl) {
+        console.log("웹훅 URL이 설정되지 않아 전송을 건너뜁니다.");
+        return;
+    }
 
-            // ▼▼▼ [핵심 수정] 복잡한 fetch 대신, CORS 제약이 없는 간단한 이미지 로드 방식으로 변경 ▼▼▼
-            try {
-                // 1. 눈에 보이지 않는 이미지 객체를 하나 만듭니다.
-                const img = new Image();
-                
-                // 2. 이 이미지의 소스(src)를 우리가 호출하려는 웹훅 URL로 지정합니다.
-                //    브라우저는 이 "이미지"를 불러오기 위해 해당 URL로 GET 요청을 보냅니다.
-                //    이 요청 자체가 매크로드로이드의 트리거(신호)가 됩니다.
-                img.src = webhookUrl;
-
-                // 3. 성공/실패 여부와 관계없이 요청은 보내졌으므로, 사용자에게 피드백을 줍니다.
-                console.log(`웹훅 호출 시도 (항목 ${item.no}): ${webhookUrl}`);
+    try {
+        // ▼▼▼ [수정] fetch API로 변경하여 페이지 이동 없이 요청 ▼▼▼
+        fetch(webhookUrl, {
+            method: 'GET',
+            mode: 'no-cors' // CORS 문제 방지
+        }).then(() => {
+            console.log(`웹훅 호출 성공 (항목 ${item.no})`);
+            if (!isSequentialMode) {
                 showToastMessage(`${item.no}번 자동화 트리거 호출`);
-
-            } catch (error) {
-                // 이 방식은 거의 오류를 발생시키지 않지만, 만약을 위해 남겨둡니다.
-                console.error(`웹훅 호출 중 오류 (항목 ${item.no}):`, error);
+            }
+        }).catch(error => {
+            console.error(`웹훅 호출 실패 (항목 ${item.no}):`, error);
+            if (!isSequentialMode) {
                 showToastMessage(`자동화 트리거 호출 실패`, 3000);
             }
-            // ▲▲▲ [수정 끝] ▲▲▲
-        };
+        });
+        // ▲▲▲ [수정 끝] ▲▲▲
+    } catch (error) {
+        console.error(`웹훅 호출 중 오류 (항목 ${item.no}):`, error);
+        if (!isSequentialMode) {
+            showToastMessage(`자동화 트리거 호출 실패`, 3000);
+        }
+    }
+};
         // ▲▲▲ [추가 끝] ▲▲▲
 
         const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
@@ -3898,6 +3911,30 @@ console.log('Previous sequential processing state cleared on app start');
             }
 
             const handleUrlParams = (url) => {
+    // ▼▼▼ [추가] SMS 앱 실행 후 복귀 시 연속 처리 재개 ▼▼▼
+    if (localStorage.getItem('pending_sequential') === 'true') {
+        const pendingItemNo = parseInt(localStorage.getItem('pending_itemNo'), 10);
+        const pendingType = localStorage.getItem('pending_completionType');
+        const pendingDetail = localStorage.getItem('pending_completionDetail');
+        
+        if (pendingItemNo) {
+            // 대기 상태 제거
+            localStorage.removeItem('pending_sequential');
+            localStorage.removeItem('pending_itemNo');
+            localStorage.removeItem('pending_completionType');
+            localStorage.removeItem('pending_completionDetail');
+            
+            // 1초 후 연속 처리 재개
+            setTimeout(() => {
+                startSequentialCompletion(pendingItemNo, pendingType, pendingDetail, false);
+            }, 1000);
+            return;
+        }
+    }
+    // ▲▲▲ [추가 끝] ▲▲▲
+    
+    // 기존 나머지 코드...
+};
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const action = urlParams.get('action');
