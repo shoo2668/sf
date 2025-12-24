@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.13";
+            const version = "v2.0.14";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -3539,41 +3539,6 @@ if (!tempApiKeyForLocalTest) {
                 if (event.key === 'Enter') { event.preventDefault(); invoiceNumberInput.blur(); }
             });
 
-            setTimeout(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const hawbFromUrl = urlParams.get('hawb');
-                const action = urlParams.get('action');
-
-                // 자식 추가 모드이거나 연속 처리 중이라면 여기서 처리하지 않고 handleUrlParams에게 맡김
-                if (hawbFromUrl && action === 'add-child') {
-                    handleUrlParams(new URL(window.location.href));
-                    return;
-                }
-                
-                if (localStorage.getItem('seq_itemNo')) {
-                    handleUrlParams(new URL(window.location.href));
-                    return;
-                }
-
-                // 일반 검색 처리
-                if (hawbFromUrl) {
-                    changeFilter('전체', '', true);
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
-                    renderDeliveryCards('전체');
-                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                    window.history.replaceState({}, '', cleanUrl);
-                } else {
-                    const filterFromUrl = urlParams.get('filter');
-                    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                        changeFilter(filterFromUrl, '', true);
-                    } else {
-                        const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
-                        changeFilter(lastFilter, '', true);
-                    }
-                }
-            }, 0);
-
             const mainContent = document.getElementById('main-content-wrapper');
             refreshIndicator = document.getElementById('refresh-indicator');
 
@@ -3893,35 +3858,30 @@ if (!tempApiKeyForLocalTest) {
             }
 
             const handleUrlParams = (url) => {
-                // [1순위] 연속 처리 복구 로직 (송장번호가 있든 없든 무조건 먼저 확인!)
-                const seqItemNo = localStorage.getItem('seq_itemNo');
-                if (seqItemNo) {
-                    const seqType = localStorage.getItem('seq_type');
-                    const seqDetail = localStorage.getItem('seq_detail');
-                    const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
-                    
-                    // 0.1초만 기다렸다가 창을 다시 띄웁니다.
-                    setTimeout(() => {
-                        startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail, seqIsSms);
-                    }, 100);
-                    
-                    // 주소창을 깨끗하게 청소합니다.
-                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                    window.history.replaceState({}, '', cleanUrl);
-                    return; // 복구했으면 여기서 끝냅니다.
-                }
-
-                // 여기서부터는 일반적인 처리입니다.
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const action = urlParams.get('action');
                 const targetNo = parseInt(urlParams.get('target'), 10);
+                const filterFromUrl = urlParams.get('filter');
 
-                // 송장번호가 아예 없을 때만 종료합니다.
-                if (!hawbFromUrl) return;
+                // [1순위] 연속 처리 복구 (가장 중요: 송장번호 유무와 상관없이 무조건 먼저 확인)
+                const seqItemNo = localStorage.getItem('seq_itemNo');
+                if (seqItemNo) {
+                    // 0.3초 정도 충분히 기다렸다가 창을 띄워 충돌을 방지합니다.
+                    setTimeout(() => {
+                        const seqType = localStorage.getItem('seq_type');
+                        const seqDetail = localStorage.getItem('seq_detail');
+                        const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
+                        startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail, seqIsSms);
+                    }, 300);
+                    
+                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                    window.history.replaceState({}, '', cleanUrl);
+                    return; // 복구했으면 여기서 종료
+                }
 
                 // [2순위] 자식 송장 추가 로직
-                if (action === 'add-child' && !isNaN(targetNo)) {
+                if (hawbFromUrl && action === 'add-child' && !isNaN(targetNo)) {
                     const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
                     if (itemIndex > -1) {
                         if (!deliveryItems[itemIndex].childHawbs) {
@@ -3949,12 +3909,23 @@ if (!tempApiKeyForLocalTest) {
                 }
 
                 // [3순위] 일반 검색 로직
-                changeFilter('전체', '', true);
-                searchTerm = hawbFromUrl;
-                invoiceNumberInput.value = hawbFromUrl;
-                renderDeliveryCards('전체');
-                const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                window.history.replaceState({}, '', cleanUrl);
+                if (hawbFromUrl) {
+                    changeFilter('전체', '', true);
+                    searchTerm = hawbFromUrl;
+                    invoiceNumberInput.value = hawbFromUrl;
+                    renderDeliveryCards('전체');
+                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                    window.history.replaceState({}, '', cleanUrl);
+                    return;
+                }
+
+                // [4순위] 아무것도 없으면 기본 필터 설정
+                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+                    changeFilter(filterFromUrl, '', true);
+                } else {
+                    const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
+                    changeFilter(lastFilter, '', true);
+                }
             };
 
             if ('launchQueue' in window) {
@@ -3968,6 +3939,9 @@ if (!tempApiKeyForLocalTest) {
                 const url = new URL(window.location.href);
                 handleUrlParams(url);
             }
+
+            // ▼▼▼ [추가] 앱이 처음 로드될 때 실행되도록 강제 호출 ▼▼▼
+            handleUrlParams(new URL(window.location.href));
         });
     </script>
 </body>
