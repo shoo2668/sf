@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.14";
+            const version = "v2.0.15";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -3613,11 +3613,9 @@ if (!tempApiKeyForLocalTest) {
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // 앱으로 돌아왔을 때 URL 확인
-                    const currentUrl = new URL(window.location.href);
-                    if (currentUrl.searchParams.has('hawb')) {
-                        handleUrlParams(currentUrl);
-                    }
+                    // 앱으로 돌아오면 주소창에 뭐가 있든 없든 무조건 handleUrlParams를 실행해서
+                    // 하던 작업(연속 처리)이 있는지 확인하라고 시킵니다.
+                    handleUrlParams(new URL(window.location.href));
                     
                     justReturnedFromExternalApp = true;
                     setTimeout(() => { justReturnedFromExternalApp = false; }, 500);
@@ -3928,20 +3926,15 @@ if (!tempApiKeyForLocalTest) {
                 }
             };
 
+            // 앱이 처음 켜질 때 실행되는 부분입니다.
             if ('launchQueue' in window) {
                 window.launchQueue.setConsumer(launchParams => {
-                    if (launchParams.targetURL) {
-                        const url = new URL(launchParams.targetURL);
-                        handleUrlParams(url);
-                    }
+                    const url = launchParams.targetURL ? new URL(launchParams.targetURL) : new URL(window.location.href);
+                    handleUrlParams(url);
                 });
             } else {
-                const url = new URL(window.location.href);
-                handleUrlParams(url);
+                handleUrlParams(new URL(window.location.href));
             }
-
-            // ▼▼▼ [추가] 앱이 처음 로드될 때 실행되도록 강제 호출 ▼▼▼
-            handleUrlParams(new URL(window.location.href));
         });
     </script>
 </body>
