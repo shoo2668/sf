@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.12";
+            const version = "v2.0.13";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -981,12 +981,11 @@ const sendCompletionNotification = (item) => {
                 if (!window.seqRetry) window.seqRetry = 0;
                 if (window.seqRetry < 5) {
                     window.seqRetry++;
-                    console.log(`데이터 찾는 중... 재시도 ${window.seqRetry}`);
                     setTimeout(() => startSequentialCompletion(itemNo, completionType, completionDetail, isSms), 100);
                 }
                 return;
             }
-            window.seqRetry = 0; 
+            window.seqRetry = 0;
             // ▲▲▲ 여기까지 추가 ▲▲▲
 
             const allHawbs = [item.hawbNo, ...(item.childHawbs || [])];
@@ -3894,23 +3893,40 @@ if (!tempApiKeyForLocalTest) {
             }
 
             const handleUrlParams = (url) => {
+                // [1순위] 연속 처리 복구 로직 (송장번호가 있든 없든 무조건 먼저 확인!)
+                const seqItemNo = localStorage.getItem('seq_itemNo');
+                if (seqItemNo) {
+                    const seqType = localStorage.getItem('seq_type');
+                    const seqDetail = localStorage.getItem('seq_detail');
+                    const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
+                    
+                    // 0.1초만 기다렸다가 창을 다시 띄웁니다.
+                    setTimeout(() => {
+                        startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail, seqIsSms);
+                    }, 100);
+                    
+                    // 주소창을 깨끗하게 청소합니다.
+                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                    window.history.replaceState({}, '', cleanUrl);
+                    return; // 복구했으면 여기서 끝냅니다.
+                }
+
+                // 여기서부터는 일반적인 처리입니다.
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
                 const action = urlParams.get('action');
                 const targetNo = parseInt(urlParams.get('target'), 10);
 
+                // 송장번호가 아예 없을 때만 종료합니다.
                 if (!hawbFromUrl) return;
 
-                // [1순위] 자식 송장 추가 로직 (가장 먼저 체크)
+                // [2순위] 자식 송장 추가 로직
                 if (action === 'add-child' && !isNaN(targetNo)) {
-                    // Number(i.no)를 사용하여 문자열/숫자 상관없이 비교하도록 수정
                     const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
-                    
                     if (itemIndex > -1) {
                         if (!deliveryItems[itemIndex].childHawbs) {
                             deliveryItems[itemIndex].childHawbs = [];
                         }
-                        // 중복 체크
                         if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
                             deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
                             saveDeliveryItemsToLocalStorage();
@@ -3919,36 +3935,17 @@ if (!tempApiKeyForLocalTest) {
                             showToastMessage('이미 등록된 송장번호입니다.');
                         }
                         
-                        // URL 청소 및 해당 필터로 이동
                         const targetStatus = deliveryItems[itemIndex].status;
                         const cleanUrl = `${window.location.origin}${window.location.pathname}`;
                         window.history.replaceState({}, '', cleanUrl);
                         changeFilter(targetStatus === '배송전' ? '배송전' : '배송중', '', true);
                         
-                        // 해당 카드로 스크롤
                         setTimeout(() => {
                             const card = document.querySelector(`div[data-no="${targetNo}"]`);
                             if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }, 300);
                         return; 
                     }
-                }
-
-                // [2순위] 연속 처리 복구 로직
-                const seqItemNo = localStorage.getItem('seq_itemNo');
-                if (seqItemNo) {
-                    // ▼▼▼ 0.1초 대기 후 실행하도록 수정 ▼▼▼
-                    setTimeout(() => {
-                        const seqType = localStorage.getItem('seq_type');
-                        const seqDetail = localStorage.getItem('seq_detail');
-                        const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
-                        startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail, seqIsSms);
-                    }, 100);
-                    // ▲▲▲ 여기까지 수정 ▲▲▲
-                    
-                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                    window.history.replaceState({}, '', cleanUrl);
-                    return; 
                 }
 
                 // [3순위] 일반 검색 로직
