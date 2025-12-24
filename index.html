@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.11";
+            const version = "v2.0.12";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -3348,6 +3348,16 @@ if (!tempApiKeyForLocalTest) {
     });
 
         document.addEventListener('DOMContentLoaded', () => {
+            const storedItems = localStorage.getItem('deliveryItems');
+            if (storedItems) {
+                let parsedItems = JSON.parse(storedItems);
+                deliveryItems = parsedItems.map(item => {
+                    if (typeof item.addressLocation === 'undefined') item.addressLocation = null;
+                    if (typeof item.isStruckThrough === 'undefined') item.isStruckThrough = false;
+                    if (typeof item.isAddressValidated === 'undefined') item.isAddressValidated = true;
+                    return item;
+                }).sort((a, b) => a.no - b.no);
+            }
             // ▼▼▼ [추가] 저장된 정렬 순서 불러오기 ▼▼▼
             deliveryInProgressSortOrder = localStorage.getItem('deliveryInProgressSortOrder') || 'no';
             completedSortOrder = localStorage.getItem('completedSortOrder') || 'no';
@@ -3861,17 +3871,6 @@ if (!tempApiKeyForLocalTest) {
                 });
             }
             // ▲▲▲ [추가 끝] ▲▲▲
-
-            const storedItems = localStorage.getItem('deliveryItems');
-            if (storedItems) {
-                let parsedItems = JSON.parse(storedItems);
-                deliveryItems = parsedItems.map(item => {
-                    if (typeof item.addressLocation === 'undefined') item.addressLocation = null;
-                    if (typeof item.isStruckThrough === 'undefined') item.isStruckThrough = false;
-                    if (typeof item.isAddressValidated === 'undefined') item.isAddressValidated = true;
-                    return item;
-                }).sort((a, b) => a.no - b.no);
-            }
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
             updateFilterCounts();
