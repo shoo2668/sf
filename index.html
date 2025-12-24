@@ -3928,82 +3928,83 @@ console.log('Previous sequential processing state cleared on app start');
             setTimeout(() => {
                 startSequentialCompletion(pendingItemNo, pendingType, pendingDetail, false);
             }, 1000);
+            
+            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+            window.history.replaceState({}, '', cleanUrl);
             return;
         }
     }
     // ▲▲▲ [추가 끝] ▲▲▲
-    
-    // 기존 나머지 코드...
+
+    const urlParams = new URLSearchParams(url.search);
+    const hawbFromUrl = urlParams.get('hawb');
+    const action = urlParams.get('action');
+    const targetNo = parseInt(urlParams.get('target'), 10);
+    const filterFromUrl = urlParams.get('filter');
+
+    // [1순위] 연속 처리 복구 (가장 중요: 송장번호 유무와 상관없이 무조건 먼저 확인)
+    const seqItemNo = localStorage.getItem('seq_itemNo');
+    if (seqItemNo) {
+        // 0.3초 정도 충분히 기다렸다가 창을 띄워 충돌을 방지합니다.
+        setTimeout(() => {
+            const seqType = localStorage.getItem('seq_type');
+            const seqDetail = localStorage.getItem('seq_detail');
+            const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
+            startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail, seqIsSms);
+        }, 300);
+        
+        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+        window.history.replaceState({}, '', cleanUrl);
+        return; // 복구했으면 여기서 종료
+    }
+
+    // [2순위] 자식 송장 추가 로직
+    if (hawbFromUrl && action === 'add-child' && !isNaN(targetNo)) {
+        const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
+        if (itemIndex > -1) {
+            if (!deliveryItems[itemIndex].childHawbs) {
+                deliveryItems[itemIndex].childHawbs = [];
+            }
+            if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
+                deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
+                saveDeliveryItemsToLocalStorage();
+                showToastMessage(`${targetNo}번 카드에 송장 추가 완료`);
+            } else {
+                showToastMessage('이미 등록된 송장번호입니다.');
+            }
+            
+            const targetStatus = deliveryItems[itemIndex].status;
+            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+            window.history.replaceState({}, '', cleanUrl);
+            changeFilter(targetStatus === '배송전' ? '배송전' : '배송중', '', true);
+            
+            setTimeout(() => {
+                const card = document.querySelector(`div[data-no="${targetNo}"]`);
+                if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+            return; 
+        }
+    }
+
+    // [3순위] 일반 검색 로직
+    if (hawbFromUrl) {
+        changeFilter('전체', '', true);
+        searchTerm = hawbFromUrl;
+        invoiceNumberInput.value = hawbFromUrl;
+        renderDeliveryCards('전체');
+        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+        window.history.replaceState({}, '', cleanUrl);
+        return;
+    }
+
+    // [4순위] 아무것도 없으면 기본 필터 설정
+    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
+        changeFilter(filterFromUrl, '', true);
+    } else {
+        const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
+        changeFilter(lastFilter, '', true);
+    }
 };
-                const urlParams = new URLSearchParams(url.search);
-                const hawbFromUrl = urlParams.get('hawb');
-                const action = urlParams.get('action');
-                const targetNo = parseInt(urlParams.get('target'), 10);
-                const filterFromUrl = urlParams.get('filter');
-
-                // [1순위] 연속 처리 복구 (가장 중요: 송장번호 유무와 상관없이 무조건 먼저 확인)
-                const seqItemNo = localStorage.getItem('seq_itemNo');
-                if (seqItemNo) {
-                    // 0.3초 정도 충분히 기다렸다가 창을 띄워 충돌을 방지합니다.
-                    setTimeout(() => {
-                        const seqType = localStorage.getItem('seq_type');
-                        const seqDetail = localStorage.getItem('seq_detail');
-                        const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
-                        startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail, seqIsSms);
-                    }, 300);
-                    
-                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                    window.history.replaceState({}, '', cleanUrl);
-                    return; // 복구했으면 여기서 종료
-                }
-
-                // [2순위] 자식 송장 추가 로직
-                if (hawbFromUrl && action === 'add-child' && !isNaN(targetNo)) {
-                    const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
-                    if (itemIndex > -1) {
-                        if (!deliveryItems[itemIndex].childHawbs) {
-                            deliveryItems[itemIndex].childHawbs = [];
-                        }
-                        if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
-                            deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
-                            saveDeliveryItemsToLocalStorage();
-                            showToastMessage(`${targetNo}번 카드에 송장 추가 완료`);
-                        } else {
-                            showToastMessage('이미 등록된 송장번호입니다.');
-                        }
-                        
-                        const targetStatus = deliveryItems[itemIndex].status;
-                        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                        window.history.replaceState({}, '', cleanUrl);
-                        changeFilter(targetStatus === '배송전' ? '배송전' : '배송중', '', true);
-                        
-                        setTimeout(() => {
-                            const card = document.querySelector(`div[data-no="${targetNo}"]`);
-                            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 300);
-                        return; 
-                    }
-                }
-
-                // [3순위] 일반 검색 로직
-                if (hawbFromUrl) {
-                    changeFilter('전체', '', true);
-                    searchTerm = hawbFromUrl;
-                    invoiceNumberInput.value = hawbFromUrl;
-                    renderDeliveryCards('전체');
-                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                    window.history.replaceState({}, '', cleanUrl);
-                    return;
-                }
-
-                // [4순위] 아무것도 없으면 기본 필터 설정
-                if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-                    changeFilter(filterFromUrl, '', true);
-                } else {
-                    const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
-                    changeFilter(lastFilter, '', true);
-                }
-            };
 
             // 앱이 처음 켜질 때 실행되는 부분입니다.
             if ('launchQueue' in window) {
