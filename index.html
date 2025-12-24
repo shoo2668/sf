@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.0";
+            const version = "v2.0.1";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -974,138 +974,143 @@ const sendCompletionNotification = (item) => {
 
             // ▼▼▼ [신규] 연속 완료 처리 함수 (3단계 핵심 로직) ▼▼▼
         const startSequentialCompletion = (itemNo, completionType, completionDetail, isSms = false) => {
-    // ▼▼▼ [핵심 수정] 데이터 완전 로드 대기 로직 추가 ▼▼▼
-    const ensureItemLoaded = () => {
+    // ▼▼▼ [핵심 수정] 데이터 완전히 로드될 때까지 기다리는 로직 ▼▼▼
+    let retryCount = 0;
+    const maxRetries = 10; // 10번까지 재시도
+    
+    const waitForItem = () => {
         const item = deliveryItems.find(i => i.no === itemNo);
         
-        // childHawbs가 없으면 빈 배열로 초기화 (데이터 무결성 보장)
-        if (item && typeof item.childHawbs === 'undefined') {
-            item.childHawbs = [];
+        if (!item) {
+            if (retryCount < maxRetries) {
+                retryCount++;
+                console.log(`Item ${itemNo} not found, retrying... (${retryCount}/${maxRetries})`);
+                setTimeout(waitForItem, 100);
+                return;
+            } else {
+                console.error(`Item ${itemNo} not found after ${maxRetries} retries`);
+                showMessage(`${itemNo}번 카드를 찾을 수 없습니다. 앱을 새로고침 후 다시 시도해주세요.`);
+                return;
+            }
         }
         
-        return item;
+        // ▼▼▼ [중요] childHawbs가 없으면 빈 배열로 초기화 ▼▼▼
+        if (typeof item.childHawbs === 'undefined') {
+            item.childHawbs = [];
+            console.log(`Item ${itemNo}: childHawbs initialized to empty array`);
+        }
+        
+        // ▼▼▼ [핵심] localStorage에서 연속 처리 상태를 불러오기 전에 다시 확인 ▼▼▼
+        // 저장된 seq_itemNo와 현재 itemNo가 다르면 무조건 초기화
+        const savedItemNo = localStorage.getItem('seq_itemNo');
+        if (savedItemNo !== String(itemNo)) {
+            // 이전 연속 처리 상태를 완전히 초기화
+            localStorage.setItem('seq_itemNo', itemNo);
+            localStorage.setItem('seq_index', '0');
+            localStorage.setItem('seq_type', completionType);
+            localStorage.setItem('seq_detail', completionDetail);
+            localStorage.setItem('seq_isSms', isSms ? 'true' : 'false');
+            console.log(`Sequential process started fresh for item ${itemNo}`);
+        }
+        
+        // 실제 연속 처리 로직 시작
+        processSequentialCompletion(item, itemNo, completionType, completionDetail, isSms);
     };
     
-    let item = ensureItemLoaded();
-    
-    // 아이템이 아직 로드되지 않았다면 최대 5번 재시도
-    let retryCount = 0;
-    const maxRetries = 5;
-    
-    while (!item && retryCount < maxRetries) {
-        retryCount++;
-        // 100ms 대기 후 재시도 (동기적으로 대기)
-        const wait = (ms) => {
-            const start = Date.now();
-            while (Date.now() - start < ms) {}
-        };
-        wait(100);
+    // 연속 처리 로직을 별도 함수로 분리
+    const processSequentialCompletion = (item, itemNo, completionType, completionDetail, isSms) => {
+        const allHawbs = [item.hawbNo, ...(item.childHawbs || [])];
+        const totalCount = allHawbs.length;
         
-        // deliveryItems 재조회
-        item = ensureItemLoaded();
-    }
-    
-    if (!item) {
-        console.error(`Item ${itemNo} could not be loaded after ${maxRetries} retries`);
-        showToastMessage('데이터를 불러오는데 실패했습니다. 다시 시도해주세요.');
-        return;
-    }
-    // ▲▲▲ [핵심 수정 끝] ▲▲▲
+        // 항상 localStorage에서 최신 상태를 가져옴
+        let currentIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
+        const currentIsSms = localStorage.getItem('seq_isSms') === 'true';
+        
+        console.log(`Processing item ${itemNo}, total hawbs: ${totalCount}, current index: ${currentIndex}`);
+        
+        confirmationModalTitle.textContent = `${itemNo}번 배송 완료 처리`;
+        const okBtn = document.getElementById('confirmOkButton');
 
-    const allHawbs = [item.hawbNo, ...(item.childHawbs || [])];
-    const totalCount = allHawbs.length;
+        const updateModalContent = () => {
+            const currentHawb = allHawbs[currentIndex];
             
-            let currentIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
-            const savedItemNo = localStorage.getItem('seq_itemNo');
+            const isFirstSms = (currentIsSms && currentIndex === 0);
+            okBtn.textContent = isFirstSms ? "확인 (문자)" : "확인 (전송)";
 
-            if (savedItemNo !== String(itemNo)) {
-                currentIndex = 0;
-                localStorage.setItem('seq_itemNo', itemNo);
-                localStorage.setItem('seq_index', '0');
-                localStorage.setItem('seq_type', completionType);
-                localStorage.setItem('seq_detail', completionDetail);
-                localStorage.setItem('seq_isSms', isSms ? 'true' : 'false');
+            confirmationModalBody.innerHTML = `
+                <div class="text-center space-y-3">
+                    <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        총 ${totalCount}개 중 ${currentIndex + 1}번째 처리 중
+                    </p>
+                    <div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1 text-left">송장번호</p>
+                        <p class="font-mono font-bold text-xl text-gray-800 dark:text-gray-200">${currentHawb}</p>
+                    </div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        확인을 누르면 번호 복사 및 ${isFirstSms ? '문자 앱이 실행' : '웹훅이 전송'}되며<br>
+                        ${currentIndex + 1 === totalCount ? '완료 탭으로 이동합니다.' : '다음 번호로 자동 연결됩니다.'}
+                    </p>
+                </div>
+            `;
+        };
+
+        const handleNext = () => {
+            const currentHawb = allHawbs[currentIndex];
+            const nextIndex = currentIndex + 1;
+            
+            // 다음 인덱스를 localStorage에 저장
+            localStorage.setItem('seq_index', nextIndex);
+
+            // 1. 공통: 번호 복사
+            navigator.clipboard.writeText(currentHawb);
+            triggerVibration();
+
+            // 2. [핵심 로직] 첫 번째이면서 SMS 모드일 때만 문자, 나머지는 웹훅
+            if (currentIsSms && currentIndex === 0) {
+                // [1번째] 문자 앱 실행
+                const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
+                const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
+                window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
+            } else {
+                // [2번째부터 또는 일반모드] 웹훅 전송
+                sendWebhook({ ...item, hawbNo: currentHawb });
             }
 
-            const currentIsSms = localStorage.getItem('seq_isSms') === 'true';
-
-            confirmationModalTitle.textContent = `${itemNo}번 배송 완료 처리`;
-            const okBtn = document.getElementById('confirmOkButton');
-
-            const updateModalContent = () => {
-                const currentHawb = allHawbs[currentIndex];
-                
-                // ▼▼▼ [수정] 현재 순서에 따라 버튼 텍스트와 안내 문구 변경 ▼▼▼
-                const isFirstSms = (currentIsSms && currentIndex === 0);
-                okBtn.textContent = isFirstSms ? "확인 (문자)" : "확인 (전송)";
-
-                confirmationModalBody.innerHTML = `
-                    <div class="text-center space-y-3">
-                        <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
-                            총 ${totalCount}개 중 ${currentIndex + 1}번째 처리 중
-                        </p>
-                        <div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1 text-left">송장번호</p>
-                            <p class="font-mono font-bold text-xl text-gray-800 dark:text-gray-200">${currentHawb}</p>
-                        </div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            확인을 누르면 번호 복사 및 ${isFirstSms ? '문자 앱이 실행' : '웹훅이 전송'}되며<br>
-                            ${currentIndex + 1 === totalCount ? '완료 탭으로 이동합니다.' : '다음 번호로 자동 연결됩니다.'}
-                        </p>
-                    </div>
-                `;
-            };
-
-            const handleNext = () => {
-                const currentHawb = allHawbs[currentIndex];
-                const nextIndex = currentIndex + 1;
-                localStorage.setItem('seq_index', nextIndex);
-
-                // 1. 공통: 번호 복사
-                navigator.clipboard.writeText(currentHawb);
-                triggerVibration();
-
-                // 2. [핵심 로직] 첫 번째이면서 SMS 모드일 때만 문자, 나머지는 웹훅
-                if (currentIsSms && currentIndex === 0) {
-                    // [1번째] 문자 앱 실행
-                    const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
-                    const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
-                    window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
-                } else {
-                    // [2번째부터 또는 일반모드] 웹훅 전송
-                    sendWebhook({ ...item, hawbNo: currentHawb });
-                }
-
-                if (nextIndex < totalCount) {
-                    currentIndex = nextIndex;
-                    updateModalContent();
-                } else {
-                    finishSequentialProcess(itemNo, completionType, completionDetail);
-                }
-            };
-
-            const finishSequentialProcess = (no, type, detail) => {
-                const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                handleStatusChange(no, '완료', currentTime, type, detail);
-                sortItemsByDistanceSilent();
-                
-                localStorage.removeItem('seq_itemNo');
-                localStorage.removeItem('seq_index');
-                localStorage.removeItem('seq_type');
-                localStorage.removeItem('seq_detail');
-                localStorage.removeItem('seq_isSms');
-
-                closeConfirmationModal();
-                okBtn.onclick = () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); };
-                okBtn.textContent = "확인";
-            };
-
-            updateModalContent();
-            okBtn.onclick = handleNext;
-            confirmationModalButtons.style.display = 'flex';
-            document.body.classList.add('modal-open');
-            confirmationModal.style.display = 'flex';
+            if (nextIndex < totalCount) {
+                currentIndex = nextIndex;
+                updateModalContent();
+            } else {
+                finishSequentialProcess(itemNo, completionType, completionDetail);
+            }
         };
+
+        const finishSequentialProcess = (no, type, detail) => {
+            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+            handleStatusChange(no, '완료', currentTime, type, detail);
+            sortItemsByDistanceSilent();
+            
+            // 연속 처리 완료 후 상태 초기화
+            localStorage.removeItem('seq_itemNo');
+            localStorage.removeItem('seq_index');
+            localStorage.removeItem('seq_type');
+            localStorage.removeItem('seq_detail');
+            localStorage.removeItem('seq_isSms');
+
+            closeConfirmationModal();
+            okBtn.onclick = () => { if (onConfirmCallback) onConfirmCallback(); closeConfirmationModal(); };
+            okBtn.textContent = "확인";
+        };
+
+        updateModalContent();
+        okBtn.onclick = handleNext;
+        confirmationModalButtons.style.display = 'flex';
+        document.body.classList.add('modal-open');
+        confirmationModal.style.display = 'flex';
+    };
+    
+    // 초기 호출
+    waitForItem();
+};
 
                 const setupDelegatedEventListeners = () => {
             let touchTarget = null;
@@ -3385,6 +3390,14 @@ if (!tempApiKeyForLocalTest) {
     });
 
         document.addEventListener('DOMContentLoaded', () => {
+            // ▼▼▼ [추가] 앱 시작 시 이전 연속 처리 상태 초기화 ▼▼▼
+localStorage.removeItem('seq_itemNo');
+localStorage.removeItem('seq_index');
+localStorage.removeItem('seq_type');
+localStorage.removeItem('seq_detail');
+localStorage.removeItem('seq_isSms');
+console.log('Previous sequential processing state cleared on app start');
+// ▲▲▲ [추가 끝] ▲▲▲
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
     let parsedItems = JSON.parse(storedItems);
