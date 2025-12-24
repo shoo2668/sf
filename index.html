@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.15";
+            const version = "v2.0.0";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -974,22 +974,46 @@ const sendCompletionNotification = (item) => {
 
             // ▼▼▼ [신규] 연속 완료 처리 함수 (3단계 핵심 로직) ▼▼▼
         const startSequentialCompletion = (itemNo, completionType, completionDetail, isSms = false) => {
-            const item = deliveryItems.find(i => i.no === itemNo);
-            
-            // ▼▼▼ 데이터가 아직 로드 안 되었을 경우를 대비한 안전장치 ▼▼▼
-            if (!item) {
-                if (!window.seqRetry) window.seqRetry = 0;
-                if (window.seqRetry < 5) {
-                    window.seqRetry++;
-                    setTimeout(() => startSequentialCompletion(itemNo, completionType, completionDetail, isSms), 100);
-                }
-                return;
-            }
-            window.seqRetry = 0;
-            // ▲▲▲ 여기까지 추가 ▲▲▲
+    // ▼▼▼ [핵심 수정] 데이터 완전 로드 대기 로직 추가 ▼▼▼
+    const ensureItemLoaded = () => {
+        const item = deliveryItems.find(i => i.no === itemNo);
+        
+        // childHawbs가 없으면 빈 배열로 초기화 (데이터 무결성 보장)
+        if (item && typeof item.childHawbs === 'undefined') {
+            item.childHawbs = [];
+        }
+        
+        return item;
+    };
+    
+    let item = ensureItemLoaded();
+    
+    // 아이템이 아직 로드되지 않았다면 최대 5번 재시도
+    let retryCount = 0;
+    const maxRetries = 5;
+    
+    while (!item && retryCount < maxRetries) {
+        retryCount++;
+        // 100ms 대기 후 재시도 (동기적으로 대기)
+        const wait = (ms) => {
+            const start = Date.now();
+            while (Date.now() - start < ms) {}
+        };
+        wait(100);
+        
+        // deliveryItems 재조회
+        item = ensureItemLoaded();
+    }
+    
+    if (!item) {
+        console.error(`Item ${itemNo} could not be loaded after ${maxRetries} retries`);
+        showToastMessage('데이터를 불러오는데 실패했습니다. 다시 시도해주세요.');
+        return;
+    }
+    // ▲▲▲ [핵심 수정 끝] ▲▲▲
 
-            const allHawbs = [item.hawbNo, ...(item.childHawbs || [])];
-            const totalCount = allHawbs.length;
+    const allHawbs = [item.hawbNo, ...(item.childHawbs || [])];
+    const totalCount = allHawbs.length;
             
             let currentIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
             const savedItemNo = localStorage.getItem('seq_itemNo');
@@ -1315,9 +1339,11 @@ const sendCompletionNotification = (item) => {
                         });
                         break;
                     case 'identity-verification':
-                        // 연속 처리 함수 호출
-                        startSequentialCompletion(itemNo, '본인전달', '신분증');
-                        break;
+    // 연속 처리 함수 호출 (100ms 지연 추가)
+    setTimeout(() => {
+        startSequentialCompletion(itemNo, '본인전달', '신분증');
+    }, 100);
+    break;
                     case 'open-location-modal':
                         openDeliveryLocationModal(itemNo);
                         break;
@@ -3361,14 +3387,17 @@ if (!tempApiKeyForLocalTest) {
         document.addEventListener('DOMContentLoaded', () => {
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
-                let parsedItems = JSON.parse(storedItems);
-                deliveryItems = parsedItems.map(item => {
-                    if (typeof item.addressLocation === 'undefined') item.addressLocation = null;
-                    if (typeof item.isStruckThrough === 'undefined') item.isStruckThrough = false;
-                    if (typeof item.isAddressValidated === 'undefined') item.isAddressValidated = true;
-                    return item;
-                }).sort((a, b) => a.no - b.no);
-            }
+    let parsedItems = JSON.parse(storedItems);
+    deliveryItems = parsedItems.map(item => {
+        if (typeof item.addressLocation === 'undefined') item.addressLocation = null;
+        if (typeof item.isStruckThrough === 'undefined') item.isStruckThrough = false;
+        if (typeof item.isAddressValidated === 'undefined') item.isAddressValidated = true;
+        // ▼▼▼ [추가] childHawbs가 없으면 빈 배열로 초기화 ▼▼▼
+        if (typeof item.childHawbs === 'undefined') item.childHawbs = [];
+        // ▲▲▲ [추가 끝] ▲▲▲
+        return item;
+    }).sort((a, b) => a.no - b.no);
+}
             // ▼▼▼ [추가] 저장된 정렬 순서 불러오기 ▼▼▼
             deliveryInProgressSortOrder = localStorage.getItem('deliveryInProgressSortOrder') || 'no';
             completedSortOrder = localStorage.getItem('completedSortOrder') || 'no';
