@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.5";
+            const version = "v2.0.6";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1049,41 +1049,52 @@ const startSequentialCompletion = (itemNo, completionType, completionDetail, isS
             `;
         };
 
-        const handleNext = () => {
-            currentIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
-            const currentHawb = allHawbs[currentIndex];
-            const nextIndex = currentIndex + 1;
-            
-            // 1. 번호 복사 및 진동
-            navigator.clipboard.writeText(currentHawb);
-            triggerVibration();
+        // startSequentialCompletion 함수 내부의 handleNext 부분만 수정
+const handleNext = () => {
+    // 1. localStorage에서 현재 인덱스 다시 읽기
+    const currentIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
+    
+    // 2. 전역 변수에서 해당 아이템의 최신 상태(자식 송장 포함)를 다시 찾기
+    const currentItem = deliveryItems.find(i => i.no === itemNo);
+    if (!currentItem) return;
 
-            // 2. 다음 인덱스 즉시 저장 (중요: 리다이렉트 전 저장)
-            localStorage.setItem('seq_index', nextIndex.toString());
+    const allHawbs = [currentItem.hawbNo, ...(currentItem.childHawbs || [])];
+    const totalCount = allHawbs.length;
+    const currentHawb = allHawbs[currentIndex];
+    const nextIndex = currentIndex + 1;
+    
+    // 번호 복사 및 진동
+    navigator.clipboard.writeText(currentHawb);
+    triggerVibration();
 
-            // 3. 액션 실행 (첫 번째 문자 또는 웹훅)
-            if (currentIsSms && currentIndex === 0) {
-                const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
-                const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
-                // SMS 리다이렉트
-                window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
-            } else {
-                sendWebhook({ ...item, hawbNo: currentHawb });
-            }
+    // 다음 인덱스 저장
+    localStorage.setItem('seq_index', nextIndex.toString());
 
-            // 4. 다음 단계 판단
-            if (nextIndex < totalCount) {
-                // 페이지가 리로드되지 않았을 경우를 위해 UI 즉시 업데이트
-                setTimeout(() => {
-                    updateModalContent();
-                }, 100);
-            } else {
-                // 모든 송장 처리 완료
-                setTimeout(() => {
-                    finishSequentialProcess(itemNo, completionType, completionDetail);
-                }, 100);
-            }
-        };
+    // 액션 실행
+    const isSmsMode = localStorage.getItem('seq_isSms') === 'true';
+    if (isSmsMode && currentIndex === 0) {
+        const cleanPhone = getCleanPhoneNumber(currentItem.receiverTelephoneNo);
+        const messageBody = `SF택배 퀵배송 왔습니다. (${localStorage.getItem('seq_detail')})`;
+        window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
+    } else {
+        sendWebhook({ ...currentItem, hawbNo: currentHawb });
+    }
+
+    // 다음 단계 판단
+    if (nextIndex < totalCount) {
+        console.log(`다음 송장으로 이동: ${nextIndex + 1}/${totalCount}`);
+        setTimeout(() => {
+            updateModalContent(); // 모달 내용 갱신
+        }, 100);
+    } else {
+        console.log("모든 송장 처리 완료");
+        setTimeout(() => {
+            const type = localStorage.getItem('seq_type');
+            const detail = localStorage.getItem('seq_detail');
+            finishSequentialProcess(itemNo, type, detail);
+        }, 100);
+    }
+};
 
         const finishSequentialProcess = (no, type, detail) => {
             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
@@ -3393,14 +3404,6 @@ if (!tempApiKeyForLocalTest) {
     });
 
         document.addEventListener('DOMContentLoaded', () => {
-            // ▼▼▼ [추가] 앱 시작 시 이전 연속 처리 상태 초기화 ▼▼▼
-localStorage.removeItem('seq_itemNo');
-localStorage.removeItem('seq_index');
-localStorage.removeItem('seq_type');
-localStorage.removeItem('seq_detail');
-localStorage.removeItem('seq_isSms');
-console.log('Previous sequential processing state cleared on app start');
-// ▲▲▲ [추가 끝] ▲▲▲
             const storedItems = localStorage.getItem('deliveryItems');
             if (storedItems) {
     let parsedItems = JSON.parse(storedItems);
@@ -3901,63 +3904,12 @@ console.log('Previous sequential processing state cleared on app start');
             }
 
             const handleUrlParams = (url) => {
-    // ▼▼▼ [추가] SMS 앱 실행 후 복귀 시 연속 처리 재개 ▼▼▼
-    if (localStorage.getItem('pending_sequential') === 'true') {
-        const pendingItemNo = parseInt(localStorage.getItem('pending_itemNo'), 10);
-        const pendingType = localStorage.getItem('pending_completionType');
-        const pendingDetail = localStorage.getItem('pending_completionDetail');
-        
-        if (pendingItemNo) {
-            // 대기 상태 제거
-            localStorage.removeItem('pending_sequential');
-            localStorage.removeItem('pending_itemNo');
-            localStorage.removeItem('pending_completionType');
-            localStorage.removeItem('pending_completionDetail');
-            
-            // 1초 후 연속 처리 재개
-            setTimeout(() => {
-                startSequentialCompletion(pendingItemNo, pendingType, pendingDetail, false);
-            }, 1000);
-            
-            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-            window.history.replaceState({}, '', cleanUrl);
-            return;
-        }
-    }
-    // ▲▲▲ [추가 끝] ▲▲▲
-
     const urlParams = new URLSearchParams(url.search);
     const hawbFromUrl = urlParams.get('hawb');
     const action = urlParams.get('action');
     const targetNo = parseInt(urlParams.get('target'), 10);
-    const filterFromUrl = urlParams.get('filter');
 
-    // [1순위] 연속 처리 복구 (가장 중요: 송장번호 유무와 상관없이 무조건 먼저 확인)
-    const seqItemNo = localStorage.getItem('seq_itemNo');
-    if (seqItemNo) {
-        // ★ 수정: 이미 모달이 떠 있고, 같은 아이템을 처리 중이라면 중복 실행 방지
-        const isModalVisible = confirmationModal.style.display === 'flex';
-        const modalTitle = confirmationModalTitle.textContent;
-        
-        if (isModalVisible && modalTitle.includes(`${seqItemNo}번`)) {
-            console.log('Sequence already active, skipping recovery');
-            return;
-        }
-
-        setTimeout(() => {
-            const seqType = localStorage.getItem('seq_type');
-            const seqDetail = localStorage.getItem('seq_detail');
-            const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
-            startSequentialCompletion(parseInt(seqItemNo, 10), seqType, seqDetail, seqIsSms);
-        }, 300);
-        
-        // URL 파라미터 제거 (깔끔한 상태 유지)
-        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-        window.history.replaceState({}, '', cleanUrl);
-        return; 
-    }
-
-    // [2순위] 자식 송장 추가 로직
+    // [1순위] 자식 송장 추가 로직 (데이터를 먼저 업데이트해야 함)
     if (hawbFromUrl && action === 'add-child' && !isNaN(targetNo)) {
         const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
         if (itemIndex > -1) {
@@ -3968,40 +3920,42 @@ console.log('Previous sequential processing state cleared on app start');
                 deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
                 saveDeliveryItemsToLocalStorage();
                 showToastMessage(`${targetNo}번 카드에 송장 추가 완료`);
-            } else {
-                showToastMessage('이미 등록된 송장번호입니다.');
             }
-            
-            const targetStatus = deliveryItems[itemIndex].status;
-            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-            window.history.replaceState({}, '', cleanUrl);
-            changeFilter(targetStatus === '배송전' ? '배송전' : '배송중', '', true);
-            
-            setTimeout(() => {
-                const card = document.querySelector(`div[data-no="${targetNo}"]`);
-                if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 300);
-            return; 
         }
     }
 
+    // [2순위] 연속 처리 복구 로직
+    const seqItemNo = localStorage.getItem('seq_itemNo');
+    if (seqItemNo) {
+        // ★ 중요: 여기서 localStorage.removeItem을 절대 호출하지 마세요!
+        // 데이터 삭제는 오직 finishSequentialProcess에서만 해야 합니다.
+        
+        const itemNo = parseInt(seqItemNo, 10);
+        setTimeout(() => {
+            const seqType = localStorage.getItem('seq_type');
+            const seqDetail = localStorage.getItem('seq_detail');
+            const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
+            
+            // 이미 모달이 떠 있는지 확인 후 실행
+            if (confirmationModal.style.display !== 'flex') {
+                startSequentialCompletion(itemNo, seqType, seqDetail, seqIsSms);
+            }
+        }, 500);
+        
+        // URL 파라미터만 정리
+        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+        window.history.replaceState({}, '', cleanUrl);
+        return; 
+    }
+
     // [3순위] 일반 검색 로직
-    if (hawbFromUrl) {
+    if (hawbFromUrl && !action) {
         changeFilter('전체', '', true);
         searchTerm = hawbFromUrl;
         invoiceNumberInput.value = hawbFromUrl;
         renderDeliveryCards('전체');
         const cleanUrl = `${window.location.origin}${window.location.pathname}`;
         window.history.replaceState({}, '', cleanUrl);
-        return;
-    }
-
-    // [4순위] 아무것도 없으면 기본 필터 설정
-    if (filterFromUrl && filterCategories.includes(filterFromUrl)) {
-        changeFilter(filterFromUrl, '', true);
-    } else {
-        const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
-        changeFilter(lastFilter, '', true);
     }
 };
 
