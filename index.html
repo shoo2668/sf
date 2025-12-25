@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.6";
+            const version = "v2.0.7";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1050,29 +1050,31 @@ const startSequentialCompletion = (itemNo, completionType, completionDetail, isS
         };
 
         // startSequentialCompletion 함수 내부의 handleNext 부분만 수정
+// startSequentialCompletion 함수 내부의 handleNext 부분만 교체
 const handleNext = () => {
-    // 1. localStorage에서 현재 인덱스 다시 읽기
-    const currentIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
+    // 1. 최신 인덱스와 아이템 정보를 다시 읽어옴
+    const sItemNo = parseInt(localStorage.getItem('seq_itemNo'), 10);
+    const sIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
+    const currentItem = deliveryItems.find(i => i.no === sItemNo);
     
-    // 2. 전역 변수에서 해당 아이템의 최신 상태(자식 송장 포함)를 다시 찾기
-    const currentItem = deliveryItems.find(i => i.no === itemNo);
     if (!currentItem) return;
 
+    // 2. 송장 목록 재계산
     const allHawbs = [currentItem.hawbNo, ...(currentItem.childHawbs || [])];
     const totalCount = allHawbs.length;
-    const currentHawb = allHawbs[currentIndex];
-    const nextIndex = currentIndex + 1;
+    const currentHawb = allHawbs[sIndex];
+    const nextIndex = sIndex + 1;
     
-    // 번호 복사 및 진동
+    // 3. 번호 복사 및 진동
     navigator.clipboard.writeText(currentHawb);
     triggerVibration();
 
-    // 다음 인덱스 저장
+    // 4. 다음 인덱스 저장 (액션 실행 전 저장하여 안전성 확보)
     localStorage.setItem('seq_index', nextIndex.toString());
 
-    // 액션 실행
+    // 5. 액션 실행
     const isSmsMode = localStorage.getItem('seq_isSms') === 'true';
-    if (isSmsMode && currentIndex === 0) {
+    if (isSmsMode && sIndex === 0) {
         const cleanPhone = getCleanPhoneNumber(currentItem.receiverTelephoneNo);
         const messageBody = `SF택배 퀵배송 왔습니다. (${localStorage.getItem('seq_detail')})`;
         window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
@@ -1080,18 +1082,18 @@ const handleNext = () => {
         sendWebhook({ ...currentItem, hawbNo: currentHawb });
     }
 
-    // 다음 단계 판단
+    // 6. 다음 단계 판단
     if (nextIndex < totalCount) {
-        console.log(`다음 송장으로 이동: ${nextIndex + 1}/${totalCount}`);
+        // 아직 남았다면 모달 갱신
         setTimeout(() => {
-            updateModalContent(); // 모달 내용 갱신
+            updateModalContent(); 
         }, 100);
     } else {
-        console.log("모든 송장 처리 완료");
+        // 모든 송장 처리 완료 시에만 데이터 삭제
         setTimeout(() => {
             const type = localStorage.getItem('seq_type');
             const detail = localStorage.getItem('seq_detail');
-            finishSequentialProcess(itemNo, type, detail);
+            finishSequentialProcess(sItemNo, type, detail);
         }, 100);
     }
 };
@@ -3909,47 +3911,51 @@ if (!tempApiKeyForLocalTest) {
     const action = urlParams.get('action');
     const targetNo = parseInt(urlParams.get('target'), 10);
 
-    // [1순위] 자식 송장 추가 로직 (데이터를 먼저 업데이트해야 함)
-    if (hawbFromUrl && action === 'add-child' && !isNaN(targetNo)) {
-        const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
-        if (itemIndex > -1) {
-            if (!deliveryItems[itemIndex].childHawbs) {
-                deliveryItems[itemIndex].childHawbs = [];
-            }
-            if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
-                deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
-                saveDeliveryItemsToLocalStorage();
-                showToastMessage(`${targetNo}번 카드에 송장 추가 완료`);
-            }
-        }
-    }
-
-    // [2순위] 연속 처리 복구 로직
+    // [1순위] 연속 처리 복구 (가장 먼저 확인)
     const seqItemNo = localStorage.getItem('seq_itemNo');
     if (seqItemNo) {
-        // ★ 중요: 여기서 localStorage.removeItem을 절대 호출하지 마세요!
-        // 데이터 삭제는 오직 finishSequentialProcess에서만 해야 합니다.
-        
         const itemNo = parseInt(seqItemNo, 10);
+        const currentIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
+        
+        console.log(`[복구] ${itemNo}번 항목의 ${currentIndex + 1}번째 송장부터 재개합니다.`);
+
+        // UI가 완전히 준비된 후 모달을 띄우기 위해 지연 시간을 줍니다.
         setTimeout(() => {
             const seqType = localStorage.getItem('seq_type');
             const seqDetail = localStorage.getItem('seq_detail');
             const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
             
-            // 이미 모달이 떠 있는지 확인 후 실행
+            // 모달이 이미 떠 있지 않은 경우에만 실행
             if (confirmationModal.style.display !== 'flex') {
                 startSequentialCompletion(itemNo, seqType, seqDetail, seqIsSms);
             }
-        }, 500);
-        
-        // URL 파라미터만 정리
+        }, 600); // 지연 시간을 0.6초로 늘려 안정성 확보
+
+        // URL 정리 (복구 로직 실행 시 다른 파라미터 무시)
         const cleanUrl = `${window.location.origin}${window.location.pathname}`;
         window.history.replaceState({}, '', cleanUrl);
         return; 
     }
 
+    // [2순위] 자식 송장 추가 로직
+    if (hawbFromUrl && action === 'add-child' && !isNaN(targetNo)) {
+        const itemIndex = deliveryItems.findIndex(i => Number(i.no) === targetNo);
+        if (itemIndex > -1) {
+            if (!deliveryItems[itemIndex].childHawbs) deliveryItems[itemIndex].childHawbs = [];
+            if (!deliveryItems[itemIndex].childHawbs.includes(hawbFromUrl) && deliveryItems[itemIndex].hawbNo !== hawbFromUrl) {
+                deliveryItems[itemIndex].childHawbs.push(hawbFromUrl);
+                saveDeliveryItemsToLocalStorage();
+                showToastMessage(`${targetNo}번 카드에 송장 추가 완료`);
+            }
+            const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+            window.history.replaceState({}, '', cleanUrl);
+            changeFilter(deliveryItems[itemIndex].status === '배송전' ? '배송전' : '배송중', '', true);
+            return;
+        }
+    }
+
     // [3순위] 일반 검색 로직
-    if (hawbFromUrl && !action) {
+    if (hawbFromUrl) {
         changeFilter('전체', '', true);
         searchTerm = hawbFromUrl;
         invoiceNumberInput.value = hawbFromUrl;
