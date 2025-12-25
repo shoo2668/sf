@@ -949,7 +949,7 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.3";
+            const version = "v2.0.4";
             const changelog = "버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
@@ -1045,44 +1045,48 @@ const sendCompletionNotification = (item) => {
         };
 
         const handleNext = () => {
-            const currentHawb = allHawbs[currentIndex];
-            const nextIndex = currentIndex + 1;
-            
-            // ▼▼▼ [핵심] localStorage에 저장 후 즉시 다시 읽어옴 ▼▼▼
-            localStorage.setItem('seq_index', nextIndex);
-            
-            // 상태를 강제로 동기화
-            localStorage.getItem('seq_index');
+    const currentHawb = allHawbs[currentIndex];
+    const nextIndex = currentIndex + 1;
+    
+    // ▼▼▼ [핵심 수정] localStorage 저장 후 즉시 동기화 ▼▼▼
+    localStorage.setItem('seq_index', nextIndex.toString());
+    
+    // 강제 동기화 (중요!)
+    localStorage.getItem('seq_index');
+    
+    console.log('📍 handleNext: currentIndex=', currentIndex, 'nextIndex=', nextIndex, 'saved=', localStorage.getItem('seq_index'));
+    // ▲▲▲ [핵심 수정 끝] ▲▲▲
 
-            // 1. 공통: 번호 복사
-            navigator.clipboard.writeText(currentHawb);
-            triggerVibration();
+    // 1. 공통: 번호 복사
+    navigator.clipboard.writeText(currentHawb);
+    triggerVibration();
 
-            // 2. [핵심 로직] 첫 번째이면서 SMS 모드일 때만 문자, 나머지는 웹훅
-            if (currentIsSms && currentIndex === 0) {
-                const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
-                const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
-                window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
-            } else {
-                // [2번째부터 또는 일반모드] 웹훅 전송 (연속 처리 모드)
-                sendWebhook({ ...item, hawbNo: currentHawb }, true);
-            }
+    // 2. [핵심 로직] 첫 번째이면서 SMS 모드일 때만 문자, 나머지는 웹훅
+    if (currentIsSms && currentIndex === 0) {
+        // [1번째] 문자 앱 실행
+        const cleanPhone = getCleanPhoneNumber(item.receiverTelephoneNo);
+        const messageBody = `SF택배 퀵배송 왔습니다. (${completionDetail})`;
+        window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(messageBody)}`;
+    } else {
+        // [2번째부터 또는 일반모드] 웹훅 전송
+        sendWebhook({ ...item, hawbNo: currentHawb });
+    }
 
-            if (nextIndex < totalCount) {
-                // ▼▼▼ [수정] currentIndex 업데이트 전에 localStorage에서 다시 읽음 ▼▼▼
-                const savedIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
-                currentIndex = savedIndex;
-                
-                // 약간의 지연 후 모달 업데이트
-                setTimeout(() => {
-                    updateModalContent();
-                }, 100);
-            } else {
-                setTimeout(() => {
-                    finishSequentialProcess(itemNo, completionType, completionDetail);
-                }, 100);
-            }
-        };
+    if (nextIndex < totalCount) {
+        // ▼▼▼ [수정] localStorage에서 다시 읽어와서 업데이트 ▼▼▼
+        setTimeout(() => {
+            const savedIndex = parseInt(localStorage.getItem('seq_index') || '0', 10);
+            currentIndex = savedIndex;
+            console.log('📍 모달 업데이트: currentIndex=', currentIndex, 'allHawbs=', allHawbs);
+            updateModalContent();
+        }, 300);
+        // ▲▲▲ [수정 끝] ▲▲▲
+    } else {
+        setTimeout(() => {
+            finishSequentialProcess(itemNo, completionType, completionDetail);
+        }, 300);
+    }
+};
 
         const finishSequentialProcess = (no, type, detail) => {
             const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
