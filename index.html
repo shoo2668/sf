@@ -974,6 +974,10 @@ const sendCompletionNotification = (item) => {
 
         // ▼▼▼ [수정된 연속 완료 처리 함수] ▼▼▼
 const startSequentialCompletion = (itemNo, completionType, completionDetail, isSms = false) => {
+    // ★ 추가: 함수 시작 시 혹시 모를 모달 상태를 초기화합니다.
+    confirmationModal.style.display = 'none'; 
+    document.body.classList.remove('modal-open');
+
     let retryCount = 0;
     const maxRetries = 10;
     
@@ -3661,16 +3665,24 @@ if (!tempApiKeyForLocalTest) {
                 }
             }, { passive: false });
 
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
-                    // 앱으로 돌아오면 주소창에 뭐가 있든 없든 무조건 handleUrlParams를 실행해서
-                    // 하던 작업(연속 처리)이 있는지 확인하라고 시킵니다.
-                    handleUrlParams(new URL(window.location.href));
-                    
-                    justReturnedFromExternalApp = true;
-                    setTimeout(() => { justReturnedFromExternalApp = false; }, 500);
-                }
-            });
+            // ▼▼▼ [수정] 앱 복귀 시 연속 처리를 더 확실하게 감지하기 위한 로직 ▼▼▼
+const onAppResume = () => {
+    // 화면이 보이거나(visible), 브라우저가 포커스를 받았을 때(focus) 실행
+    if (document.visibilityState === 'visible') {
+        console.log("앱 복귀 감지: 연속 처리 여부를 확인합니다.");
+        
+        // 하던 작업(연속 처리)이 있는지 확인하고 모달을 다시 띄웁니다.
+        handleUrlParams(new URL(window.location.href));
+        
+        justReturnedFromExternalApp = true;
+        setTimeout(() => { justReturnedFromExternalApp = false; }, 500);
+    }
+};
+
+// 두 가지 이벤트를 모두 등록하여 어떤 상황에서도 복귀를 감지하도록 합니다.
+document.addEventListener('visibilitychange', onAppResume);
+window.addEventListener('focus', onAppResume); 
+// ▲▲▲ [수정 끝] ▲▲▲
 
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', (event) => {
@@ -3919,19 +3931,17 @@ if (!tempApiKeyForLocalTest) {
         
         console.log(`[복구] ${itemNo}번 항목의 ${currentIndex + 1}번째 송장부터 재개합니다.`);
 
-        // UI가 완전히 준비된 후 모달을 띄우기 위해 지연 시간을 줍니다.
         setTimeout(() => {
             const seqType = localStorage.getItem('seq_type');
             const seqDetail = localStorage.getItem('seq_detail');
             const seqIsSms = localStorage.getItem('seq_isSms') === 'true';
             
-            // 모달이 이미 떠 있지 않은 경우에만 실행
-            if (confirmationModal.style.display !== 'flex') {
-                startSequentialCompletion(itemNo, seqType, seqDetail, seqIsSms);
-            }
-        }, 600); // 지연 시간을 0.6초로 늘려 안정성 확보
+            // ★ 수정: 기존의 if (confirmationModal.style.display !== 'flex') 조건을 삭제했습니다.
+            // 복구 시에는 모달 상태와 상관없이 무조건 함수를 호출하여 화면을 갱신합니다.
+            startSequentialCompletion(itemNo, seqType, seqDetail, seqIsSms);
+            
+        }, 400); // 지연 시간을 0.4초 정도로 적절히 조절
 
-        // URL 정리 (복구 로직 실행 시 다른 파라미터 무시)
         const cleanUrl = `${window.location.origin}${window.location.pathname}`;
         window.history.replaceState({}, '', cleanUrl);
         return; 
