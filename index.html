@@ -754,13 +754,19 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - **MERGE FRAGMENTS (1-2 Letters):** If a line starts/ends with only **1-2 letters** (e.g., "G", "ng", "k") that look like a broken syllable, **concatenate WITHOUT spaces** (e.g., "YUGYOUN"+"G" → "YUGYOUNG").
         - **PRESERVE FAMILY NAMES:** If the separated part is a known family name (e.g., "Kim", "Lee", "Park", "Choi") or is **3 letters or longer**, **KEEP THE SPACE** (e.g., "Haksung"+"Kim" → "Haksung Kim").
         - **KOREAN TRANSLATION:** Finally, translate the reconstructed name to Korean (e.g., "YUGYOUNG KIM" → "김유경").
-        
+
 4.  **TRANSLATE AND SEPARATE ADDRESS:**
     *   Translate names to Korean if in English/Romanized Korean.
     
     *   **STEP 1 (DATA INTEGRITY): Extract Raw OCR Address.** 
         - "rawOcrAddress": COMPLETE, UNALTERED text from receiver address block
         - Preserve ALL characters, spacing exactly as they appear
+        
+    *   **FIX BROKEN NUMBERS (CRITICAL):**
+        - Detect numbers split across lines or by spaces within the address block.
+        - **MERGE DANGLING DIGITS:** If a line ends/starts with **1-2 digits** that clearly belong to a number sequence, **concatenate them WITHOUT spaces**.
+        - Example: "Jamsildong2" + "7" → "Jamsildong27"
+        - Example: "525-" + "309" → "525-309"
 
     *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
         - Translate English words to Korean equivalents
@@ -770,9 +776,8 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "yuram" -> "율암" (Target: Yuram-ri, Yuram-gil)
         - "baran" -> "발안" (Target: Baran-ro, Baran-ri)
         - "nongmangmal" -> "녹막말" (Target: Nongmangmal-gil)
-        - "saeun" -> "사은" (Target: Saeun-ro, Saeun-ri)
-        - "dongjigol" -> "동지골" (Target: dongjigol-gil)
-        - "jageundollae" -> "작은돌래" (Target: Jageundollae-gil)
+        - "saeun" -> "사은" (Target: Saeun-ro)
+        - "saemal" -> "새말" (Target: Saemal-ro)
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -2867,11 +2872,10 @@ const getCleanPhoneNumber = (phoneNumber) => {
 
     if (isScanCancelled) return { cancelled: true };
 
-    // 2. 통합 API 요청 준비 (모든 이미지를 하나의 패키지로 묶음)
+    // 2. 통합 API 요청 준비
     scanProgressModalText.textContent = `AI 분석 중... (이미지 ${totalFiles}장 통합 요청)`;
 
     try {
-        // 모든 이미지를 하나의 parts 배열로 구성
         const imageParts = resizedImageObjects.map(obj => ({
             inlineData: { mimeType: 'image/jpeg', data: obj.data }
         }));
@@ -2886,14 +2890,16 @@ const getCleanPhoneNumber = (phoneNumber) => {
             }],
             generationConfig: { 
                 temperature: 0, 
-                responseMimeType: "application/json" 
+                responseMimeType: "application/json",
+                // ★ 중요: 출력 토큰 제한을 대폭 늘려 끊김 현상을 방지합니다.
+                maxOutputTokens: 8192 
             }
         };
 
         const apiKey = localStorage.getItem('gemini_api_key');
+        // 사용자가 지정한 모델명 gemini-2.5-flash 사용
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-        // 단 한 번의 API 호출로 모든 이미지 전송 (RPD 1회만 소모)
         const response = await fetch(apiUrl, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -2906,7 +2912,15 @@ const getCleanPhoneNumber = (phoneNumber) => {
         const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!rawText) throw new Error("AI 응답 데이터가 없습니다.");
 
-        const parsedData = JSON.parse(rawText);
+        // JSON 파싱 시도
+        let parsedData;
+        try {
+            parsedData = JSON.parse(rawText);
+        } catch (e) {
+            console.error("JSON 파싱 에러. 원본 텍스트:", rawText);
+            throw new Error("AI 응답이 잘렸습니다. 사진 장수를 줄여서 다시 시도해주세요.");
+        }
+
         if (!Array.isArray(parsedData)) throw new Error("AI 응답 형식이 올바르지 않습니다.");
 
         // 3. 결과 처리 및 주소 검증
@@ -2919,7 +2933,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
             const no = parseInt(item.no, 10);
             if (!no) continue;
 
-            // 카카오 주소 검증 (각 항목당 실행)
             const validation = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
             
             const newItem = {
