@@ -2908,7 +2908,7 @@ if (!tempApiKeyForLocalTest) {
         alert("API 키가 없으면 스캔 기능을 사용할 수 없습니다.");
     }
 }
-                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${tempApiKeyForLocalTest}`;
+                    const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${tempApiKeyForLocalTest}`;
 
                     const response = await fetch(directApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) { throw new Error(`API 요청 실패 (상태: ${response.status})`); }
