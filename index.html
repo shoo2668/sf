@@ -805,22 +805,38 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
     *   Ensure hawNo contains only alphanumeric characters without spaces
     *   Example: "SF 329664287 8806" → "SF3296642878806"
 
+**[NEW] UPS MANIFEST (DELIVERY RECORD) SPECIFIC RULES:**
+*   **TRIGGER:** Apply these rules when the layout is a list/manifest or tracking numbers start with "1Z".
+*   **TRACKING NUMBER MAPPING (SEQUENTIAL):**
+    - The Tracking Number (1Z...) is the **FOOTER** of each delivery block.
+    - **RULE:** For Card #N, the correct hawbNo is the one located **BETWEEN** Card #N's information and Card #(N+1)'s information.
+    - **LAST CARD RULE:** For the final card on a page, the hawbNo is the one appearing **IMMEDIATELY AFTER** its information block.
+    - **STRICT PROHIBITION:** Never assign a Tracking Number to the information block that appears **BELOW** it.
+
+*   **CROSS-PAGE STITCHING (잘린 정보 통합):**
+    - If an invoice is split across two images (e.g., Name/Address at the bottom of Image A, and Phone/Tracking No at the top of Image B), you must **STITCH** them into a single JSON object.
+    - **IDENTIFICATION:** Use the handwritten or printed "no" to identify parts of the same invoice.
+    - **MERGE LOGIC:** 
+        - Concatenate split addresses: [Address Part 1] + [Address Part 2].
+        - Combine all fields (Name, Phone, hawbNo) into one complete object for that "no".
+        - Do not create two separate objects for the same "no".
+
 6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
 **Example Output:**
 [
   {
     "no": "1",
-    "hawbNo": "SF3296642878806",
-    "receiverName": "Support Ryu",
-    "receiverNameKorean": "류 서포트",
-    "receiverPhone": "01098924075",
+    "hawbNo": "1Z4492C0432504372",
+    "receiverName": "KIM TAE-MIN",
+    "receiverNameKorean": "김태민",
+    "receiverPhone": "01075519291",
     "receiverCompanyName": "",
     "receiverCompanyNameKorean": "",
-    "receiverAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "rawOcrAddress": "seoul Songpa-gu 124 Wiryesongpa -ro, Songpa-gu, SeoulRoom 401, Building 103",
-    "baseAddressKorean": "서울 송파구 위례송파로 124",
-    "detailAddressKorean": "103-401"
+    "receiverAddress": "68, HANNARU-RO 105BEON-GIL, YEONSU-GU, INCHEON",
+    "rawOcrAddress": "68, HANNARU-RO 105BEON-GIL, YEONSU-GU, INCHEON",
+    "baseAddressKorean": "인천 연수구 한나루로105번길 68",
+    "detailAddressKorean": "401-1207"
   }
 ]
 `;
@@ -956,7 +972,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "v2.0.0";
-            const changelog = "버그수정";
+            const changelog = "ups정보추가";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
