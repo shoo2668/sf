@@ -805,21 +805,18 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
     *   Ensure hawNo contains only alphanumeric characters without spaces
     *   Example: "SF 329664287 8806" → "SF3296642878806"
 
-**[NEW] UPS MANIFEST (DELIVERY RECORD) SPECIFIC RULES:**
-*   **TRIGGER:** Apply these rules when the layout is a list/manifest or tracking numbers start with "1Z".
-*   **TRACKING NUMBER MAPPING (SEQUENTIAL):**
-    - The Tracking Number (1Z...) is the **FOOTER** of each delivery block.
-    - **RULE:** For Card #N, the correct hawbNo is the one located **BETWEEN** Card #N's information and Card #(N+1)'s information.
-    - **LAST CARD RULE:** For the final card on a page, the hawbNo is the one appearing **IMMEDIATELY AFTER** its information block.
-    - **STRICT PROHIBITION:** Never assign a Tracking Number to the information block that appears **BELOW** it.
-
-*   **CROSS-PAGE STITCHING (잘린 정보 통합):**
-    - If an invoice is split across two images (e.g., Name/Address at the bottom of Image A, and Phone/Tracking No at the top of Image B), you must **STITCH** them into a single JSON object.
-    - **IDENTIFICATION:** Use the handwritten or printed "no" to identify parts of the same invoice.
-    - **MERGE LOGIC:** 
-        - Concatenate split addresses: [Address Part 1] + [Address Part 2].
-        - Combine all fields (Name, Phone, hawbNo) into one complete object for that "no".
-        - Do not create two separate objects for the same "no".
+**[NEW] UPS MANIFEST (1Z...) SPECIAL MAPPING RULES:**
+*   **TRIGGER:** Apply these rules when tracking numbers start with "1Z" or the layout is a list.
+*   **SEQUENTIAL FOOTER RULE:** 
+    - The Tracking Number (1Z...) is the **FOOTER (END)** of each delivery block.
+    - **MAPPING:** For Card #N, the correct hawbNo is the one located **BETWEEN** Card #N's info and Card #(N+1)'s info.
+    - **LAST CARD:** For the final card on a page, the hawbNo is the one appearing **IMMEDIATELY AFTER** its info block.
+*   **STRICT PROHIBITION:** Never assign a Tracking Number to the info block that appears **BELOW** it. Do not look UP for a tracking number.
+*   **TOP OF PAGE EXCEPTION:** If a Tracking Number (1Z...) appears at the very top of a page before any address, it belongs to the **LAST item (n-2) of the PREVIOUS page**.
+*   **SPLIT ITEM RECOGNITION (n-1, n-2):**
+    - If a number is written as "n-1" or "n-2" (e.g., 7-1, 7-2), extract it **EXACTLY** as written into the "no" field.
+    - Treat "n-1" as the starting part and "n-2" as the closing part of the same delivery.
+    - The Tracking Number following "n-2" is the hawbNo for the entire "n" sequence.
 
 6.  **OUTPUT A JSON ARRAY:** Your entire output MUST be a single, valid JSON array of objects.
 
