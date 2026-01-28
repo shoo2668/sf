@@ -434,7 +434,7 @@
                         <div>
                             <h3 class="setting-section-title">수동 카드 추가</h3>
                             <button id="manual-add-card-button" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">새 카드 생성</button>
-                            <button id="scanAndGenerateButton" class="w-full mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">CSV 데이터로 카드추가</button>
+                            <button id="csv-ai-import-button" class="w-full mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">CSV 데이터로 카드추가</button>
                         </div>
                         <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
 
@@ -970,7 +970,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "v2.0.0";
-            const changelog = "CSV/텍스트 AI 가져오기, 수동 카드 추가, 지도 아이콘 탭 기능 개선 등 다양한 신규 기능과 개선 사항이 포함되었습니다.";
+            const changelog = "csv/텍스트 AI 가져오기 기능 추가, 지도 아이콘 더블탭 및 트리플탭 기능 추가, UI/UX 개선 및 버그 수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
