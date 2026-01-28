@@ -672,7 +672,7 @@
             </div>
         </div>
     </div>
-    
+
     <script type="text/javascript">
         // ▼▼▼▼▼ [수정] 새로운 UI에 맞춘 다크모드 테마 제어 로직 ▼▼▼▼▼
 const themeColorMeta = document.getElementById('theme-color-meta');
@@ -3840,7 +3840,7 @@ if (!tempApiKeyForLocalTest) {
                                 baseAddress: validation.baseAddress || item.baseAddressKorean,
                                 detailAddress: validation.detailAddress || item.detailAddressKorean,
                                 feedback_status: 'UNCONFIRMED',
-                                original_ocr_address: '텍스트 입력 분석',
+                                original_ocr_address: item.rawOcrAddress || item.receiverAddress || '',
                                 ai_base_address: item.baseAddressKorean,
                                 ai_detail_address: item.detailAddressKorean,
                                 companyNameOriginal: item.receiverCompanyName || '',
