@@ -434,6 +434,7 @@
                         <div>
                             <h3 class="setting-section-title">수동 카드 추가</h3>
                             <button id="manual-add-card-button" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">새 카드 생성</button>
+                            <button id="csv-ai-import-button" class="w-full mt-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">CSV 데이터로 카드추가</button>
                         </div>
                         <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
 
@@ -659,7 +660,19 @@
         </div>
     </div>
     <!-- ▲▲▲ [추가 끝] ▲▲▲ -->
-
+<!-- AI CSV 가져오기 모달 -->
+    <div id="csv-ai-modal" class="confirmation-modal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <h2 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">CSV/텍스트 데이터 붙여넣기</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">엑셀, 카톡, 메모장의 내용을 그대로 붙여넣으세요. AI가 자동으로 분석하여 카드를 생성합니다.</p>
+            <textarea id="csv-ai-textarea" class="flex-1 w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm font-mono focus:ring-purple-500 focus:border-purple-500" rows="10" placeholder="예: 1, SF12345, 서울시 송파구..., 홍길동, 010-1234-5678"></textarea>
+            <div class="flex justify-between space-x-2 mt-6">
+                <button id="csv-ai-cancel-btn" class="w-1/2 px-4 py-2 rounded-md bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium hover:bg-gray-400 dark:hover:bg-gray-500">취소</button>
+                <button id="csv-ai-confirm-btn" class="w-1/2 px-4 py-2 rounded-md bg-purple-600 text-white text-sm font-medium hover:bg-purple-700">카드 생성</button>
+            </div>
+        </div>
+    </div>
+    
     <script type="text/javascript">
         // ▼▼▼▼▼ [수정] 새로운 UI에 맞춘 다크모드 테마 제어 로직 ▼▼▼▼▼
 const themeColorMeta = document.getElementById('theme-color-meta');
@@ -3747,6 +3760,133 @@ if (!tempApiKeyForLocalTest) {
                 const url = new URL(window.location.href);
                 handleUrlParams(url);
             }
+            // --- AI 기반 CSV/텍스트 임포트 로직 시작 ---
+            const csvAiImportButton = document.getElementById('csv-ai-import-button');
+            const csvAiModal = document.getElementById('csv-ai-modal');
+            const csvAiTextarea = document.getElementById('csv-ai-textarea');
+            const csvAiCancelBtn = document.getElementById('csv-ai-cancel-btn');
+            const csvAiConfirmBtn = document.getElementById('csv-ai-confirm-btn');
+
+            if (csvAiImportButton) {
+                csvAiImportButton.addEventListener('click', () => {
+                    csvAiTextarea.value = '';
+                    document.body.classList.add('modal-open');
+                    csvAiModal.style.display = 'flex';
+                    csvAiTextarea.focus();
+                });
+            }
+
+            if (csvAiCancelBtn) {
+                csvAiCancelBtn.addEventListener('click', () => {
+                    document.body.classList.remove('modal-open');
+                    csvAiModal.style.display = 'none';
+                });
+            }
+
+            if (csvAiConfirmBtn) {
+                csvAiConfirmBtn.addEventListener('click', async () => {
+                    const textData = csvAiTextarea.value.trim();
+                    if (!textData) {
+                        showMessage("분석할 데이터를 입력해주세요.");
+                        return;
+                    }
+
+                    let apiKey = localStorage.getItem('gemini_api_key');
+                    if (!apiKey) {
+                        apiKey = prompt("Gemini API 키를 입력해주세요:");
+                        if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
+                        else return;
+                    }
+
+                    showLoadingMessage("AI가 데이터를 분석하고 주소를 검증 중입니다...");
+
+                    try {
+                        const payload = {
+                            contents: [{
+                                role: "user",
+                                parts: [
+                                    { text: GEMINI_PROMPT },
+                                    { text: `아래 텍스트 데이터를 분석하여 JSON 배열로 변환해라:\n\n${textData}` }
+                                ]
+                            }],
+                            generationConfig: { temperature: 0, responseMimeType: "application/json" }
+                        };
+
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
+
+                        const result = await response.json();
+                        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!jsonText) throw new Error("AI로부터 유효한 응답을 받지 못했습니다.");
+
+                        const parsedData = JSON.parse(jsonText);
+                        let newCount = 0;
+                        let updateCount = 0;
+
+                        for (const item of parsedData) {
+                            const no = parseInt(item.no, 10);
+                            if (isNaN(no)) continue;
+
+                            const validation = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
+
+                            const newCard = {
+                                no: no,
+                                hawbNo: item.hawbNo || '',
+                                baseAddress: validation.baseAddress || item.baseAddressKorean,
+                                detailAddress: validation.detailAddress || item.detailAddressKorean,
+                                feedback_status: 'UNCONFIRMED',
+                                original_ocr_address: '텍스트 입력 분석',
+                                ai_base_address: item.baseAddressKorean,
+                                ai_detail_address: item.detailAddressKorean,
+                                companyNameOriginal: item.receiverCompanyName || '',
+                                receiverNameOriginal: item.receiverName || '',
+                                companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
+                                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                                receiverNameKoreanOriginal: item.receiverNameKorean || item.receiverName || '',
+                                receiverTelephoneNo: getCleanPhoneNumber(item.receiverPhone),
+                                status: '배송전',
+                                isHawbConfirmed: false,
+                                deliveryCompletionTime: null,
+                                completionType: null,
+                                completionDetail: null,
+                                addressLocation: null,
+                                isStruckThrough: false,
+                                isAddressValidated: validation.validated
+                            };
+
+                            const existingIndex = deliveryItems.findIndex(i => i.no === no);
+                            if (existingIndex > -1) {
+                                deliveryItems[existingIndex] = { ...deliveryItems[existingIndex], ...newCard };
+                                updateCount++;
+                            } else {
+                                deliveryItems.push(newCard);
+                                newCount++;
+                            }
+                        }
+
+                        deliveryItems.sort((a, b) => a.no - b.no);
+                        saveDeliveryItemsToLocalStorage();
+                        renderDeliveryCards(activeFilter);
+                        updateFilterCounts();
+
+                        closeConfirmationModal();
+                        document.body.classList.remove('modal-open');
+                        csvAiModal.style.display = 'none';
+                        showMessage(`분석 완료!\n새 카드: ${newCount}개\n업데이트: ${updateCount}개`);
+
+                    } catch (error) {
+                        console.error("AI 분석 오류:", error);
+                        closeConfirmationModal();
+                        showMessage(`오류가 발생했습니다: ${error.message}`);
+                    }
+                });
+            }
+            // --- AI 기반 CSV/텍스트 임포트 로직 끝 ---
         });
     </script>
 </body>
