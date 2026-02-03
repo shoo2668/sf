@@ -970,7 +970,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "v2.0.0";
-            const changelog = "csv/텍스트 AI 가져오기 기능 추가, 지도 아이콘 더블탭 및 트리플탭 기능 추가, UI/UX 개선 및 버그 수정";
+            const changelog = "화성시 일반구 제외 (임시)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -2334,6 +2334,20 @@ const getCleanPhoneNumber = (phoneNumber) => {
         const openMap = (item, noToast = false) => {
             const selectedMap = localStorage.getItem('selectedMap') || 'naver';
             const addressForMapSearch = item.baseAddress || '';
+
+            // ▼▼▼ [임시] 화성시 신설 구(동탄, 병점, 만세, 효행) 네이버지도 검색 실패 방지 로직 ▼▼▼
+            // 2026년 신설되는 화성시 4개 구 명칭이 네이버지도에 반영되기 전까지 검색어에서 제거합니다.
+            if (selectedMap === 'naver' && addressForMapSearch.includes('화성시')) {
+                addressForMapSearch = addressForMapSearch
+                    .replace('동탄구', '')
+                    .replace('병점구', '')
+                    .replace('만세구', '')
+                    .replace('효행구', '')
+                    .replace(/\s\s+/g, ' ') // 구 명칭 삭제로 인한 이중 공백 제거
+                    .trim();
+            }
+            // ▲▲▲ [임시 끝] ▲▲▲
+
             
             // 싱글 탭일 때만 기본 텍스트를 복사하고 토스트 메시지를 띄움
             if (!noToast) {
