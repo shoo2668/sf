@@ -796,6 +796,8 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "Central Town" -> "센트럴타운" (Target: Central Town-ro)
         - "Jageundollae" -> "작은돌래" (Target: Jageundollae-gil)
         - "Nongogae" -> "논고개" (Target: Nongogae-ro)
+        - "Dongtansillicheon" -> "동탄신리천" (Target: Dongtansillicheon-ro)
+        - "Dongtangiheung"  -> "동탄기흥" (Target: Dongtangiheung-ro)  
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -970,7 +972,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "v2.0.0";
-            const changelog = "csv/텍스트 AI 가져오기 기능 추가, 지도 아이콘 더블탭 및 트리플탭 기능 추가, UI/UX 개선 및 버그 수정";
+            const changelog = "동탄기흥, 동탄신리천 등 자주 나오는 지명에 대한 특수 번역 규칙 추가\n지도 아이콘 더블탭/트리플탭 기능으로 복사 및 지도 열기 지원\n길게 터치 기능 제거 및 UI 개선\n기타 버그 수정 및 안정성 향상";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
