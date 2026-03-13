@@ -793,11 +793,15 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "saemmaeul" -> "샘마을" (Target: Saemmaeul-gil)
         - "tteokjeongol" -> "떡전골" (Target: Tteokjeongol-ro)
         - "changyong" -> "창룡" (Target: Changyong-daero)
-        - "Central Town" -> "센트럴타운" (Target: Central Town-ro)
-        - "Jageundollae" -> "작은돌래" (Target: Jageundollae-gil)
-        - "Nongogae" -> "논고개" (Target: Nongogae-ro)
-        - "Dongtansillicheon" -> "동탄신리천" (Target: Dongtansillicheon-ro)
-        - "Dongtangiheung"  -> "동탄기흥" (Target: Dongtangiheung-ro)  
+        - "central town" -> "센트럴타운" (Target: Central Town-ro)
+        - "jageundollae" -> "작은돌래" (Target: Jageundollae-gil)
+        - "nongogae" -> "논고개" (Target: Nongogae-ro)
+        - "dongtansillicheon" -> "동탄신리천" (Target: Dongtansillicheon-ro)
+        - "dongtangiheung"  -> "동탄기흥" (Target: Dongtangiheung-ro)
+        - "songae" -> "손개" (Target: Songae-gil, Songae 1-gil, Songae 2-gil)
+        - "baeyang" -> "배양" (Target: Baeyang-gil, Baeyangnam-gil, Baeyangbuk-gil)
+        - "teoneokgol" -> "터넉골" (Target: Teoneokgol-ro)
+        - "gohyanguibom" -> "고향의봄" (Target: Gohyanguibom-gil)
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -971,8 +975,8 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "v2.0.0";
-            const changelog = "동탄기흥, 동탄신리천 등 자주 나오는 지명에 대한 특수 번역 규칙 추가\n지도 아이콘 더블탭/트리플탭 기능으로 복사 및 지도 열기 지원\n길게 터치 기능 제거 및 UI 개선\n기타 버그 수정 및 안정성 향상";
+            const version = "2.0.0";
+            const changelog = "주소개선";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
