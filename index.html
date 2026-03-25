@@ -787,7 +787,7 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         *   **SPECIAL TRANSLATION DICTIONARY (FORCED MAPPING):**
         - Always apply these specific mappings to fix common Romanization errors:
         - "yuram" -> "율암" (Target: Yuram-ri, Yuram-gil)
-        - "baran" -> "발안" (Target: Baran-ro, Baran-ri)ㅈ
+        - "baran" -> "발안" (Target: Baran-ro, Baran-ri)
         - "nongmangmal" -> "녹막말" (Target: Nongmangmal-gil)
         - "saeun" -> "사은" (Target: Saeun-ro)
         - "saemmaeul" -> "샘마을" (Target: Saemmaeul-gil)
@@ -802,6 +802,8 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "baeyang" -> "배양" (Target: Baeyang-gil, Baeyangnam-gil, Baeyangbuk-gil)
         - "teoneokgol" -> "터넉골" (Target: Teoneokgol-ro)
         - "gohyanguibom" -> "고향의봄" (Target: Gohyanguibom-gil)
+        - "donggo" -> "동오" (Target: Donggo 1-gil, Donggo 2-gil, Donggo 3-gil, Donggo 4-gil)
+        - "donghwaseobugan" -> "동화서북안" (Target: Donghwaseobugan-gil)
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -976,7 +978,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0";
-            const changelog = "주소개선";
+            const changelog = "- 대규모 리팩토링: 코드 구조 개선 및 유지보수성 향상\n- UI/UX 개선: 새로운 디자인 적용 및 사용자 경험 강화\n- AI 주소 분석 기능 추가: 이미지에서 주소 자동 추출 및 분석\n- 다크 모드 지원: 시스템 테마에 따른 자동 다크 모드 적용\n- 터치 인터랙션 개선: 지도 아이콘 탭 방식 변경 및 진동 피드백 추가\n- 버그 수정: 여러 알려진 문제점 해결 및 안정성 향상";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
