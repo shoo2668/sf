@@ -978,7 +978,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0";
-                const changelog = "버그수정";
+                const changelog = "png복귀";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1244,7 +1244,7 @@ const sendCompletionNotification = (item) => {
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        const dataUrl = canvas.toDataURL('image/png');
                         resolve({ file, data: dataUrl.split(',')[1] });
                     };
                     img.onerror = (error) => reject(error);
