@@ -804,6 +804,8 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "gohyanguibom" -> "고향의봄" (Target: Gohyanguibom-gil)
         - "donggo" -> "동오" (Target: Donggo 1-gil, Donggo 2-gil, Donggo 3-gil, Donggo 4-gil)
         - "donghwaseobugan" -> "동화서북안" (Target: Donghwaseobugan-gil)
+        - "samgungmaeul" -> "삼국마을" (Target: Samgungmaeul-ro)
+        - "haeun" -> "해운" (Target: Haeun-ro)
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -3837,45 +3839,49 @@ if (!tempApiKeyForLocalTest) {
                         let newCount = 0;
                         let updateCount = 0;
 
-                        for (const item of parsedData) {
-                            const no = parseInt(item.no, 10);
-                            if (isNaN(no)) continue;
+                        const BATCH_SIZE = 10;
+                        for (let i = 0; i < parsedData.length; i += BATCH_SIZE) {
+                            const batch = parsedData.slice(i, i + BATCH_SIZE);
+                            await Promise.all(batch.map(async (item) => {
+                                const no = parseInt(item.no, 10);
+                                if (isNaN(no)) return;
 
-                            const validation = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
+                                const validation = await validateAddressWithKakao(item.baseAddressKorean, item.detailAddressKorean);
 
-                            const newCard = {
-                                no: no,
-                                hawbNo: item.hawbNo || '',
-                                baseAddress: validation.baseAddress || item.baseAddressKorean,
-                                detailAddress: validation.detailAddress || item.detailAddressKorean,
-                                feedback_status: 'UNCONFIRMED',
-                                original_ocr_address: item.rawOcrAddress || item.receiverAddress || '',
-                                ai_base_address: item.baseAddressKorean,
-                                ai_detail_address: item.detailAddressKorean,
-                                companyNameOriginal: item.receiverCompanyName || '',
-                                receiverNameOriginal: item.receiverName || '',
-                                companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
-                                receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
-                                receiverNameKoreanOriginal: item.receiverNameKorean || item.receiverName || '',
-                                receiverTelephoneNo: getCleanPhoneNumber(item.receiverPhone),
-                                status: '배송전',
-                                isHawbConfirmed: false,
-                                deliveryCompletionTime: null,
-                                completionType: null,
-                                completionDetail: null,
-                                addressLocation: null,
-                                isStruckThrough: false,
-                                isAddressValidated: validation.validated
-                            };
+                                const newCard = {
+                                    no: no,
+                                    hawbNo: item.hawbNo || '',
+                                    baseAddress: validation.baseAddress || item.baseAddressKorean,
+                                    detailAddress: validation.detailAddress || item.detailAddressKorean,
+                                    feedback_status: 'UNCONFIRMED',
+                                    original_ocr_address: item.rawOcrAddress || item.receiverAddress || '',
+                                    ai_base_address: item.baseAddressKorean,
+                                    ai_detail_address: item.detailAddressKorean,
+                                    companyNameOriginal: item.receiverCompanyName || '',
+                                    receiverNameOriginal: item.receiverName || '',
+                                    companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
+                                    receiverNameKorean: item.receiverNameKorean || item.receiverName || '',
+                                    receiverNameKoreanOriginal: item.receiverNameKorean || item.receiverName || '',
+                                    receiverTelephoneNo: getCleanPhoneNumber(item.receiverPhone),
+                                    status: '배송전',
+                                    isHawbConfirmed: false,
+                                    deliveryCompletionTime: null,
+                                    completionType: null,
+                                    completionDetail: null,
+                                    addressLocation: null,
+                                    isStruckThrough: false,
+                                    isAddressValidated: validation.validated
+                                };
 
-                            const existingIndex = deliveryItems.findIndex(i => i.no === no);
-                            if (existingIndex > -1) {
-                                deliveryItems[existingIndex] = { ...deliveryItems[existingIndex], ...newCard };
-                                updateCount++;
-                            } else {
-                                deliveryItems.push(newCard);
-                                newCount++;
-                            }
+                                const existingIndex = deliveryItems.findIndex(i => i.no === no);
+                                if (existingIndex > -1) {
+                                    deliveryItems[existingIndex] = { ...deliveryItems[existingIndex], ...newCard };
+                                    updateCount++;
+                                } else {
+                                    deliveryItems.push(newCard);
+                                    newCount++;
+                                }
+                            }));
                         }
 
                         deliveryItems.sort((a, b) => a.no - b.no);
