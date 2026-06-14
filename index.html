@@ -1009,7 +1009,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "동호수클립보드개선";
+                const changelog = "동호수클립보드개선2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1431,12 +1431,9 @@ const getCleanPhoneNumber = (phoneNumber) => {
                 const letterHyphenMatch = detailAddress.match(/([A-Za-z가-힣])\s*-\s*(\d{3,4})/);
                 if (letterHyphenMatch) return `${letterHyphenMatch[1]}-${letterHyphenMatch[2]}`;
 
-                // 4. 문자 섞인 동 이름 (예: A동 101, 가동 101)
-                const complexDongMatch = detailAddress.match(/([A-Za-z가-힣\d]+동)\s*(\d{3,4})/);
-                if (complexDongMatch) return `${complexDongMatch[1]}-${complexDongMatch[2]}`;
-
-                // 5. 일반적인 숫자동 숫자호 (예: 101동 101호)
-                const dongHoMatch = detailAddress.match(/(\d{1,4})\s*동\s*(\d{3,4})\s*호/);
+                // 4. [수정] 동 이름에서 '동' 제거하고 숫자와 연결 (예: 101동 101호 -> 101-101, A동 101호 -> A-101)
+                // ([A-Za-z가-힣\d]+) : '동' 앞의 문자나 숫자를 뭉치로 잡음
+                const dongHoMatch = detailAddress.match(/([A-Za-z가-힣\d]+)동\s*(\d{3,4})/);
                 if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
             }
 
