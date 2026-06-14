@@ -23,17 +23,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* 특별 주소 하이라이트: 세련된 앰버 톤 */
-.special-address-highlight {
-    background-color: #fef3c7; /* 연한 호박색 */
-    color: #92400e; /* 진한 갈색 텍스트 */
-    padding: 2px 6px;
-    border-radius: 4px;
+/* 특정 주소 하이라이트: 글자 길이에 딱 맞게 배경색 적용 */
+.special-addr-bg {
+    background-color: #fef3c7 !important; /* 연한 호박색 */
+    color: #92400e !important;            /* 진한 갈색 텍스트 */
+    padding: 2px 6px !important;          /* 상하좌우 여백 */
+    border-radius: 4px !important;        /* 모서리 둥글게 */
+    display: inline-block !important;     /* 중요: 배경색이 줄 전체가 아닌 글자 길이에만 적용됨 */
+    margin-bottom: 2px !important;
 }
 
 /* 다크모드 대응 */
-html.dark .special-address-highlight {
-    background-color: rgba(245, 158, 11, 0.2); /* 투명도 있는 오렌지 */
-    color: #fbbf24; /* 밝은 호박색 텍스트 */
+html.dark .special-addr-bg {
+    background-color: rgba(245, 158, 11, 0.25) !important; /* 투명도 있는 오렌지 */
+    color: #fbbf24 !important;                             /* 밝은 호박색 텍스트 */
 }
 
 /* ▼▼▼ [수정] 설정 섹션 배경색에 CSS 변수 적용 ▼▼▼ */
@@ -1006,7 +1009,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "방문등록추가";
+                const changelog = "방문등록추가2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
