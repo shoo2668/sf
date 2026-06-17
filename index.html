@@ -1009,7 +1009,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "동호수클립보드개선2";
+                const changelog = "검색코드일부 비활성화";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -3447,6 +3447,7 @@ if (!tempApiKeyForLocalTest) {
                 if (event.key === 'Enter') { event.preventDefault(); invoiceNumberInput.blur(); }
             });
 
+/*
             setTimeout(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const hawbFromUrl = urlParams.get('hawb');
@@ -3465,6 +3466,7 @@ if (!tempApiKeyForLocalTest) {
                     }
                 }
             }, 0);
+*/
 
             const mainContent = document.getElementById('main-content-wrapper');
             refreshIndicator = document.getElementById('refresh-indicator');
