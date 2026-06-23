@@ -1011,7 +1011,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "자송장번호 카드생성기능 추가";
+                const changelog = "방문등록주소3개추가";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1121,53 +1121,13 @@ const sendCompletionNotification = (item) => {
                     event.preventDefault(); // touchend에서 처리하므로 기본 click 이벤트 방지
                     return;
                 }
-                
-                // [수정] 자송장 번호(1-2)를 위해 숫자가 아닌 문자열로 그대로 가져옵니다.
-                const itemNo = target.dataset.no;
+                const itemNo = parseInt(target.dataset.no, 10);
 
                 switch (action) {
-                    case 'add-sub-box':
-                        {
-                            triggerVibration();
-                            const parentNo = target.dataset.no;
-                            // 외부 스캐너 호출 시 parentNo를 결과 URL에 포함시킴
-                            const returnUrlFormat = `https://shoo2668.github.io/sf/?hawb={CODE}&parentNo=${parentNo}&filter=${activeFilter}`;
-                            const encodedReturnUrl = encodeURIComponent(returnUrlFormat);
-                            const scannerUrl = `zxing://scan/?ret=${encodedReturnUrl}`;
-                            window.location.href = scannerUrl;
-                        }
-                        break;
-                    case 'delete-sub-box':
-                        {
-                            triggerVibration();
-                            openConfirmationModal(`${itemNo}번 자송장을 삭제하시겠습니까?`, () => {
-                                deliveryItems = deliveryItems.filter(i => i.no.toString() !== itemNo.toString());
-                                saveDeliveryItemsToLocalStorage();
-                                renderDeliveryCards(activeFilter);
-                                updateFilterCounts();
-                                showToastMessage('자송장이 삭제되었습니다.');
-                            });
-                        }
-                        break;
-                    case 'complete-sub-box':
-                        {
-                            triggerVibration();
-                            const item = deliveryItems.find(i => i.no.toString() === itemNo.toString());
-                            if (item) {
-                                copyHawbOnComplete(itemNo);
-                                const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                                // 자송장은 기본적으로 '문앞'으로 완료 처리 (웹훅 포함)
-                                handleStatusChange(itemNo, '완료', currentTime, '문앞', '문앞');
-                                const updatedItem = deliveryItems.find(i => i.no.toString() === itemNo.toString());
-                                if (updatedItem) sendWebhook(updatedItem);
-                                showToastMessage(`${itemNo}번 배송 완료`);
-                            }
-                        }
-                        break;
                     case 'copy-completion':
                         {
-                            triggerVibration();
-                            const item = deliveryItems.find(i => i.no.toString() === itemNo.toString());
+                            triggerVibration(); // <-- [추가]
+                            const item = deliveryItems.find(i => i.no === itemNo);
                             if (item) {
                                 const completionText = item.completionType === '본인전달'
                                     ? (item.receiverNameKorean || '')
@@ -1186,8 +1146,8 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'edit-completion-detail':
                         {
-                            triggerVibration();
-                            const item = deliveryItems.find(i => i.no.toString() === itemNo.toString());
+                            triggerVibration(); // <-- [추가]
+                            const item = deliveryItems.find(i => i.no === itemNo);
                             if (item) {
                                 const isEditableText = ['본인전달', '직접입력'].includes(item.completionType);
                                 if (isEditableText) {
@@ -1204,8 +1164,8 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'swap-name':
                         {
-                            triggerVibration();
-                            const itemIndex = deliveryItems.findIndex(i => i.no.toString() === itemNo.toString());
+                            triggerVibration(); // <-- [추가]
+                            const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
                             if (itemIndex > -1) {
                                 const item = deliveryItems[itemIndex];
                                 if (typeof item.receiverNameKoreanOriginal === 'undefined') {
@@ -1241,7 +1201,7 @@ const sendCompletionNotification = (item) => {
                         }
                         break;
                     case 'revert-delivery':
-                        triggerVibration();
+                        triggerVibration(); // <-- [추가]
                         openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
                             handleStatusChange(itemNo, '배송중');
                             showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
@@ -1254,7 +1214,8 @@ const sendCompletionNotification = (item) => {
                             handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
                             sortItemsByDistanceSilent();
                             
-                            const updatedItem = deliveryItems.find(i => i.no.toString() === itemNo.toString());
+                            // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
+                            const updatedItem = deliveryItems.find(i => i.no === itemNo);
                             if (updatedItem) sendWebhook(updatedItem);
                         });
                         break;
@@ -2485,11 +2446,10 @@ const getCleanPhoneNumber = (phoneNumber) => {
             ? `<span class="block text-sm font-medium text-purple-600 dark:text-purple-400 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
             : '';
         
+        // ▼▼▼ [추가된 로직] 특별 주소 체크 ▼▼▼
         const isSpecial = SPECIAL_ADDRESSES.some(addr => data.baseAddress && data.baseAddress.includes(addr));
         const specialClass = isSpecial ? 'special-addr-bg' : '';
-
-        // 자송장 여부 확인 (번호에 '-'가 포함되어 있는지)
-        const isSubBox = data.no.toString().includes('-');
+        // ▲▲▲ [추가 끝] ▲▲▲
 
         let cardClasses = '';
         let headerBorder = 'border-gray-200 dark:border-gray-600';
@@ -2505,30 +2465,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
             cardClasses = 'bg-gray-200 dark:bg-gray-700 rounded-t-3xl rounded-bl-3xl border-2 border-gray-300 dark:border-gray-600';
         }
 
-        // --- 자송장(슬림 카드) UI ---
-        if (isSubBox) {
-            const isCompleted = data.status === '완료';
-            return `
-                <div class="${cardClasses} p-3 mb-3 shadow-sm" data-no="${data.no}">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center space-x-3">
-                            <span class="text-xl font-bold text-red-500 dark:text-red-400">${data.no}</span>
-                            <span class="text-base font-mono font-bold text-gray-700 dark:text-gray-200">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
-                        </div>
-                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-5 w-5 text-blue-600 border-gray-300 dark:border-gray-500 rounded"/>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button data-action="delete-sub-box" data-no="${data.no}" class="flex-1 py-2 rounded-lg bg-gray-400 text-white text-sm font-bold">삭제</button>
-                        ${isCompleted ? 
-                            `<button data-action="revert-delivery" data-no="${data.no}" class="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm font-bold">되돌리기</button>` :
-                            `<button data-action="complete-sub-box" data-no="${data.no}" class="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold">완료</button>`
-                        }
-                    </div>
-                </div>
-            `;
-        }
-
-        // --- 모송장(기존 카드) UI ---
         const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
         const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
 
@@ -2538,10 +2474,12 @@ const getCleanPhoneNumber = (phoneNumber) => {
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                 </button>
                 <div class="pt-0.5">
+                    <!-- ▼▼▼ [수정된 부분] p 태그 클래스에 ${specialClass} 적용 ▼▼▼ -->
                     <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'} ${specialClass}"
                        ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
                         ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
                     </p>
+                    <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
                     ${data.original_ocr_address ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.original_ocr_address})</p>` : ''}
                 </div>
             </div>
@@ -2623,12 +2561,8 @@ const getCleanPhoneNumber = (phoneNumber) => {
                                     <h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no}</h3>
                                     ${distanceInfo}
                                 </div>
-                                <div class="pt-1.5 flex items-center space-x-2">
+                                <div class="pt-1.5">
                                     <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
-                                    <!-- 자송장 추가 버튼 (+) -->
-                                    <button data-action="add-sub-box" data-no="${data.no}" class="w-8 h-8 flex items-center justify-center rounded-full bg-teal-100 text-teal-600 dark:bg-teal-900/50 dark:text-teal-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                    </button>
                                 </div>
                             </div>
                             <div class="pt-1.5">
@@ -2908,7 +2842,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
                 itemsWithDistance.sort((a, b) => a.distanceFromMe - b.distanceFromMe);
                 deliveryItems = [...itemsWithDistance, ...itemsWithoutDistance];
             } else { 
-                deliveryItems.sort((a, b) => a.no.toString().localeCompare(b.no.toString(), undefined, { numeric: true, sensitivity: 'base' }));
+                deliveryItems.sort((a, b) => a.no - b.no);
             }
         } else if (newFilter === '완료') {
             currentSortOrder = completedSortOrder;
@@ -2922,11 +2856,11 @@ const getCleanPhoneNumber = (phoneNumber) => {
                 });
                 deliveryItems = [...completedItems, ...otherItems];
             } else { 
-                deliveryItems.sort((a, b) => a.no.toString().localeCompare(b.no.toString(), undefined, { numeric: true, sensitivity: 'base' }));
+                deliveryItems.sort((a, b) => a.no - b.no);
             }
         } else { 
             currentSortOrder = 'no';
-            deliveryItems.sort((a, b) => a.no.toString().localeCompare(b.no.toString(), undefined, { numeric: true, sensitivity: 'base' }));
+            deliveryItems.sort((a, b) => a.no - b.no);
         }
 
         filterButtonsContainer.querySelectorAll('button[data-filter]').forEach(btn => {
@@ -3845,7 +3779,7 @@ if (!tempApiKeyForLocalTest) {
                     if (typeof item.isStruckThrough === 'undefined') item.isStruckThrough = false;
                     if (typeof item.isAddressValidated === 'undefined') item.isAddressValidated = true;
                     return item;
-                }).sort((a, b) => a.no.toString().localeCompare(b.no.toString(), undefined, { numeric: true, sensitivity: 'base' }));
+                }).sort((a, b) => a.no - b.no);
             }
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
@@ -3860,42 +3794,7 @@ if (!tempApiKeyForLocalTest) {
             const handleUrlParams = (url) => {
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
-                const parentNo = urlParams.get('parentNo');
-                const filterFromUrl = urlParams.get('filter') || activeFilter;
-
-                if (hawbFromUrl && parentNo) {
-                    // --- 자송장 생성 로직 ---
-                    const parentItem = deliveryItems.find(i => i.no.toString() === parentNo.toString());
-                    if (parentItem) {
-                        // 다음 번호 계산 (1-2, 1-3...)
-                        const subItems = deliveryItems.filter(i => i.no.toString().startsWith(parentNo + '-'));
-                        const nextIndex = subItems.length + 2;
-                        const newNo = `${parentNo}-${nextIndex}`;
-
-                        const newSubCard = {
-                            ...JSON.parse(JSON.stringify(parentItem)), // 부모 데이터 복사
-                            no: newNo,
-                            hawbNo: hawbFromUrl,
-                            status: '배송중', // 자송장은 바로 배송중으로 생성
-                            isHawbConfirmed: true,
-                            deliveryCompletionTime: null,
-                            completionType: null,
-                            completionDetail: null
-                        };
-                        
-                        deliveryItems.push(newSubCard);
-                        // 문자열 기반 정렬 적용
-                        deliveryItems.sort((a, b) => a.no.toString().localeCompare(b.no.toString(), undefined, { numeric: true, sensitivity: 'base' }));
-                        saveDeliveryItemsToLocalStorage();
-                        
-                        changeFilter(filterFromUrl, '', true);
-                        showToastMessage(`${newNo}번 자송장이 추가되었습니다.`);
-                    }
-                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-                    window.history.replaceState({}, '', cleanUrl);
-
-                } else if (hawbFromUrl) {
-                    // --- 일반 검색 로직 ---
+                if (hawbFromUrl) {
                     changeFilter('전체', '', true);
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
