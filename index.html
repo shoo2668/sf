@@ -878,7 +878,9 @@ const SPECIAL_ADDRESSES = [
     "삼봉안길 76",
     "상리1길 167",
     "상리1길 21",
-    "동탄순환대로20길 31"
+    "동탄순환대로20길 31",
+    "동탄순환대로21길 53",
+    "동탄순환대로26길 55"
 ];
 
         // --- Helper functions ---
@@ -1009,7 +1011,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "검색코드일부 비활성화 복구(오류남)";
+                const changelog = "방문등록주소3개추가";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
