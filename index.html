@@ -1028,7 +1028,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "테스트1";
+                const changelog = "테스트2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -3913,7 +3913,7 @@ if (!tempApiKeyForLocalTest) {
             updateFilterCounts();
             
             const urlParamsForCheck = new URLSearchParams(window.location.search);
-            if (!urlParamsForCheck.has('hawb') && !urlParamsForCheck.has('filter')) {
+            if (!urlParamsForCheck.has('hawb') && !urlParamsForCheck.has('filter') && !urlParamsForCheck.has('parentNo')) {
                 const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
                 changeFilter(lastFilter, '', true);
             }
@@ -3960,9 +3960,11 @@ if (!tempApiKeyForLocalTest) {
                         showToastMessage('해당 모송장을 찾을 수 없습니다.', 3000);
                     }
 
-                    // URL 정리 후 렌더링
+                    // URL 정리 후 현재 필터 그대로 렌더링 (검색창 건드리지 않음)
                     window.history.replaceState({}, '', window.location.pathname);
-                    renderDeliveryCards(activeFilter);
+                    const filterToUse = activeFilter || localStorage.getItem('lastActiveFilter') || '전체';
+                    if (!activeFilter) changeFilter(filterToUse, '', true);
+                    else renderDeliveryCards(activeFilter);
 
                 } else if (hawbFromUrl) {
                     // 기존 검색 로직 (자송장 스캔이 아닐 때만)
@@ -3979,7 +3981,15 @@ if (!tempApiKeyForLocalTest) {
                 window.launchQueue.setConsumer(launchParams => {
                     if (launchParams.targetURL) {
                         const url = new URL(launchParams.targetURL);
-                        handleUrlParams(url);
+                        // launchQueue는 비동기이므로 deliveryItems가 로드된 후 실행되도록 보장
+                        const tryHandle = () => {
+                            if (deliveryItems !== undefined) {
+                                handleUrlParams(url);
+                            } else {
+                                setTimeout(tryHandle, 50);
+                            }
+                        };
+                        tryHandle();
                     }
                 });
             } else {
