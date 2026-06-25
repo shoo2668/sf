@@ -1015,7 +1015,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "자송장번호카드기능추가";
+                const changelog = "자송장번호카드기능추가2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1233,10 +1233,6 @@ const sendCompletionNotification = (item) => {
             case 'edit-completion-time': openTimeEditModal(itemNo); break;
         }
     });
-
-            completionOptionsCancelBtn.addEventListener('click', () => {
-                completionOptionsModal.style.display = 'none';
-            });
         };
 
         const resizeImage = (file) => {
