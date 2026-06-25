@@ -1015,7 +1015,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "자송장번호카드기능추가2";
+                const changelog = "자송장번호카드기능추가3";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1094,12 +1094,13 @@ const sendCompletionNotification = (item) => {
 
         const action = target.dataset.action;
         const itemNo = parseInt(target.dataset.no, 10);
-        const itemId = target.dataset.id; // 자송장용 ID
+        const itemId = target.dataset.id; // 자송장용 고유 ID
 
         switch (action) {
             case 'open-child-scanner':
                 {
-                    const returnUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}?hawb={CODE}&parentNo=${itemNo}&filter=${activeFilter}`);
+                    // 파라미터 순서를 parentNo가 먼저 오도록 조정 (일부 스캐너 호환성)
+                    const returnUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}?parentNo=${itemNo}&hawb={CODE}&filter=${activeFilter}`);
                     window.location.href = `zxing://scan/?ret=${returnUrl}`;
                 }
                 break;
@@ -1233,7 +1234,7 @@ const sendCompletionNotification = (item) => {
             case 'edit-completion-time': openTimeEditModal(itemNo); break;
         }
     });
-        };
+};
 
         const resizeImage = (file) => {
             return new Promise((resolve, reject) => {
@@ -2415,7 +2416,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
         return;
     }
 
-    // (n/n) 표시를 위한 헬퍼 함수
     const getCountDisplay = (data) => {
         const sameNoItems = deliveryItems.filter(item => item.no === data.no);
         if (sameNoItems.length <= 1) return '';
@@ -2455,7 +2455,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
             `;
         }
 
-        // --- [일반 모송장 카드 UI] ---
+        // --- [일반 모송장 카드 UI 설정] ---
         let cardClasses = '';
         let headerBorder = 'border-gray-200 dark:border-gray-600';
         let actionBorder = 'border-gray-200 dark:border-gray-600';
@@ -2502,7 +2502,10 @@ const getCleanPhoneNumber = (phoneNumber) => {
             </div>
         `;
 
-        if (data.status === '완료') {
+        // "완료" 필터에서만 요약형으로 보여줌
+        const showSummaryView = currentFilter === '완료' && data.status === '완료';
+
+        if (showSummaryView) {
             return `
                 <div class="${cardClasses} p-4 mb-4" data-id="${data.id}">
                     <div class="flex justify-between items-center">
@@ -2520,6 +2523,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
                 </div>
             `;
         } else {
+            // "전체", "배송전", "배송중" 필터에서는 상세형으로 보여줌
             return `
                 <div class="${cardClasses} p-6 mb-4" data-id="${data.id}">
                     <div class="flex justify-between items-start mb-4 pb-2 border-b ${headerBorder}">
@@ -2545,6 +2549,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
                             <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold">직접입력</button>
                         </div>
                     ` : ''}
+                    ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 </div>
             `;
         }
@@ -3761,18 +3766,20 @@ if (!tempApiKeyForLocalTest) {
     const hawbFromUrl = urlParams.get('hawb');
     const parentNo = urlParams.get('parentNo'); // 자송장용 부모 번호
 
-    // 1. 자송장 추가 모드인 경우
+    // 1. 자송장 추가 모드 (parentNo가 있는 경우 최우선 처리)
     if (hawbFromUrl && parentNo) {
         const pNo = parseInt(parentNo, 10);
+        // 부모 카드를 찾음 (isChild가 false인 것 중에서)
         const parentItem = deliveryItems.find(item => item.no === pNo && !item.isChild);
         
         if (parentItem) {
+            // 중복 스캔 확인
             const isDuplicate = deliveryItems.some(item => item.no === pNo && item.hawbNo === hawbFromUrl);
             if (isDuplicate) {
                 showToastMessage("이미 등록된 송장번호입니다.");
             } else {
                 const newChild = {
-                    ...JSON.parse(JSON.stringify(parentItem)), // 부모 정보 복사
+                    ...JSON.parse(JSON.stringify(parentItem)), // 부모 정보 복제
                     id: generateId(),
                     hawbNo: hawbFromUrl,
                     isChild: true,
@@ -3783,19 +3790,20 @@ if (!tempApiKeyForLocalTest) {
                     completionDetail: null
                 };
                 deliveryItems.push(newChild);
-                // 정렬: 순번순으로 하되, 자식은 부모 바로 뒤로
+                // 정렬: 순번순으로 하되, 자식은 부모 바로 뒤로 오게 함
                 deliveryItems.sort((a, b) => a.no - b.no || (a.isChild ? 1 : -1));
                 saveDeliveryItemsToLocalStorage();
                 showToastMessage(`${pNo}번에 자송장이 추가되었습니다.`);
             }
         }
+        // URL 파라미터 제거하여 새로고침 시 중복 추가 방지
         window.history.replaceState({}, '', window.location.pathname);
         renderDeliveryCards(activeFilter);
         updateFilterCounts();
-        return;
+        return; // 자송장 처리 완료 후 종료
     }
 
-    // 2. 일반 검색 모드인 경우
+    // 2. 일반 검색 모드 (parentNo가 없는 경우)
     if (hawbFromUrl) {
         changeFilter('전체', '', true);
         searchTerm = hawbFromUrl;
