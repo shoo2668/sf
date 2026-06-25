@@ -1015,7 +1015,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "자송장번호카드기능추가3";
+                const changelog = "자송장번호카드기능추가4";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1094,13 +1094,14 @@ const sendCompletionNotification = (item) => {
 
         const action = target.dataset.action;
         const itemNo = parseInt(target.dataset.no, 10);
-        const itemId = target.dataset.id; // 자송장용 고유 ID
+        const itemId = target.dataset.id;
 
         switch (action) {
             case 'open-child-scanner':
                 {
-                    // 파라미터 순서를 parentNo가 먼저 오도록 조정 (일부 스캐너 호환성)
-                    const returnUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}?parentNo=${itemNo}&hawb={CODE}&filter=${activeFilter}`);
+                    // return URL에 parentNo를 확실하게 포함
+                    const baseUrl = window.location.origin + window.location.pathname;
+                    const returnUrl = encodeURIComponent(`${baseUrl}?parentNo=${itemNo}&hawb={CODE}`);
                     window.location.href = `zxing://scan/?ret=${returnUrl}`;
                 }
                 break;
@@ -2455,7 +2456,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
             `;
         }
 
-        // --- [일반 모송장 카드 UI 설정] ---
+        // --- [일반 모송장 카드 UI] ---
         let cardClasses = '';
         let headerBorder = 'border-gray-200 dark:border-gray-600';
         let actionBorder = 'border-gray-200 dark:border-gray-600';
@@ -2502,10 +2503,10 @@ const getCleanPhoneNumber = (phoneNumber) => {
             </div>
         `;
 
-        // "완료" 필터에서만 요약형으로 보여줌
-        const showSummaryView = currentFilter === '완료' && data.status === '완료';
+        // "완료" 필터에서만 요약형으로 보여줌 (전체 필터에서는 상세형 유지)
+        const isSummaryFilter = currentFilter === '완료';
 
-        if (showSummaryView) {
+        if (isSummaryFilter && data.status === '완료') {
             return `
                 <div class="${cardClasses} p-4 mb-4" data-id="${data.id}">
                     <div class="flex justify-between items-center">
@@ -2523,7 +2524,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
                 </div>
             `;
         } else {
-            // "전체", "배송전", "배송중" 필터에서는 상세형으로 보여줌
             return `
                 <div class="${cardClasses} p-6 mb-4" data-id="${data.id}">
                     <div class="flex justify-between items-start mb-4 pb-2 border-b ${headerBorder}">
@@ -3764,22 +3764,21 @@ if (!tempApiKeyForLocalTest) {
             const handleUrlParams = (url) => {
     const urlParams = new URLSearchParams(url.search);
     const hawbFromUrl = urlParams.get('hawb');
-    const parentNo = urlParams.get('parentNo'); // 자송장용 부모 번호
+    const parentNo = urlParams.get('parentNo');
 
-    // 1. 자송장 추가 모드 (parentNo가 있는 경우 최우선 처리)
+    // 1. 자송장 추가 모드 (parentNo가 있는 경우)
+    // 이 조건이 만족되면 아래의 일반 검색 로직은 절대 실행되지 않습니다.
     if (hawbFromUrl && parentNo) {
         const pNo = parseInt(parentNo, 10);
-        // 부모 카드를 찾음 (isChild가 false인 것 중에서)
         const parentItem = deliveryItems.find(item => item.no === pNo && !item.isChild);
         
         if (parentItem) {
-            // 중복 스캔 확인
             const isDuplicate = deliveryItems.some(item => item.no === pNo && item.hawbNo === hawbFromUrl);
             if (isDuplicate) {
                 showToastMessage("이미 등록된 송장번호입니다.");
             } else {
                 const newChild = {
-                    ...JSON.parse(JSON.stringify(parentItem)), // 부모 정보 복제
+                    ...JSON.parse(JSON.stringify(parentItem)),
                     id: generateId(),
                     hawbNo: hawbFromUrl,
                     isChild: true,
@@ -3790,20 +3789,19 @@ if (!tempApiKeyForLocalTest) {
                     completionDetail: null
                 };
                 deliveryItems.push(newChild);
-                // 정렬: 순번순으로 하되, 자식은 부모 바로 뒤로 오게 함
                 deliveryItems.sort((a, b) => a.no - b.no || (a.isChild ? 1 : -1));
                 saveDeliveryItemsToLocalStorage();
                 showToastMessage(`${pNo}번에 자송장이 추가되었습니다.`);
             }
         }
-        // URL 파라미터 제거하여 새로고침 시 중복 추가 방지
+        // 파라미터 제거 및 화면 갱신
         window.history.replaceState({}, '', window.location.pathname);
         renderDeliveryCards(activeFilter);
         updateFilterCounts();
-        return; // 자송장 처리 완료 후 종료
+        return; // 중요: 여기서 함수를 종료하여 검색 로직으로 넘어가지 않게 함
     }
 
-    // 2. 일반 검색 모드 (parentNo가 없는 경우)
+    // 2. 일반 검색 모드 (parentNo가 없고 hawb만 있는 경우)
     if (hawbFromUrl) {
         changeFilter('전체', '', true);
         searchTerm = hawbFromUrl;
