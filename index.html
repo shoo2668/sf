@@ -885,8 +885,6 @@ const SPECIAL_ADDRESSES = [
     "동탄대로8길 65"
 ];
 
-const generateId = () => Date.now() + Math.random().toString(36).substr(2, 9);
-
         // --- Helper functions ---
 
         // ▼▼▼ [추가 시작] 터치 피드백(진동)을 위한 헬퍼 함수 ▼▼▼
@@ -1015,229 +1013,253 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "자송장번호카드기능추가6";
+                const changelog = "송장번호복사시 진동추가+방문등록2개추가되돌림";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
 
                 const setupDelegatedEventListeners = () => {
-    let touchTarget = null;
-    let mapIconTapCount = 0;
-    let mapIconTapTimer = null;
+            let touchTarget = null;
 
-    deliveryCardsContainer.addEventListener('touchstart', (event) => {
-        const frontDoorButton = event.target.closest('button[data-action="front-door-delivery"]');
-        if (frontDoorButton) {
-            isLongPress = false;
-            touchTarget = frontDoorButton;
-            longPressTimer = setTimeout(() => {
-                isLongPress = true;
-                const itemNo = parseInt(frontDoorButton.dataset.no, 10);
-                openCompletionOptionsModal(itemNo);
-            }, 300);
-        }
-    }, { passive: true });
+            // 지도 아이콘 터치 관련 변수
+            let mapIconTapCount = 0;
+            let mapIconTapTimer = null;
+            // ▼▼▼ [수정] 지도 길게 터치 타이머 변수 제거 ▼▼▼
+            // let mapIconLongPressTimer = null; 
 
-    deliveryCardsContainer.addEventListener('touchmove', () => {
-        clearTimeout(longPressTimer);
-        touchTarget = null;
-    }, { passive: true });
-
-    deliveryCardsContainer.addEventListener('touchend', (event) => {
-        if (touchTarget) {
-            clearTimeout(longPressTimer);
-            if (isLongPress) { event.preventDefault(); isLongPress = false; }
-            touchTarget = null;
-        }
-
-        const mapButton = event.target.closest('button[data-action="open-map"]');
-        if (mapButton) {
-            mapIconTapCount++;
-            if (mapIconTapCount === 1) {
-                mapIconTapTimer = setTimeout(() => {
-                    const itemNo = parseInt(mapButton.dataset.no, 10);
-                    const item = deliveryItems.find(i => i.no === itemNo);
-                    if (item) openMap(item);
-                    mapIconTapCount = 0;
-                }, 300);
-            } else if (mapIconTapCount === 2) {
-                clearTimeout(mapIconTapTimer);
-                mapIconTapTimer = setTimeout(() => {
-                    const itemNo = parseInt(mapButton.dataset.no, 10);
-                    const item = deliveryItems.find(i => i.no === itemNo);
-                    if (item) {
-                        const textToCopy = `*${item.no}. ${extractClipboardAddressPart(item)}`;
-                        navigator.clipboard.writeText(textToCopy);
-                        openMap(item, true);
-                    }
-                    mapIconTapCount = 0;
-                }, 300);
-            } else if (mapIconTapCount === 3) {
-                clearTimeout(mapIconTapTimer);
-                const itemNo = parseInt(mapButton.dataset.no, 10);
-                const item = deliveryItems.find(i => i.no === itemNo);
-                if (item) {
-                    const textToCopy = `**${item.no}. ${extractClipboardAddressPart(item)}`;
-                    navigator.clipboard.writeText(textToCopy);
-                    openMap(item, true);
+            deliveryCardsContainer.addEventListener('touchstart', (event) => {
+                const frontDoorButton = event.target.closest('button[data-action="front-door-delivery"]');
+                if (frontDoorButton) {
+                    isLongPress = false;
+                    touchTarget = frontDoorButton;
+                    longPressTimer = setTimeout(() => {
+                        isLongPress = true;
+                        const itemNo = parseInt(frontDoorButton.dataset.no, 10);
+                        openCompletionOptionsModal(itemNo);
+                    }, 300);
                 }
-                mapIconTapCount = 0;
-            }
-        }
-    });
 
-    deliveryCardsContainer.addEventListener('click', (event) => {
-        if (isLongPress) { isLongPress = false; return; }
-        
-        const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], span[data-action="copy-completion"], span[data-action="edit-completion-detail"], span[data-action="copy-hawb"], button[data-action="swap-name"], span[data-action="edit-completion-time"]');
-        if (!target) return;
+                // ▼▼▼ [수정] 지도 아이콘 길게 터치 로직 전체 삭제 ▼▼▼
+                /*
+                const mapButton = event.target.closest('button[data-action="open-map"]');
+                if (mapButton) { ... }
+                */
+            }, { passive: true });
 
-        const action = target.dataset.action;
-        const itemNo = parseInt(target.dataset.no, 10);
-        const itemId = target.dataset.id;
+            deliveryCardsContainer.addEventListener('touchmove', (event) => {
+                // 스크롤 시 모든 타이머 취소
+                clearTimeout(longPressTimer);
+                touchTarget = null;
+                // ▼▼▼ [수정] 지도 길게 터치 타이머 취소 로직 제거 ▼▼▼
+                // clearTimeout(mapIconLongPressTimer);
+                // mapIconLongPressTimer = null;
+            }, { passive: true });
 
-        switch (action) {
-            case 'open-child-scanner':
-                {
-                    // [PWA 대응 핵심] URL 파라미터 대신 로컬 저장소에 부모 번호 저장
-                    localStorage.setItem('pendingParentNo', itemNo);
+            deliveryCardsContainer.addEventListener('touchend', (event) => {
+                if (touchTarget) {
+                    clearTimeout(longPressTimer);
+                    if (isLongPress) {
+                        event.preventDefault();
+                        isLongPress = false;
+                    }
+                    touchTarget = null;
+                }
+
+                const mapButton = event.target.closest('button[data-action="open-map"]');
+                if (mapButton) {
+                    // ▼▼▼ [수정] 길게 터치 관련 로직 제거 ▼▼▼
+                    // clearTimeout(mapIconLongPressTimer);
+                    // if (!mapIconLongPressTimer) { return; }
                     
-                    const baseUrl = window.location.origin + window.location.pathname;
-                    const returnUrl = encodeURIComponent(`${baseUrl}?hawb={CODE}`);
-                    window.location.href = `zxing://scan/?ret=${returnUrl}`;
-                }
-                break;
+                    mapIconTapCount++; // 탭 횟수 증가
 
-            case 'delete-child':
-                {
-                    openConfirmationModal("이 자송장 카드를 삭제하시겠습니까?", () => {
-                        deliveryItems = deliveryItems.filter(item => item.id !== itemId);
-                        saveDeliveryItemsToLocalStorage();
-                        renderDeliveryCards(activeFilter);
-                        updateFilterCounts();
-                        showToastMessage("자송장이 삭제되었습니다.");
-                    });
-                }
-                break;
-
-            case 'complete-child':
-                {
-                    const itemIndex = deliveryItems.findIndex(i => i.id === itemId);
-                    if (itemIndex > -1) {
-                        triggerVibration();
-                        const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                        deliveryItems[itemIndex].status = '완료';
-                        deliveryItems[itemIndex].deliveryCompletionTime = currentTime;
-                        deliveryItems[itemIndex].completionType = '자송장완료';
-                        saveDeliveryItemsToLocalStorage();
-                        sendWebhook(deliveryItems[itemIndex]);
-                        renderDeliveryCards(activeFilter);
-                        updateFilterCounts();
-                        showToastMessage("자송장 배송 완료!");
+                    if (mapIconTapCount === 1) { // 첫 번째 탭
+                        mapIconTapTimer = setTimeout(() => {
+                            const itemNo = parseInt(mapButton.dataset.no, 10);
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                openMap(item); // 일반 복사 및 지도 열기
+                            }
+                            mapIconTapCount = 0;
+                        }, 300);
+                    } else if (mapIconTapCount === 2) { // 두 번째 탭 (더블 탭)
+                        clearTimeout(mapIconTapTimer);
+                        mapIconTapTimer = setTimeout(() => {
+                            const itemNo = parseInt(mapButton.dataset.no, 10);
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                const textToCopy = `*${item.no}. ${extractClipboardAddressPart(item)}`;
+                                navigator.clipboard.writeText(textToCopy);
+                                openMap(item, true);
+                            }
+                            mapIconTapCount = 0;
+                        }, 300);
+                    } else if (mapIconTapCount === 3) { // 세 번째 탭 (트리플 탭)
+                        clearTimeout(mapIconTapTimer);
+                        const itemNo = parseInt(mapButton.dataset.no, 10);
+                        const item = deliveryItems.find(i => i.no === itemNo);
+                        if (item) {
+                            // ▼▼▼ [수정] 별표 2개로 변경 (기존 길게 터치 기능) ▼▼▼
+                            const textToCopy = `**${item.no}. ${extractClipboardAddressPart(item)}`;
+                            navigator.clipboard.writeText(textToCopy);
+                            openMap(item, true);
+                        }
+                        mapIconTapCount = 0;
                     }
                 }
-                break;
+            });
 
-            case 'copy-completion':
-                {
-                    triggerVibration();
-                    const item = deliveryItems.find(i => i.no === itemNo);
-                    if (item) {
-                        const completionText = item.completionType === '본인전달' ? (item.receiverNameKorean || '') : (item.completionDetail || item.completionType || '');
-                        const timeText = formatCompletionTime(item.deliveryCompletionTime);
-                        const textToCopy = `${item.no} - ${completionText} [${timeText}]`;
-                        navigator.clipboard.writeText(textToCopy).then(() => showToastMessage(`'${textToCopy}' 복사 완료`));
-                    }
+            deliveryCardsContainer.addEventListener('click', (event) => {
+                if (isLongPress) {
+                    isLongPress = false;
+                    return;
                 }
-                break;
+                
+                const target = event.target.closest('button, input[type="checkbox"], p[data-action="open-smart-edit"], span[data-action="edit-phone"], span[data-action="copy-completion"], span[data-action="edit-completion-detail"], span[data-action="copy-hawb"], button[data-action="swap-name"], span[data-action="edit-completion-time"]');
+                if (!target) return;
 
-            case 'edit-completion-detail':
-                {
-                    triggerVibration();
-                    const item = deliveryItems.find(i => i.no === itemNo);
-                    if (item) {
-                        if (['본인전달', '직접입력'].includes(item.completionType)) openSignatureModal(item.no); 
-                        else openDeliveryLocationModal(item.no);
-                    }
+                const action = target.dataset.action;
+                if (action === 'open-map') {
+                    event.preventDefault(); // touchend에서 처리하므로 기본 click 이벤트 방지
+                    return;
                 }
-                break;
+                const itemNo = parseInt(target.dataset.no, 10);
 
-            case 'toggle-hawb-confirm':
-                handleCheckboxToggleAndResetSearch(itemNo, target.checked);
-                break;
-
-            case 'swap-name':
-                {
-                    triggerVibration();
-                    const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
-                    if (itemIndex > -1) {
-                        const item = deliveryItems[itemIndex];
-                        if (typeof item.receiverNameKoreanOriginal === 'undefined') item.receiverNameKoreanOriginal = item.receiverNameKorean;
-                        const currentName = item.receiverNameKorean;
-                        const originalName = item.receiverNameKoreanOriginal;
-                        if (currentName !== originalName) deliveryItems[itemIndex].receiverNameKorean = originalName;
-                        else {
-                            const nameToSwap = currentName.trim().replace(/\s/g, '');
-                            if (nameToSwap.length > 1) {
-                                const lastChar = nameToSwap.slice(-1);
-                                const restOfString = nameToSwap.slice(0, -1);
-                                deliveryItems[itemIndex].receiverNameKorean = `${lastChar}${restOfString}`;
+                switch (action) {
+                    case 'copy-completion':
+                        {
+                            triggerVibration(); // <-- [추가]
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                const completionText = item.completionType === '본인전달'
+                                    ? (item.receiverNameKorean || '')
+                                    : (item.completionDetail || item.completionType || '');
+                                const timeText = formatCompletionTime(item.deliveryCompletionTime);
+                                const textToCopy = `${item.no} - ${completionText} [${timeText}]`;
+                                
+                                navigator.clipboard.writeText(textToCopy).then(() => {
+                                    showToastMessage(`'${textToCopy}' 복사 완료`);
+                                }).catch(err => {
+                                    console.error('클립보드 복사 실패:', err);
+                                    showMessage('클립보드 복사에 실패했습니다.');
+                                });
                             }
                         }
-                        saveDeliveryItemsToLocalStorage();
-                        renderDeliveryCards(activeFilter);
-                    }
+                        break;
+                    case 'edit-completion-detail':
+                        {
+                            triggerVibration(); // <-- [추가]
+                            const item = deliveryItems.find(i => i.no === itemNo);
+                            if (item) {
+                                const isEditableText = ['본인전달', '직접입력'].includes(item.completionType);
+                                if (isEditableText) {
+                                    openSignatureModal(item.no); 
+                                } else {
+                                    openDeliveryLocationModal(item.no);
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'toggle-hawb-confirm':
+                        handleCheckboxToggleAndResetSearch(itemNo, target.checked);
+                        break;
+                    case 'swap-name':
+                        {
+                            triggerVibration(); // <-- [추가]
+                            const itemIndex = deliveryItems.findIndex(i => i.no === itemNo);
+                            if (itemIndex > -1) {
+                                const item = deliveryItems[itemIndex];
+                                if (typeof item.receiverNameKoreanOriginal === 'undefined') {
+                                    item.receiverNameKoreanOriginal = item.receiverNameKorean;
+                                }
+                                const currentName = item.receiverNameKorean;
+                                const originalName = item.receiverNameKoreanOriginal;
+                                if (currentName !== originalName) {
+                                    deliveryItems[itemIndex].receiverNameKorean = originalName;
+                                } else {
+                                    const nameToSwap = currentName.trim().replace(/\s/g, '');
+                                    if (nameToSwap.length > 1) {
+                                        const lastChar = nameToSwap.slice(-1);
+                                        const restOfString = nameToSwap.slice(0, -1);
+                                        const newName = `${lastChar}${restOfString}`;
+                                        deliveryItems[itemIndex].receiverNameKorean = newName;
+                                    }
+                                }
+                                saveDeliveryItemsToLocalStorage();
+                                renderDeliveryCards(activeFilter);
+                            }
+                        }
+                        break;
+                    case 'copy-hawb':
+                        {
+                            triggerVibration(); // 진동 추가
+                            const hawbToCopy = target.dataset.hawbNo;
+                            if (hawbToCopy) {
+                                navigator.clipboard.writeText(hawbToCopy).catch(err => {
+                                    console.error('송장번호 복사 실패:', err);
+                                    showMessage('송장번호 복사에 실패했습니다.');
+                                });
+                            }
+                        }
+                        break;
+                    case 'revert-delivery':
+                        triggerVibration(); // <-- [추가]
+                        openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
+                            handleStatusChange(itemNo, '배송중');
+                            showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
+                        });
+                        break;
+                    case 'identity-verification':
+                        openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
+                            copyHawbOnComplete(itemNo);
+                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
+                            sortItemsByDistanceSilent();
+                            
+                            // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
+                            const updatedItem = deliveryItems.find(i => i.no === itemNo);
+                            if (updatedItem) sendWebhook(updatedItem);
+                        });
+                        break;
+                    case 'open-location-modal':
+                        openDeliveryLocationModal(itemNo);
+                        break;
+                    case 'sign-delivery':
+                        openSignatureModal(itemNo);
+                        break;
+                    case 'toggle-details':
+                        {
+                            const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
+                            const iconButton = target.closest('button');
+                            const iconSvg = iconButton.querySelector('svg');
+                            if (detailsContainer && iconSvg) {
+                                const isHidden = detailsContainer.style.display === 'none';
+                                detailsContainer.style.display = isHidden ? 'block' : 'none';
+                                if (isHidden) {
+                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />`;
+                                } else {
+                                    iconSvg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />`;
+                                }
+                            }
+                        }
+                        break;
+                    case 'edit-phone':
+                        openPhoneEditModal(itemNo);
+                        break;
+                    case 'open-smart-edit':
+                        openSmartEditModal(itemNo);
+                        break;
+                    case 'edit-completion-time':
+                        openTimeEditModal(itemNo);
+                        break;
                 }
-                break;
+            });
 
-            case 'copy-hawb':
-                {
-                    triggerVibration();
-                    const hawbToCopy = target.dataset.hawbNo;
-                    if (hawbToCopy) {
-                        navigator.clipboard.writeText(hawbToCopy).then(() => showToastMessage(`송장번호 ${hawbToCopy} 복사 완료`));
-                    }
-                }
-                break;
-
-            case 'revert-delivery':
-                triggerVibration();
-                openConfirmationModal(`${itemNo}번 항목을 '배송중' 상태로 되돌리시겠습니까?`, () => {
-                    handleStatusChange(itemNo, '배송중');
-                    showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
-                });
-                break;
-
-            case 'identity-verification':
-                openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
-                    copyHawbOnComplete(itemNo);
-                    const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                    handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
-                    sortItemsByDistanceSilent();
-                    const updatedItem = deliveryItems.find(i => i.no === itemNo);
-                    if (updatedItem) sendWebhook(updatedItem);
-                });
-                break;
-
-            case 'open-location-modal': openDeliveryLocationModal(itemNo); break;
-            case 'sign-delivery': openSignatureModal(itemNo); break;
-            case 'toggle-details':
-                {
-                    const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
-                    const iconSvg = target.closest('button').querySelector('svg');
-                    if (detailsContainer && iconSvg) {
-                        const isHidden = detailsContainer.style.display === 'none';
-                        detailsContainer.style.display = isHidden ? 'block' : 'none';
-                        iconSvg.innerHTML = isHidden ? `<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />` : `<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />`;
-                    }
-                }
-                break;
-            case 'edit-phone': openPhoneEditModal(itemNo); break;
-            case 'open-smart-edit': openSmartEditModal(itemNo); break;
-            case 'edit-completion-time': openTimeEditModal(itemNo); break;
-        }
-    });
-};
+            completionOptionsCancelBtn.addEventListener('click', () => {
+                completionOptionsModal.style.display = 'none';
+            });
+        };
 
         const resizeImage = (file) => {
             return new Promise((resolve, reject) => {
@@ -1618,9 +1640,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
             // 4. 최종 카드 생성 및 저장을 위한 함수 정의
             const createAndSaveCard = (base, detail, isValidated) => {
                 const newCard = {
-                    id: generateId(), // ID 추가
                     no: no,
-                    isChild: false,   // 자식여부 추가
                     hawbNo: hawbNo,
                     baseAddress: base,
                     detailAddress: detail,
@@ -1641,11 +1661,11 @@ const getCleanPhoneNumber = (phoneNumber) => {
                     completionDetail: null,
                     addressLocation: null,
                     isStruckThrough: false,
-                    isAddressValidated: isValidated
+                    isAddressValidated: isValidated // 검증 결과 반영
                 };
 
                 deliveryItems.push(newCard);
-                deliveryItems.sort((a, b) => a.no - b.no || (a.isChild ? 1 : -1));
+                deliveryItems.sort((a, b) => a.no - b.no);
                 saveDeliveryItemsToLocalStorage();
 
                 updateFilterCounts();
@@ -2419,13 +2439,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
         return;
     }
 
-    const getCountDisplay = (data) => {
-        const sameNoItems = deliveryItems.filter(item => item.no === data.no);
-        if (sameNoItems.length <= 1) return '';
-        const currentIndex = sameNoItems.indexOf(data) + 1;
-        return `<span class="text-xs font-medium text-gray-500 ml-1">(${currentIndex}/${sameNoItems.length})</span>`;
-    };
-
     deliveryCardsContainer.innerHTML = dataToRender.map(data => {
         const selectedMap = localStorage.getItem('selectedMap') || 'naver';
         const mapButtonClass = selectedMap === 'naver' ? 'naver' : 'kakao';
@@ -2436,26 +2449,10 @@ const getCleanPhoneNumber = (phoneNumber) => {
             ? `<span class="block text-sm font-medium text-purple-600 dark:text-purple-400 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
             : '';
         
+        // ▼▼▼ [추가된 로직] 특별 주소 체크 ▼▼▼
         const isSpecial = SPECIAL_ADDRESSES.some(addr => data.baseAddress && data.baseAddress.includes(addr));
         const specialClass = isSpecial ? 'special-addr-bg' : '';
-
-        if (data.isChild) {
-            return `
-                <div class="bg-white dark:bg-gray-800 border-l-4 border-blue-500 p-3 mb-3 ml-4 rounded-r-xl shadow-sm border border-gray-200 dark:border-gray-700" data-id="${data.id}">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center space-x-2">
-                            <span class="text-lg font-bold text-red-500">${data.no}</span>
-                            ${getCountDisplay(data)}
-                            <span class="text-sm font-mono font-bold text-gray-700 dark:text-gray-200">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button data-action="delete-child" data-id="${data.id}" class="px-3 py-1.5 text-xs font-bold text-red-500 border border-red-500 rounded-md">삭제</button>
-                            <button data-action="complete-child" data-id="${data.id}" class="px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-md">완료</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+        // ▲▲▲ [추가 끝] ▲▲▲
 
         let cardClasses = '';
         let headerBorder = 'border-gray-200 dark:border-gray-600';
@@ -2471,83 +2468,121 @@ const getCleanPhoneNumber = (phoneNumber) => {
             cardClasses = 'bg-gray-200 dark:bg-gray-700 rounded-t-3xl rounded-bl-3xl border-2 border-gray-300 dark:border-gray-600';
         }
 
+        const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
+        const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
+
         const detailsHtml = `
-            <div class="flex items-start space-x-2.5">
+        <div class="flex items-start space-x-2.5">
                 <button data-action="open-map" data-no="${data.no}" class="map-icon-button rounded-full flex items-center justify-center ${mapButtonClass} ${isMapButtonActive ? '' : 'opacity-50 cursor-not-allowed'}" ${isMapButtonActive ? '' : 'disabled'}>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                 </button>
                 <div class="pt-0.5">
+                    <!-- ▼▼▼ [수정된 부분] p 태그 클래스에 ${specialClass} 적용 ▼▼▼ -->
                     <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'} ${specialClass}"
                        ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
-                        ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음]</span>'}
+                        ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
                     </p>
+                    <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
+                    ${data.original_ocr_address ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.original_ocr_address})</p>` : ''}
                 </div>
             </div>
             <div class="flex items-start space-x-2.5">
-                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></div>
-                <div><p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.companyNameKorean || 'N/A'}</p></div>
+                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+                </div>
+                <div>
+                    <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.companyNameKorean || 'N/A'}</p>
+                    ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.companyNameOriginal})</p>` : ''}
+                </div>
             </div>
             <div class="flex items-start space-x-2.5">
-                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></div>
+                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
+                        <button data-action="swap-name" data-no="${data.no}" class="p-1 text-gray-400 dark:text-gray-500 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                        </button>
+                    </div>
+                    ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.receiverNameOriginal})</p>` : ''}
+                </div>
+            </div>
+            <div class="flex items-start space-x-2.5">
+                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                </div>
                 <div class="flex items-center space-x-2">
-                    <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
-                    <button data-action="swap-name" data-no="${data.no}" class="p-1 text-gray-400 dark:text-gray-500 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg></button>
+                    <span class="text-base font-semibold cursor-pointer ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 dark:text-red-400 underline' : 'text-blue-600 dark:text-blue-400'}"
+                          data-action="edit-phone" data-no="${data.no}">
+                        ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
+                    </span>
+                    <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 hover:bg-orange-100 dark:text-orange-400 dark:border-orange-400 dark:hover:bg-orange-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
+                    <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-blue-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
                 </div>
             </div>
-            <div class="flex items-start space-x-2.5">
-                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></div>
-                <div class="flex items-center space-x-2">
-                    <span class="text-base font-semibold cursor-pointer ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 dark:text-red-400 underline' : 'text-blue-600 dark:text-blue-400'}" data-action="edit-phone" data-no="${data.no}">${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음]'}</span>
-                    <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full text-orange-500 border border-orange-500 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
-                </div>
-            </div>
+            ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
         `;
 
-        // "완료" 필터에서만 요약형으로 보여줌
-        if (currentFilter === '완료' && data.status === '완료') {
+        if (showCompletedCard) {
+            const isEditableText = ['본인전달', '직접입력'].includes(data.completionType);
+            const isSelectableLocation = !isEditableText && data.completionType !== '서명';
+
+            const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
+                ? `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200 p-1 border border-dashed border-gray-400 dark:border-gray-500 rounded-md bg-gray-50 dark:bg-gray-600 inline-block">${data.completionDetail}</span>`
+                : (isEditableText || isSelectableLocation)
+                    ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 dark:text-gray-200 cursor-pointer">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`
+                    : `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200">${data.completionDetail || data.completionType}</span>`;
+
             return `
-                <div class="${cardClasses} p-4 mb-4" data-id="${data.id}">
+                <div class="${cardClasses} p-4 mb-4" data-no="${data.no}">
                     <div class="flex justify-between items-center">
-                        <div class="text-xl font-semibold text-gray-700 dark:text-gray-300 flex items-center">
-                            <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 dark:text-red-400 text-2xl mr-4 cursor-pointer">${data.no} ${getCountDisplay(data)}</span>
-                            <span class="text-lg font-semibold text-gray-800 dark:text-gray-200">${data.completionDetail || data.completionType}</span>
-                            <span data-action="edit-completion-time" data-no="${data.no}" class="ml-2 text-sm">${formatCompletionTime(data.deliveryCompletionTime)}</span>
+                        <div class="text-xl font-semibold text-gray-700 dark:text-gray-300 text-left flex items-center ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
+                            <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 dark:text-red-400 text-2xl mr-4 cursor-pointer">${data.no}</span>
+                            ${completionDisplayHtml}
+                            <span data-action="edit-completion-time" data-no="${data.no}" class="ml-2 cursor-pointer">${formatCompletionTime(data.deliveryCompletionTime)}</span>
                         </div>
-                        <button data-action="toggle-details" data-no="${data.no}" class="p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg></button>
+                        <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
                     </div>
                     <div class="space-y-3 mt-4 pt-4 border-t border-gray-300 dark:border-gray-500" data-details-container="${data.no}" style="display:none;">
                         ${detailsHtml}
-                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>
                     </div>
                 </div>
             `;
         } else {
-            // "전체", "배송전", "배송중" 필터에서는 상세형으로 보여줌
             return `
-                <div class="${cardClasses} p-6 mb-4" data-id="${data.id}">
+                <div class="${cardClasses} p-6 mb-4" data-no="${data.no}">
                     <div class="flex justify-between items-start mb-4 pb-2 border-b ${headerBorder}">
                         <div class="flex justify-between items-start w-full">
                             <div class="flex items-start space-x-4">
-                                <div><h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no} ${getCountDisplay(data)}</h3>${distanceInfo}</div>
-                                <div class="pt-1.5 flex items-center">
-                                    <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
-                                    <button data-action="open-child-scanner" data-no="${data.no}" class="p-1 text-orange-500 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-full ml-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                    </button>
+                                <div>
+                                    <h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no}</h3>
+                                    ${distanceInfo}
+                                </div>
+                                <div class="pt-1.5">
+                                    <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
                                 </div>
                             </div>
-                            <div class="pt-1.5"><input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded ml-2"/></div>
+                            <div class="pt-1.5">
+                                <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-500 rounded ml-2"/>
+                            </div>
                         </div>
                     </div>
-                    <div class="space-y-3" data-details-container="${data.no}">${detailsHtml}</div>
-                    ${data.status === '배송중' ? `
+                    <div class="space-y-3" data-details-container="${data.no}">
+                        ${detailsHtml}
+                    </div>
+                    ${showInProgressButtons ? `
                         <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
-                            <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold">본인전달</button>
-                            <button data-action="open-location-modal" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold">배송위치</button>
-                            <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold">직접입력</button>
+                            <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인전달</button>
+                            <button data-action="open-location-modal" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">배송위치</button>
+                            <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">직접입력</button>
                         </div>
                     ` : ''}
-                    ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
                 </div>
             `;
         }
@@ -3022,16 +3057,18 @@ if (!tempApiKeyForLocalTest) {
 
         if (allNewItems.length > 0) {
             const finalItems = allNewItems.map(item => ({
-                id: generateId(), // ID 추가
                 no: parseInt(item.no, 10),
-                isChild: false,   // 자식여부 추가
                 hawbNo: item.hawbNo || '',
                 baseAddress: item.baseAddressKorean || '',
                 detailAddress: item.detailAddressKorean || '',
-                feedback_status: 'UNCONFIRMED',
-                original_ocr_address: item.rawOcrAddress || item.receiverAddress || '',
-                ai_base_address: item.baseAddressKorean || '',
-                ai_detail_address: item.detailAddressKorean || '',
+                
+                // ▼▼▼ [수정] 'original_ocr_address'의 소스를 'rawOcrAddress'로 변경 ▼▼▼
+                feedback_status: 'UNCONFIRMED', // 'UNCONFIRMED', 'AI_CORRECT', 'USER_CORRECTED'
+                original_ocr_address: item.rawOcrAddress || item.receiverAddress || '', // AI가 본 이미지의 원본 텍스트
+                ai_base_address: item.baseAddressKorean || '',   // AI가 추출한 기본 주소
+                ai_detail_address: item.detailAddressKorean || '', // AI가 추출한 상세 주소
+                // ▲▲▲ [수정 끝] ▲▲▲
+
                 companyNameOriginal: item.receiverCompanyName || '',
                 receiverNameOriginal: item.receiverName || '',
                 companyNameKorean: item.receiverCompanyNameKorean || item.receiverCompanyName || '',
@@ -3741,13 +3778,11 @@ if (!tempApiKeyForLocalTest) {
             if (storedItems) {
                 let parsedItems = JSON.parse(storedItems);
                 deliveryItems = parsedItems.map(item => {
-                    if (!item.id) item.id = generateId(); // ID 부여
-                    if (typeof item.isChild === 'undefined') item.isChild = false; // 자식여부 부여
                     if (typeof item.addressLocation === 'undefined') item.addressLocation = null;
                     if (typeof item.isStruckThrough === 'undefined') item.isStruckThrough = false;
                     if (typeof item.isAddressValidated === 'undefined') item.isAddressValidated = true;
                     return item;
-                }).sort((a, b) => a.no - b.no || (a.isChild ? 1 : -1));
+                }).sort((a, b) => a.no - b.no);
             }
             const storedScroll = localStorage.getItem('filterScrollPositions');
             if (storedScroll) filterScrollPositions = JSON.parse(storedScroll);
@@ -3759,79 +3794,30 @@ if (!tempApiKeyForLocalTest) {
                 changeFilter(lastFilter, '', true);
             }
 
-            const handleUrlParams = (urlObject) => {
-    // [PWA 대응] 전달받은 객체 대신 실제 현재 주소창의 URL을 직접 파싱합니다.
-    const currentUrl = new URL(window.location.href);
-    const urlParams = currentUrl.searchParams;
-    
-    const hawbFromUrl = urlParams.get('hawb');
-    const pendingParentNo = localStorage.getItem('pendingParentNo');
+            const handleUrlParams = (url) => {
+                const urlParams = new URLSearchParams(url.search);
+                const hawbFromUrl = urlParams.get('hawb');
+                if (hawbFromUrl) {
+                    changeFilter('전체', '', true);
+                    searchTerm = hawbFromUrl;
+                    invoiceNumberInput.value = hawbFromUrl;
+                    renderDeliveryCards('전체');
+                    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+                    window.history.replaceState({}, '', cleanUrl);
+                }
+            };
 
-    console.log("검증 - 송장번호:", hawbFromUrl, "예약번호:", pendingParentNo);
-
-    // 송장번호가 없으면 아무것도 하지 않음
-    if (!hawbFromUrl) return;
-
-    // 1. 자송장 추가 모드 (예약된 부모 번호가 있는 경우)
-    if (pendingParentNo) {
-        const pNo = parseInt(pendingParentNo, 10);
-        const parentItem = deliveryItems.find(item => item.no === pNo && !item.isChild);
-        
-        if (parentItem) {
-            const isDuplicate = deliveryItems.some(item => item.no === pNo && item.hawbNo === hawbFromUrl);
-            if (isDuplicate) {
-                showToastMessage("이미 등록된 송장번호입니다.");
-            } else {
-                const newChild = {
-                    ...JSON.parse(JSON.stringify(parentItem)),
-                    id: generateId(),
-                    hawbNo: hawbFromUrl,
-                    isChild: true,
-                    status: '배송중',
-                    isHawbConfirmed: true,
-                    deliveryCompletionTime: null,
-                    completionType: null,
-                    completionDetail: null
-                };
-                deliveryItems.push(newChild);
-                deliveryItems.sort((a, b) => a.no - b.no || (a.isChild ? 1 : -1));
-                saveDeliveryItemsToLocalStorage();
-                showToastMessage(`${pNo}번에 자송장이 추가되었습니다.`);
-            }
-        } else {
-            console.error("부모 카드를 찾을 수 없음:", pNo);
-        }
-        
-        // 작업 완료 후 예약 정보 삭제 및 URL 정리
-        localStorage.removeItem('pendingParentNo');
-        window.history.replaceState({}, '', window.location.pathname);
-        renderDeliveryCards(activeFilter);
-        updateFilterCounts();
-        return; // 자송장 처리 시 검색 로직으로 절대 넘어가지 않음
-    }
-
-    // 2. 일반 검색 모드 (예약 정보가 없을 때만 실행)
-    if (hawbFromUrl) {
-        changeFilter('전체', '', true);
-        searchTerm = hawbFromUrl;
-        invoiceNumberInput.value = hawbFromUrl;
-        renderDeliveryCards('전체');
-        window.history.replaceState({}, '', window.location.pathname);
-    }
-};
-
-            // PWA 및 일반 브라우저 환경 통합 처리
             if ('launchQueue' in window) {
                 window.launchQueue.setConsumer(launchParams => {
-                    // launchQueue가 작동하더라도 handleUrlParams 내부에서 window.location을 직접 참조하므로 안전함
-                    handleUrlParams(); 
+                    if (launchParams.targetURL) {
+                        const url = new URL(launchParams.targetURL);
+                        handleUrlParams(url);
+                    }
                 });
-            } 
-            
-            // 초기 로드 시 즉시 실행 (setTimeout으로 데이터 로드 대기)
-            setTimeout(() => {
-                handleUrlParams();
-            }, 100);
+            } else {
+                const url = new URL(window.location.href);
+                handleUrlParams(url);
+            }
             // --- AI 기반 CSV/텍스트 임포트 로직 시작 ---
             const csvAiImportButton = document.getElementById('csv-ai-import-button');
             const csvAiModal = document.getElementById('csv-ai-modal');
