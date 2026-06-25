@@ -1015,7 +1015,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "자송장번호카드기능추가5";
+                const changelog = "자송장번호카드기능추가6";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -3759,15 +3759,21 @@ if (!tempApiKeyForLocalTest) {
                 changeFilter(lastFilter, '', true);
             }
 
-            const handleUrlParams = (url) => {
-    const urlParams = new URLSearchParams(url.search);
-    const hawbFromUrl = urlParams.get('hawb');
+            const handleUrlParams = (urlObject) => {
+    // [PWA 대응] 전달받은 객체 대신 실제 현재 주소창의 URL을 직접 파싱합니다.
+    const currentUrl = new URL(window.location.href);
+    const urlParams = currentUrl.searchParams;
     
-    // [PWA 대응 핵심] 저장소에서 예약된 부모 번호 확인
+    const hawbFromUrl = urlParams.get('hawb');
     const pendingParentNo = localStorage.getItem('pendingParentNo');
 
+    console.log("검증 - 송장번호:", hawbFromUrl, "예약번호:", pendingParentNo);
+
+    // 송장번호가 없으면 아무것도 하지 않음
+    if (!hawbFromUrl) return;
+
     // 1. 자송장 추가 모드 (예약된 부모 번호가 있는 경우)
-    if (hawbFromUrl && pendingParentNo) {
+    if (pendingParentNo) {
         const pNo = parseInt(pendingParentNo, 10);
         const parentItem = deliveryItems.find(item => item.no === pNo && !item.isChild);
         
@@ -3792,40 +3798,40 @@ if (!tempApiKeyForLocalTest) {
                 saveDeliveryItemsToLocalStorage();
                 showToastMessage(`${pNo}번에 자송장이 추가되었습니다.`);
             }
+        } else {
+            console.error("부모 카드를 찾을 수 없음:", pNo);
         }
-        // 작업 완료 후 예약 정보 삭제 (중요!)
+        
+        // 작업 완료 후 예약 정보 삭제 및 URL 정리
         localStorage.removeItem('pendingParentNo');
         window.history.replaceState({}, '', window.location.pathname);
         renderDeliveryCards(activeFilter);
         updateFilterCounts();
-        return;
+        return; // 자송장 처리 시 검색 로직으로 절대 넘어가지 않음
     }
 
-    // 2. 일반 검색 모드
+    // 2. 일반 검색 모드 (예약 정보가 없을 때만 실행)
     if (hawbFromUrl) {
-        // 혹시 남아있을지 모를 예약 정보 삭제
-        localStorage.removeItem('pendingParentNo');
-        
         changeFilter('전체', '', true);
         searchTerm = hawbFromUrl;
         invoiceNumberInput.value = hawbFromUrl;
         renderDeliveryCards('전체');
-        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-        window.history.replaceState({}, '', cleanUrl);
+        window.history.replaceState({}, '', window.location.pathname);
     }
 };
 
+            // PWA 및 일반 브라우저 환경 통합 처리
             if ('launchQueue' in window) {
                 window.launchQueue.setConsumer(launchParams => {
-                    if (launchParams.targetURL) {
-                        const url = new URL(launchParams.targetURL);
-                        handleUrlParams(url);
-                    }
+                    // launchQueue가 작동하더라도 handleUrlParams 내부에서 window.location을 직접 참조하므로 안전함
+                    handleUrlParams(); 
                 });
-            } else {
-                const url = new URL(window.location.href);
-                handleUrlParams(url);
-            }
+            } 
+            
+            // 초기 로드 시 즉시 실행 (setTimeout으로 데이터 로드 대기)
+            setTimeout(() => {
+                handleUrlParams();
+            }, 100);
             // --- AI 기반 CSV/텍스트 임포트 로직 시작 ---
             const csvAiImportButton = document.getElementById('csv-ai-import-button');
             const csvAiModal = document.getElementById('csv-ai-modal');
