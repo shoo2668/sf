@@ -880,7 +880,9 @@ const SPECIAL_ADDRESSES = [
     "상리1길 21",
     "동탄순환대로20길 31",
     "동탄순환대로21길 53",
-    "동탄순환대로26길 55"
+    "동탄순환대로26길 55",
+    "동탄대로시범길 276",
+    "동탄대로8길 65"
 ];
 
         // --- Helper functions ---
@@ -1011,7 +1013,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "방문등록주소3개추가";
+                const changelog = "송장번호복사시 진동추가+방문등록2개추가";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1191,6 +1193,7 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'copy-hawb':
                         {
+                            triggerVibration(); // 진동 추가
                             const hawbToCopy = target.dataset.hawbNo;
                             if (hawbToCopy) {
                                 navigator.clipboard.writeText(hawbToCopy).catch(err => {
