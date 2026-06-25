@@ -1015,7 +1015,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "자송장번호카드기능추가4";
+                const changelog = "자송장번호카드기능추가5";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1099,9 +1099,11 @@ const sendCompletionNotification = (item) => {
         switch (action) {
             case 'open-child-scanner':
                 {
-                    // return URL에 parentNo를 확실하게 포함
+                    // [PWA 대응 핵심] URL 파라미터 대신 로컬 저장소에 부모 번호 저장
+                    localStorage.setItem('pendingParentNo', itemNo);
+                    
                     const baseUrl = window.location.origin + window.location.pathname;
-                    const returnUrl = encodeURIComponent(`${baseUrl}?parentNo=${itemNo}&hawb={CODE}`);
+                    const returnUrl = encodeURIComponent(`${baseUrl}?hawb={CODE}`);
                     window.location.href = `zxing://scan/?ret=${returnUrl}`;
                 }
                 break;
@@ -2437,7 +2439,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
         const isSpecial = SPECIAL_ADDRESSES.some(addr => data.baseAddress && data.baseAddress.includes(addr));
         const specialClass = isSpecial ? 'special-addr-bg' : '';
 
-        // --- [자송장 카드 UI] ---
         if (data.isChild) {
             return `
                 <div class="bg-white dark:bg-gray-800 border-l-4 border-blue-500 p-3 mb-3 ml-4 rounded-r-xl shadow-sm border border-gray-200 dark:border-gray-700" data-id="${data.id}">
@@ -2456,7 +2457,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
             `;
         }
 
-        // --- [일반 모송장 카드 UI] ---
         let cardClasses = '';
         let headerBorder = 'border-gray-200 dark:border-gray-600';
         let actionBorder = 'border-gray-200 dark:border-gray-600';
@@ -2503,10 +2503,8 @@ const getCleanPhoneNumber = (phoneNumber) => {
             </div>
         `;
 
-        // "완료" 필터에서만 요약형으로 보여줌 (전체 필터에서는 상세형 유지)
-        const isSummaryFilter = currentFilter === '완료';
-
-        if (isSummaryFilter && data.status === '완료') {
+        // "완료" 필터에서만 요약형으로 보여줌
+        if (currentFilter === '완료' && data.status === '완료') {
             return `
                 <div class="${cardClasses} p-4 mb-4" data-id="${data.id}">
                     <div class="flex justify-between items-center">
@@ -2524,6 +2522,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
                 </div>
             `;
         } else {
+            // "전체", "배송전", "배송중" 필터에서는 상세형으로 보여줌
             return `
                 <div class="${cardClasses} p-6 mb-4" data-id="${data.id}">
                     <div class="flex justify-between items-start mb-4 pb-2 border-b ${headerBorder}">
@@ -2532,7 +2531,6 @@ const getCleanPhoneNumber = (phoneNumber) => {
                                 <div><h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no} ${getCountDisplay(data)}</h3>${distanceInfo}</div>
                                 <div class="pt-1.5 flex items-center">
                                     <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
-                                    <!-- [+] 자송장 추가 버튼 -->
                                     <button data-action="open-child-scanner" data-no="${data.no}" class="p-1 text-orange-500 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-full ml-1">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                     </button>
@@ -3764,12 +3762,13 @@ if (!tempApiKeyForLocalTest) {
             const handleUrlParams = (url) => {
     const urlParams = new URLSearchParams(url.search);
     const hawbFromUrl = urlParams.get('hawb');
-    const parentNo = urlParams.get('parentNo');
+    
+    // [PWA 대응 핵심] 저장소에서 예약된 부모 번호 확인
+    const pendingParentNo = localStorage.getItem('pendingParentNo');
 
-    // 1. 자송장 추가 모드 (parentNo가 있는 경우)
-    // 이 조건이 만족되면 아래의 일반 검색 로직은 절대 실행되지 않습니다.
-    if (hawbFromUrl && parentNo) {
-        const pNo = parseInt(parentNo, 10);
+    // 1. 자송장 추가 모드 (예약된 부모 번호가 있는 경우)
+    if (hawbFromUrl && pendingParentNo) {
+        const pNo = parseInt(pendingParentNo, 10);
         const parentItem = deliveryItems.find(item => item.no === pNo && !item.isChild);
         
         if (parentItem) {
@@ -3794,15 +3793,19 @@ if (!tempApiKeyForLocalTest) {
                 showToastMessage(`${pNo}번에 자송장이 추가되었습니다.`);
             }
         }
-        // 파라미터 제거 및 화면 갱신
+        // 작업 완료 후 예약 정보 삭제 (중요!)
+        localStorage.removeItem('pendingParentNo');
         window.history.replaceState({}, '', window.location.pathname);
         renderDeliveryCards(activeFilter);
         updateFilterCounts();
-        return; // 중요: 여기서 함수를 종료하여 검색 로직으로 넘어가지 않게 함
+        return;
     }
 
-    // 2. 일반 검색 모드 (parentNo가 없고 hawb만 있는 경우)
+    // 2. 일반 검색 모드
     if (hawbFromUrl) {
+        // 혹시 남아있을지 모를 예약 정보 삭제
+        localStorage.removeItem('pendingParentNo');
+        
         changeFilter('전체', '', true);
         searchTerm = hawbFromUrl;
         invoiceNumberInput.value = hawbFromUrl;
