@@ -1028,7 +1028,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "클로드3.1";
+                const changelog = "클로드3.2";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1274,24 +1274,30 @@ const sendCompletionNotification = (item) => {
                         }
                         break;
                     }
-                    case 'identity-verification':
-                        openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
-                            copyHawbOnComplete(itemNo);
-                            const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
-                            handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증');
-                            sortItemsByDistanceSilent();
-                            
-                            // ▼▼▼ [추가] 웹훅 전송 ▼▼▼
-                            const updatedItem = deliveryItems.find(i => i.no === itemNo);
-                            if (updatedItem) sendWebhook(updatedItem);
-                        });
-                        break;
-                    case 'open-location-modal':
-                        openDeliveryLocationModal(itemNo);
-                        break;
-                    case 'sign-delivery':
-                        openSignatureModal(itemNo);
-                        break;
+                    // setupDelegatedEventListeners 내부의 switch문 수정
+case 'identity-verification':
+    const ivChildId = target.dataset.childId || null; // [추가]
+    openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
+        copyHawbOnComplete(itemNo);
+        const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+        // 마지막 인자로 ivChildId 전달
+        handleStatusChange(itemNo, '완료', currentTime, '본인전달', '신분증', ivChildId);
+        sortItemsByDistanceSilent();
+        
+        const updatedItem = deliveryItems.find(i => ivChildId ? i.childId === ivChildId : i.no === itemNo);
+        if (updatedItem) sendWebhook(updatedItem);
+    });
+    break;
+
+case 'open-location-modal':
+    const locChildId = target.dataset.childId || null; // [추가]
+    openDeliveryLocationModal(itemNo, locChildId);
+    break;
+
+case 'sign-delivery':
+    const signChildId = target.dataset.childId || null; // [추가]
+    openSignatureModal(itemNo, signChildId);
+    break;
                     case 'toggle-details':
                         {
                             const detailsContainer = document.querySelector(`div[data-details-container="${itemNo}"]`);
@@ -1578,6 +1584,8 @@ const getCleanPhoneNumber = (phoneNumber) => {
         let pullStartY = 0;
         let refreshIndicator;
         let currentLocationEditItemNo = null;
+        let currentLocationEditChildId = null;
+        let currentSignatureChildId = null;
         let isScanCancelled = false;
         
         const searchBarContainer = document.getElementById('search-bar-container');
@@ -1761,6 +1769,7 @@ const getCleanPhoneNumber = (phoneNumber) => {
 
         const openDeliveryLocationModal = (itemNo) => {
             currentLocationEditItemNo = itemNo;
+            currentLocationEditChildId = childId;
             const item = deliveryItems.find(i => i.no === itemNo);
             if (!item) return;
 
@@ -1928,7 +1937,8 @@ const getCleanPhoneNumber = (phoneNumber) => {
         };
 
         const openSignatureModal = (itemNo) => { 
-            currentSignatureItemNo = itemNo; 
+            currentSignatureItemNo = itemNo;
+            currentSignatureChildId = childId; 
             document.body.classList.add('modal-open');
             signatureModal.style.display = 'flex'; 
             signatureTextInput.value = ''; 
@@ -2380,22 +2390,24 @@ const getCleanPhoneNumber = (phoneNumber) => {
         };
         // ▲▲▲ [추가 끝] ▲▲▲
 
-        const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null) => {
-            deliveryItems = deliveryItems.map(item => {
-                if (item.no === itemNo) {
-                    const updatedItem = { ...item, status: newStatus, isHawbConfirmed: newStatus !== '배송전' };
-                    if (completionTime !== null) updatedItem.deliveryCompletionTime = completionTime;
-                    if (completionType !== null) updatedItem.completionType = completionType;
-                    if (completionDetail !== null) updatedItem.completionDetail = completionDetail;
-                    return updatedItem;
-                }
-                return item;
-            });
-            saveDeliveryItemsToLocalStorage();
-            renderDeliveryCards(activeFilter);
-            updateFilterCounts();
-        };
-        // ▲▲▲ [수정 끝] ▲▲▲
+        const handleStatusChange = (itemNo, newStatus, completionTime = null, completionType = null, completionDetail = null, childId = null) => {
+    deliveryItems = deliveryItems.map(item => {
+        // childId가 있으면 childId로 비교, 없으면 순번이 같으면서 모송장인 것만 비교
+        const isTarget = childId ? item.childId === childId : (item.no === itemNo && !item.isChild);
+        
+        if (isTarget) {
+            const updatedItem = { ...item, status: newStatus, isHawbConfirmed: newStatus !== '배송전' };
+            if (completionTime !== null) updatedItem.deliveryCompletionTime = completionTime;
+            if (completionType !== null) updatedItem.completionType = completionType;
+            if (completionDetail !== null) updatedItem.completionDetail = completionDetail;
+            return updatedItem;
+        }
+        return item;
+    });
+    saveDeliveryItemsToLocalStorage();
+    renderDeliveryCards(activeFilter);
+    updateFilterCounts();
+};
 
         // [수정] childId 파라미터 추가 및 개별 카드 식별 로직 개선
 const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState, childId = null) => {
