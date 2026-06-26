@@ -1028,7 +1028,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "클로드3";
+                const changelog = "클로드3.1";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1177,8 +1177,10 @@ const sendCompletionNotification = (item) => {
                         break;
 
                     case 'toggle-hawb-confirm':
-                        handleCheckboxToggleAndResetSearch(itemNo, target.checked);
-                        break;
+    // 체크박스 엘리먼트에서 childId를 가져와서 함수에 전달
+    const cId = target.dataset.childId || null;
+    handleCheckboxToggleAndResetSearch(itemNo, target.checked, cId);
+    break;
                     case 'swap-name':
                         {
                             triggerVibration(); // <-- [추가]
@@ -2395,59 +2397,57 @@ const getCleanPhoneNumber = (phoneNumber) => {
         };
         // ▲▲▲ [수정 끝] ▲▲▲
 
-        const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState) => {
-            const checkbox = document.querySelector(`input[data-action="toggle-hawb-confirm"][data-no="${itemNo}"]`);
-            if (!checkbox) return;
+        // [수정] childId 파라미터 추가 및 개별 카드 식별 로직 개선
+const handleCheckboxToggleAndResetSearch = async (itemNo, newCheckboxState, childId = null) => {
+    // childId가 있으면 childId로 찾고, 없으면 순번(no)이면서 자송장이 아닌 것을 찾음
+    const itemIndex = deliveryItems.findIndex(item => 
+        childId ? item.childId === childId : (item.no === itemNo && !item.isChild)
+    );
 
-            const itemIndex = deliveryItems.findIndex(item => item.no === itemNo);
-            if (itemIndex === -1) return;
+    if (itemIndex === -1) return;
 
-            if (newCheckboxState) {
-                deliveryItems[itemIndex].isHawbConfirmed = true;
-                deliveryItems[itemIndex].status = '배송중';
-                
-                // ▼▼▼ [수정] 주소가 수정되지 않았다면 'AI 정답'으로 기록 ▼▼▼
-                if (deliveryItems[itemIndex].feedback_status !== 'USER_CORRECTED') {
-                    deliveryItems[itemIndex].feedback_status = 'AI_CORRECT';
-                }
-                // ▲▲▲ [수정 끝] ▲▲▲
-                
+    const targetItem = deliveryItems[itemIndex];
+
+    if (newCheckboxState) {
+        deliveryItems[itemIndex].isHawbConfirmed = true;
+        deliveryItems[itemIndex].status = '배송중';
+        
+        if (deliveryItems[itemIndex].feedback_status !== 'USER_CORRECTED') {
+            deliveryItems[itemIndex].feedback_status = 'AI_CORRECT';
+        }
+        
+        saveDeliveryItemsToLocalStorage();
+        searchTerm = '';
+        invoiceNumberInput.value = '';
+        renderDeliveryCards(activeFilter);
+        updateFilterCounts();
+        collapseSearch();
+
+        // 좌표 저장 로직 (모송장 또는 좌표가 필요한 경우만)
+        if (!deliveryItems[itemIndex].addressLocation) {
+            try {
+                const coords = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
+                deliveryItems[itemIndex].addressLocation = coords;
                 saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
-                collapseSearch();
-
-                if (!deliveryItems[itemIndex].addressLocation) {
-                    try {
-                        const coords = await getCoordsFromAddress(deliveryItems[itemIndex].baseAddress);
-                        deliveryItems[itemIndex].addressLocation = coords;
-                        saveDeliveryItemsToLocalStorage();
-                        showToastMessage(`${itemNo}번 체크인 완료 (좌표 저장 성공)`);
-                    } catch (error) {
-                        console.error(`좌표 획득 실패 (항목 ${itemNo}):`, error.message);
-                        showToastMessage(`${itemNo}번 체크인 완료 (좌표 저장 실패)`, 2500);
-                    }
-                } else {
-                    showToastMessage(`${itemNo}번 체크인 완료 (좌표 이미 존재)`);
-                }
-
-            } else {
-                deliveryItems[itemIndex].isHawbConfirmed = false;
-                deliveryItems[itemIndex].status = '배송전';
-                deliveryItems[itemIndex].feedback_status = 'UNCONFIRMED'; // ▼▼▼ [수정] 체크 해제 시 미확인으로
-                deliveryItems[itemIndex].addressLocation = null;
-                delete deliveryItems[itemIndex].distanceFromMe;
-                
-                saveDeliveryItemsToLocalStorage();
-                searchTerm = '';
-                invoiceNumberInput.value = '';
-                renderDeliveryCards(activeFilter);
-                updateFilterCounts();
-                showToastMessage('체크인이 취소되었습니다.');
+                showToastMessage(`${itemNo}번 체크인 완료`);
+            } catch (error) {
+                showToastMessage(`${itemNo}번 체크인 완료`);
             }
-        };
+        }
+    } else {
+        deliveryItems[itemIndex].isHawbConfirmed = false;
+        deliveryItems[itemIndex].status = '배송전';
+        deliveryItems[itemIndex].feedback_status = 'UNCONFIRMED';
+        deliveryItems[itemIndex].addressLocation = null;
+        
+        saveDeliveryItemsToLocalStorage();
+        searchTerm = '';
+        invoiceNumberInput.value = '';
+        renderDeliveryCards(activeFilter);
+        updateFilterCounts();
+        showToastMessage('체크인이 취소되었습니다.');
+    }
+};
         
         const openMap = (item, noToast = false) => {
             const selectedMap = localStorage.getItem('selectedMap') || 'naver';
