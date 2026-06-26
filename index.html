@@ -22,16 +22,33 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ▼▼▼ [수정] 설정 섹션 배경색에 CSS 변수 적용 ▼▼▼ */
-        .setting-section {
-            background-color: var(--card-bg);
-            padding: 1rem; /* 16px */
-            border-radius: 0.5rem; /* 8px */
-            box-shadow: var(--card-shadow);
-        }
-        .setting-section-title {
-            font-size: 1rem; /* 16px */
-            font-weight: 600;
+        /* 특별 주소 하이라이트: 세련된 앰버 톤 */
+/* 특정 주소 하이라이트: 글자 길이에 딱 맞게 배경색 적용 */
+.special-addr-bg {
+    background-color: #fef3c7 !important; /* 연한 호박색 */
+    color: #92400e !important;            /* 진한 갈색 텍스트 */
+    padding: 2px 6px !important;          /* 상하좌우 여백 */
+    border-radius: 4px !important;        /* 모서리 둥글게 */
+    display: inline-block !important;     /* 중요: 배경색이 줄 전체가 아닌 글자 길이에만 적용됨 */
+    margin-bottom: 2px !important;
+}
+
+/* 다크모드 대응 */
+html.dark .special-addr-bg {
+    background-color: rgba(245, 158, 11, 0.25) !important; /* 투명도 있는 오렌지 */
+    color: #fbbf24 !important;                             /* 밝은 호박색 텍스트 */
+}
+
+/* ▼▼▼ [수정] 설정 섹션 배경색에 CSS 변수 적용 ▼▼▼ */
+.setting-section {
+    background-color: var(--card-bg);
+    padding: 1rem; /* 16px */
+    border-radius: 0.5rem; /* 8px */
+    box-shadow: var(--card-shadow);
+}
+.setting-section-title {
+    font-size: 1rem; /* 16px */
+    font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 0.75rem; /* 12px */
         }
@@ -806,6 +823,7 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "donghwaseobugan" -> "동화서북안" (Target: Donghwaseobugan-gil)
         - "samgungmaeul" -> "삼국마을" (Target: Samgungmaeul-ro)
         - "haeun" -> "해운" (Target: Haeun-ro)
+        - "jigot" -> "지곶" (Target: Jigot)
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -851,6 +869,22 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         const KAKAO_API_KEY = '2342aad8b15d534cb60fb824f71a97f1';
 
         const dateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+
+// 방문등록 등 특별 관리가 필요한 주소 키워드 리스트
+const SPECIAL_ADDRESSES = [
+    "동탄대로6길 20",
+    "동탄대로6길 50",
+    "동부대로338번길 38",
+    "동탄신리천로4길 48",
+    "삼봉안길 76",
+    "상리1길 167",
+    "상리1길 21",
+    "동탄순환대로20길 31",
+    "동탄순환대로21길 53",
+    "동탄순환대로26길 55",
+    "동탄대로시범길 276",
+    "동탄대로8길 65"
+];
 
         // --- Helper functions ---
 
@@ -979,8 +1013,8 @@ const sendCompletionNotification = (item) => {
         };
 
         const setVersionInfo = () => {
-            const version = "2.0.0";
-                const changelog = "jpeg로 롤백";
+            const version = "2.0.0.beta";
+                const changelog = "프롬프트추가(지곶)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1160,6 +1194,7 @@ const sendCompletionNotification = (item) => {
                         break;
                     case 'copy-hawb':
                         {
+                            triggerVibration(); // 진동 추가
                             const hawbToCopy = target.dataset.hawbNo;
                             if (hawbToCopy) {
                                 navigator.clipboard.writeText(hawbToCopy).catch(err => {
@@ -1390,9 +1425,21 @@ const getCleanPhoneNumber = (phoneNumber) => {
             const { baseAddress, detailAddress } = item;
 
             if (detailAddress) {
-                const hyphenMatch = detailAddress.match(/\b(\d{2,4}-\d{2,4})\b/);
-                if (hyphenMatch) return hyphenMatch[1];
-                const dongHoMatch = detailAddress.match(/(\d+)\s*동\s*(\d+)\s*호/);
+                // 1. 숫자-숫자 (예: 101-101)
+                const hyphenMatch = detailAddress.match(/\b(\d{1,4})-(\d{3,4})\b/);
+                if (hyphenMatch) return hyphenMatch[0];
+
+                // 2. 숫자/숫자 -> 숫자-숫자 (예: 101/101)
+                const slashMatch = detailAddress.match(/\b(\d{1,4})\/(\d{3,4})\b/);
+                if (slashMatch) return `${slashMatch[1]}-${slashMatch[2]}`;
+
+                // 3. 문자-숫자 (예: B-101, 가-101)
+                const letterHyphenMatch = detailAddress.match(/([A-Za-z가-힣])\s*-\s*(\d{3,4})/);
+                if (letterHyphenMatch) return `${letterHyphenMatch[1]}-${letterHyphenMatch[2]}`;
+
+                // 4. [수정] 동 이름에서 '동' 제거하고 숫자와 연결 (예: 101동 101호 -> 101-101, A동 101호 -> A-101)
+                // ([A-Za-z가-힣\d]+) : '동' 앞의 문자나 숫자를 뭉치로 잡음
+                const dongHoMatch = detailAddress.match(/([A-Za-z가-힣\d]+)동\s*(\d{3,4})/);
                 if (dongHoMatch) return `${dongHoMatch[1]}-${dongHoMatch[2]}`;
             }
 
@@ -2373,180 +2420,181 @@ const getCleanPhoneNumber = (phoneNumber) => {
         };
         
         const renderDeliveryCards = (currentFilter, animationClass = '') => {
-            if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
+    if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
 
-            let baseData = currentFilter !== '전체'
-                ? deliveryItems.filter(item => item.status === currentFilter)
-                : [...deliveryItems];
+    let baseData = currentFilter !== '전체'
+        ? deliveryItems.filter(item => item.status === currentFilter)
+        : [...deliveryItems];
 
-            let dataToRender = searchTerm
-                ? baseData.filter(item => {
-                    const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
-                    const hawbMatch = item.hawbNo?.replace(/[\s-]/g, '').toLowerCase().includes(cleanedSearchTerm);
-                    const phoneMatch = item.receiverTelephoneNo?.includes(cleanedSearchTerm);
-                    return hawbMatch || phoneMatch;
-                })
-                : baseData;
-            
-            if (dataToRender.length === 0) {
-                // ▼▼▼ [수정] 다크모드용 텍스트 색상(dark:text-gray-400) 추가 ▼▼▼
-                deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 dark:text-gray-400 px-4">해당하는 항목이 없습니다.</p>';
-                return;
-            }
+    let dataToRender = searchTerm
+        ? baseData.filter(item => {
+            const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
+            const hawbMatch = item.hawbNo?.replace(/[\s-]/g, '').toLowerCase().includes(cleanedSearchTerm);
+            const phoneMatch = item.receiverTelephoneNo?.includes(cleanedSearchTerm);
+            return hawbMatch || phoneMatch;
+        })
+        : baseData;
+    
+    if (dataToRender.length === 0) {
+        deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 dark:text-gray-400 px-4">해당하는 항목이 없습니다.</p>';
+        return;
+    }
 
-            deliveryCardsContainer.innerHTML = dataToRender.map(data => {
-                const selectedMap = localStorage.getItem('selectedMap') || 'naver';
-                const mapButtonClass = selectedMap === 'naver' ? 'naver' : 'kakao';
-                const isPhoneNumberInvalid = !isValidPhoneNumber(data.receiverTelephoneNo);
-                const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
-                const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전', '배송중'].includes(currentFilter);
-                const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
-                    // ▼▼▼ [수정] 다크모드용 텍스트 색상(dark:text-purple-400) 추가 ▼▼▼
-                    ? `<span class="block text-sm font-medium text-purple-600 dark:text-purple-400 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
-                    : '';
-                
-                let cardClasses = '';
-                // ▼▼▼ [수정] 다크모드용 테두리 색상(dark:border-...) 추가 ▼▼▼
-                let headerBorder = 'border-gray-200 dark:border-gray-600';
-                let actionBorder = 'border-gray-200 dark:border-gray-600';
-
-                if (data.status === '배송전') {
-                    // ▼▼▼ [수정] 다크모드용 배경/테두리 색상 추가 ▼▼▼
-                    cardClasses = 'bg-white dark:bg-gray-800 rounded-t-3xl rounded-bl-3xl border-2 border-gray-600 dark:border-gray-500';
-                } else if (data.status === '배송중') {
-                    // ▼▼▼ [수정] 다크모드용 배경/테두리 색상 추가 ▼▼▼
-                    cardClasses = 'bg-blue-50 dark:bg-blue-900/30 rounded-t-3xl rounded-bl-3xl border-2 border-blue-600 dark:border-blue-500';
-                    headerBorder = 'border-blue-200 dark:border-blue-700';
-                    actionBorder = 'border-blue-200 dark:border-blue-700';
-                } else if (data.status === '완료') {
-                    // ▼▼▼ [수정] 다크모드용 배경/테두리 색상 추가 ▼▼▼
-                    cardClasses = 'bg-gray-200 dark:bg-gray-700 rounded-t-3xl rounded-bl-3xl border-2 border-gray-300 dark:border-gray-600';
-                }
-
-                const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
-                const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
-
-                const detailsHtml = `
-                <div class="flex items-start space-x-2.5">
-                        <button data-action="open-map" data-no="${data.no}" class="map-icon-button rounded-full flex items-center justify-center ${mapButtonClass} ${isMapButtonActive ? '' : 'opacity-50 cursor-not-allowed'}" ${isMapButtonActive ? '' : 'disabled'}>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
-                        </button>
-                        <div class="pt-0.5">
-                            <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}"
-                               ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
-                                ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
-                            </p>
-                            ${data.original_ocr_address ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.original_ocr_address})</p>` : ''}
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-2.5">
-                        <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
-                        </div>
-                        <div>
-                            <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.companyNameKorean || 'N/A'}</p>
-                            ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.companyNameOriginal})</p>` : ''}
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-2.5">
-                        <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
-                        </div>
-                        <div>
-                            <div class="flex items-center space-x-2">
-                                <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
-                                <button data-action="swap-name" data-no="${data.no}" class="p-1 text-gray-400 dark:text-gray-500 rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                                </button>
-                            </div>
-                            ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.receiverNameOriginal})</p>` : ''}
-                        </div>
-                    </div>
-                    <div class="flex items-start space-x-2.5">
-                        <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-base font-semibold cursor-pointer ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 dark:text-red-400 underline' : 'text-blue-600 dark:text-blue-400'}"
-                                  data-action="edit-phone" data-no="${data.no}">
-                                ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
-                            </span>
-                            <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 hover:bg-orange-100 dark:text-orange-400 dark:border-orange-400 dark:hover:bg-orange-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
-                            <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-blue-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
-                        </div>
-                    </div>
-                    ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
-                `;
-
-                if (showCompletedCard) {
-                    const isEditableText = ['본인전달', '직접입력'].includes(data.completionType);
-                    const isSelectableLocation = !isEditableText && data.completionType !== '서명';
-
-                    const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
-                        ? `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200 p-1 border border-dashed border-gray-400 dark:border-gray-500 rounded-md bg-gray-50 dark:bg-gray-600 inline-block">${data.completionDetail}</span>`
-                        : (isEditableText || isSelectableLocation)
-                            ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 dark:text-gray-200 cursor-pointer">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`
-                            : `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200">${data.completionDetail || data.completionType}</span>`;
-
-                    return `
-                        <div class="${cardClasses} p-4 mb-4" data-no="${data.no}">
-                            <div class="flex justify-between items-center">
-                                <div class="text-xl font-semibold text-gray-700 dark:text-gray-300 text-left flex items-center ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
-                                    <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 dark:text-red-400 text-2xl mr-4 cursor-pointer">${data.no}</span>
-                                    ${completionDisplayHtml}
-                                    <span data-action="edit-completion-time" data-no="${data.no}" class="ml-2 cursor-pointer">${formatCompletionTime(data.deliveryCompletionTime)}</span>
-                                </div>
-                                <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 flex-shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="space-y-3 mt-4 pt-4 border-t border-gray-300 dark:border-gray-500" data-details-container="${data.no}" style="display:none;">
-                                ${detailsHtml}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    return `
-                        <div class="${cardClasses} p-6 mb-4" data-no="${data.no}">
-                            <div class="flex justify-between items-start mb-4 pb-2 border-b ${headerBorder}">
-                                <div class="flex justify-between items-start w-full">
-                                    <div class="flex items-start space-x-4">
-                                        <div>
-                                            <h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no}</h3>
-                                            ${distanceInfo}
-                                        </div>
-                                        <div class="pt-1.5">
-                                            <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
-                                        </div>
-                                    </div>
-                                    <div class="pt-1.5">
-                                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-500 rounded ml-2"/>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="space-y-3" data-details-container="${data.no}">
-                                ${detailsHtml}
-                            </div>
-                            ${showInProgressButtons ? `
-                                <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
-                                    <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인전달</button>
-                                    <button data-action="open-location-modal" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">배송위치</button>
-                                    <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">직접입력</button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    `;
-                }
-            }).join('');
+    deliveryCardsContainer.innerHTML = dataToRender.map(data => {
+        const selectedMap = localStorage.getItem('selectedMap') || 'naver';
+        const mapButtonClass = selectedMap === 'naver' ? 'naver' : 'kakao';
+        const isPhoneNumberInvalid = !isValidPhoneNumber(data.receiverTelephoneNo);
+        const fullAddress = data.baseAddress + (data.detailAddress ? `, ${data.detailAddress}` : '');
+        const isMapButtonActive = isValidAddressForMap(data.baseAddress) && ['전체', '배송전', '배송중'].includes(currentFilter);
+        const distanceInfo = (currentSortOrder === 'distance' && data.distanceFromMe !== undefined && data.status === '배송중')
+            ? `<span class="block text-sm font-medium text-purple-600 dark:text-purple-400 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
+            : '';
         
-            if (animationClass) {
-                deliveryCardsContainer.classList.remove('animate-slide-in-left', 'animate-slide-in-right');
-                void deliveryCardsContainer.offsetWidth;
-                deliveryCardsContainer.classList.add(animationClass);
-            }
-        };
+        // ▼▼▼ [추가된 로직] 특별 주소 체크 ▼▼▼
+        const isSpecial = SPECIAL_ADDRESSES.some(addr => data.baseAddress && data.baseAddress.includes(addr));
+        const specialClass = isSpecial ? 'special-addr-bg' : '';
+        // ▲▲▲ [추가 끝] ▲▲▲
+
+        let cardClasses = '';
+        let headerBorder = 'border-gray-200 dark:border-gray-600';
+        let actionBorder = 'border-gray-200 dark:border-gray-600';
+
+        if (data.status === '배송전') {
+            cardClasses = 'bg-white dark:bg-gray-800 rounded-t-3xl rounded-bl-3xl border-2 border-gray-600 dark:border-gray-500';
+        } else if (data.status === '배송중') {
+            cardClasses = 'bg-blue-50 dark:bg-blue-900/30 rounded-t-3xl rounded-bl-3xl border-2 border-blue-600 dark:border-blue-500';
+            headerBorder = 'border-blue-200 dark:border-blue-700';
+            actionBorder = 'border-blue-200 dark:border-blue-700';
+        } else if (data.status === '완료') {
+            cardClasses = 'bg-gray-200 dark:bg-gray-700 rounded-t-3xl rounded-bl-3xl border-2 border-gray-300 dark:border-gray-600';
+        }
+
+        const showCompletedCard = !['전체', '배송전', '배송중'].includes(currentFilter) && data.status === '완료';
+        const showInProgressButtons = !['전체', '배송전', '완료'].includes(currentFilter) && data.status === '배송중';
+
+        const detailsHtml = `
+        <div class="flex items-start space-x-2.5">
+                <button data-action="open-map" data-no="${data.no}" class="map-icon-button rounded-full flex items-center justify-center ${mapButtonClass} ${isMapButtonActive ? '' : 'opacity-50 cursor-not-allowed'}" ${isMapButtonActive ? '' : 'disabled'}>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
+                </button>
+                <div class="pt-0.5">
+                    <!-- ▼▼▼ [수정된 부분] p 태그 클래스에 ${specialClass} 적용 ▼▼▼ -->
+                    <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'} ${specialClass}"
+                       ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
+                        ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
+                    </p>
+                    <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
+                    ${data.original_ocr_address ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.original_ocr_address})</p>` : ''}
+                </div>
+            </div>
+            <div class="flex items-start space-x-2.5">
+                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+                </div>
+                <div>
+                    <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.companyNameKorean || 'N/A'}</p>
+                    ${data.companyNameOriginal && data.companyNameOriginal !== data.companyNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.companyNameOriginal})</p>` : ''}
+                </div>
+            </div>
+            <div class="flex items-start space-x-2.5">
+                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <p class="text-base text-blue-600 dark:text-blue-400 font-semibold">${data.receiverNameKorean || 'N/A'}</p>
+                        <button data-action="swap-name" data-no="${data.no}" class="p-1 text-gray-400 dark:text-gray-500 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                        </button>
+                    </div>
+                    ${data.receiverNameOriginal && data.receiverNameOriginal !== data.receiverNameKorean ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.receiverNameOriginal})</p>` : ''}
+                </div>
+            </div>
+            <div class="flex items-start space-x-2.5">
+                <div class="flex-shrink-0 pt-1 text-gray-500 dark:text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-base font-semibold cursor-pointer ${isPhoneNumberInvalid || !data.receiverTelephoneNo ? 'text-red-500 dark:text-red-400 underline' : 'text-blue-600 dark:text-blue-400'}"
+                          data-action="edit-phone" data-no="${data.no}">
+                        ${data.receiverTelephoneNo ? formatPhoneNumberForDisplay(data.receiverTelephoneNo) : '[번호 없음 (터치하여 입력)]'}
+                    </span>
+                    <a href="tel:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-orange-500 border border-orange-500 hover:bg-orange-100 dark:text-orange-400 dark:border-orange-400 dark:hover:bg-orange-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">전화</a>
+                    <a href="sms:${getCleanPhoneNumber(data.receiverTelephoneNo)}" class="px-3 py-1.5 rounded-full bg-transparent text-blue-500 border border-blue-500 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-blue-900/30 ${!data.receiverTelephoneNo ? 'hidden' : ''}">문자</a>
+                </div>
+            </div>
+            ${data.status === '완료' ? `<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex justify-center"><button data-action="revert-delivery" data-no="${data.no}" class="px-4 py-2 rounded-md bg-red-500 text-white text-sm font-medium">되돌리기</button></div>` : ''}
+        `;
+
+        if (showCompletedCard) {
+            const isEditableText = ['본인전달', '직접입력'].includes(data.completionType);
+            const isSelectableLocation = !isEditableText && data.completionType !== '서명';
+
+            const completionDisplayHtml = data.completionType === '서명' && data.completionDetail 
+                ? `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200 p-1 border border-dashed border-gray-400 dark:border-gray-500 rounded-md bg-gray-50 dark:bg-gray-600 inline-block">${data.completionDetail}</span>`
+                : (isEditableText || isSelectableLocation)
+                    ? `<span data-action="edit-completion-detail" data-no="${data.no}" class="text-lg font-semibold text-gray-800 dark:text-gray-200 cursor-pointer">${data.completionType === '본인전달' ? (data.receiverNameKorean || '') : data.completionDetail}</span>`
+                    : `<span class="text-lg font-semibold text-gray-800 dark:text-gray-200">${data.completionDetail || data.completionType}</span>`;
+
+            return `
+                <div class="${cardClasses} p-4 mb-4" data-no="${data.no}">
+                    <div class="flex justify-between items-center">
+                        <div class="text-xl font-semibold text-gray-700 dark:text-gray-300 text-left flex items-center ${data.isStruckThrough ? 'completed-strikethrough' : ''}">
+                            <span data-action="copy-completion" data-no="${data.no}" class="text-red-500 dark:text-red-400 text-2xl mr-4 cursor-pointer">${data.no}</span>
+                            ${completionDisplayHtml}
+                            <span data-action="edit-completion-time" data-no="${data.no}" class="ml-2 cursor-pointer">${formatCompletionTime(data.deliveryCompletionTime)}</span>
+                        </div>
+                        <button data-action="toggle-details" data-no="${data.no}" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="space-y-3 mt-4 pt-4 border-t border-gray-300 dark:border-gray-500" data-details-container="${data.no}" style="display:none;">
+                        ${detailsHtml}
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="${cardClasses} p-6 mb-4" data-no="${data.no}">
+                    <div class="flex justify-between items-start mb-4 pb-2 border-b ${headerBorder}">
+                        <div class="flex justify-between items-start w-full">
+                            <div class="flex items-start space-x-4">
+                                <div>
+                                    <h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no}</h3>
+                                    ${distanceInfo}
+                                </div>
+                                <div class="pt-1.5">
+                                    <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
+                                </div>
+                            </div>
+                            <div class="pt-1.5">
+                                <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-500 rounded ml-2"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-3" data-details-container="${data.no}">
+                        ${detailsHtml}
+                    </div>
+                    ${showInProgressButtons ? `
+                        <div class="mt-4 pt-4 border-t ${actionBorder} flex justify-between space-x-2 w-full">
+                            <button data-action="identity-verification" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors">본인전달</button>
+                            <button data-action="open-location-modal" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600 transition-colors">배송위치</button>
+                            <button data-action="sign-delivery" data-no="${data.no}" class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-600 transition-colors">직접입력</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+    }).join('');
+
+    if (animationClass) {
+        deliveryCardsContainer.classList.remove('animate-slide-in-left', 'animate-slide-in-right');
+        void deliveryCardsContainer.offsetWidth;
+        deliveryCardsContainer.classList.add(animationClass);
+    }
+};
 
     const updateFilterCounts = () => {
         const counts = {
