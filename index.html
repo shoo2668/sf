@@ -339,6 +339,21 @@ html.dark .special-addr-bg {
             will-change: transform;
         }
         /* ▲▲▲ [추가 끝] ▲▲▲ */
+
+        /* ▼▼▼ [추가] 자송장 카드 스타일 ▼▼▼ */
+        .child-card {
+            margin-left: 1.5rem;
+            border-left: 3px solid #6366f1;
+            background-color: #f5f3ff;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+        }
+        html.dark .child-card {
+            background-color: #1e1b4b;
+            border-left-color: #818cf8;
+        }
+        /* ▲▲▲ [추가 끝] ▲▲▲ */
     </style>
 </head>
 <!-- ▼▼▼ [수정] CSS 변수로 색상을 제어하므로, 직접적인 색상 클래스 제거 ▼▼▼ -->
@@ -493,6 +508,15 @@ html.dark .special-addr-bg {
     </div>
 
     <div id="toast-container"></div>
+
+    <!-- ★ 임시 디버그 패널 (확인 후 삭제 예정) -->
+    <div id="debug-panel" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999; background:#000; color:#0f0; font-size:11px; font-family:monospace; max-height:45vh; overflow-y:auto; padding:8px; border-top:2px solid #0f0;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:#ff0; font-weight:bold;">🐛 DEBUG LOG</span>
+            <button onclick="document.getElementById('debug-panel').style.display='none'" style="color:#f00; background:none; border:1px solid #f00; padding:1px 6px; font-size:11px;">닫기</button>
+        </div>
+        <div id="debug-log"></div>
+    </div>
 
     <div id="search-bar-container" class="fixed bottom-0 left-0 w-full z-40">
         <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8 pb-3">
@@ -823,7 +847,6 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "donghwaseobugan" -> "동화서북안" (Target: Donghwaseobugan-gil)
         - "samgungmaeul" -> "삼국마을" (Target: Samgungmaeul-ro)
         - "haeun" -> "해운" (Target: Haeun-ro)
-        - "jigot" -> "지곶" (Target: Jigot)
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -1014,7 +1037,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "프롬프트추가(지곶)";
+                const changelog = "클로드5";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1211,6 +1234,53 @@ const sendCompletionNotification = (item) => {
                             showToastMessage(`${itemNo}번 항목이 되돌려졌습니다.`);
                         });
                         break;
+                    case 'open-child-scanner': {
+                        // + 버튼: zxing 바코드 스캐너 호출
+                        triggerVibration();
+                        const parentNoForScan = parseInt(target.closest('button').dataset.no, 10);
+                        const returnUrl = encodeURIComponent(
+                            `${window.location.origin}${window.location.pathname}?hawb={CODE}&parentNo=${parentNoForScan}`
+                        );
+                        const scannerUrl = `zxing://scan/?ret=${returnUrl}`;
+                        showToastMessage(`${parentNoForScan}번의 자송장을 스캔합니다...`);
+                        window.location.href = scannerUrl;
+                        break;
+                    }
+                    case 'delete-child': {
+                        // 자송장 삭제
+                        triggerVibration();
+                        const childId = target.closest('button').dataset.childId;
+                        const pNo = parseInt(target.closest('button').dataset.parentNo, 10);
+                        openConfirmationModal('이 자송장 카드를 삭제하시겠습니까?', () => {
+                            deliveryItems = deliveryItems.filter(item => item.childId !== childId);
+                            saveDeliveryItemsToLocalStorage();
+                            renderDeliveryCards(activeFilter);
+                            updateFilterCounts();
+                            showToastMessage('자송장이 삭제되었습니다.');
+                        });
+                        break;
+                    }
+                    case 'complete-child': {
+                        // 자송장 완료 + 웹훅
+                        triggerVibration();
+                        const childId = target.closest('button').dataset.childId;
+                        const childItem = deliveryItems.find(item => item.childId === childId);
+                        if (!childItem || childItem.status === '완료') break;
+                        const currentTime = new Date().toLocaleString('ko-KR', dateTimeFormatOptions);
+                        const childIdx = deliveryItems.findIndex(item => item.childId === childId);
+                        if (childIdx > -1) {
+                            deliveryItems[childIdx].status = '완료';
+                            deliveryItems[childIdx].deliveryCompletionTime = currentTime;
+                            deliveryItems[childIdx].completionType = '자송장완료';
+                            deliveryItems[childIdx].completionDetail = '자송장완료';
+                            saveDeliveryItemsToLocalStorage();
+                            sendWebhook(deliveryItems[childIdx]);
+                            renderDeliveryCards(activeFilter);
+                            updateFilterCounts();
+                            showToastMessage('자송장 완료 처리되었습니다.');
+                        }
+                        break;
+                    }
                     case 'identity-verification':
                         openConfirmationModal(`${itemNo}번 항목을 '본인전달'로 완료 처리하시겠습니까?`, () => {
                             copyHawbOnComplete(itemNo);
@@ -2422,10 +2492,15 @@ const getCleanPhoneNumber = (phoneNumber) => {
         const renderDeliveryCards = (currentFilter, animationClass = '') => {
     if (currentFilter === '배송준비') { deliveryCardsContainer.innerHTML = ''; return; }
 
-    let baseData = currentFilter !== '전체'
-        ? deliveryItems.filter(item => item.status === currentFilter)
-        : [...deliveryItems];
+    // 1. 필터링 (자송장은 모송장의 status를 따름)
+    let baseData;
+    if (currentFilter !== '전체') {
+        baseData = deliveryItems.filter(item => item.status === currentFilter);
+    } else {
+        baseData = [...deliveryItems];
+    }
 
+    // 2. 검색어 필터링
     let dataToRender = searchTerm
         ? baseData.filter(item => {
             const cleanedSearchTerm = searchTerm.trim().replace(/[\s-]/g, '').toLowerCase();
@@ -2434,13 +2509,62 @@ const getCleanPhoneNumber = (phoneNumber) => {
             return hawbMatch || phoneMatch;
         })
         : baseData;
-    
+
     if (dataToRender.length === 0) {
         deliveryCardsContainer.innerHTML = '<p class="text-center text-gray-600 dark:text-gray-400 px-4">해당하는 항목이 없습니다.</p>';
         return;
     }
 
-    deliveryCardsContainer.innerHTML = dataToRender.map(data => {
+    // 3. 정렬: 모송장 no 순 → 자송장은 모송장 바로 아래
+    const parents = dataToRender.filter(item => !item.isChild);
+    const children = dataToRender.filter(item => item.isChild);
+
+    // 모송장별 자송장 개수 계산 (전체 deliveryItems 기준)
+    const getChildrenOfParent = (pNo) => deliveryItems.filter(item => item.isChild && item.parentNo === pNo);
+
+    const sortedData = [];
+    parents.forEach(parent => {
+        sortedData.push(parent);
+        const myChildren = children.filter(c => c.parentNo === parent.no);
+        myChildren.forEach(child => sortedData.push(child));
+    });
+    // 부모 없는 자송장(혹시 있을 경우) 마지막에 추가
+    const orphans = children.filter(c => !parents.find(p => p.no === c.parentNo));
+    orphans.forEach(o => sortedData.push(o));
+
+    deliveryCardsContainer.innerHTML = sortedData.map(data => {
+        // ── 자송장 카드 렌더링 ──
+        if (data.isChild) {
+            const allSiblings = getChildrenOfParent(data.parentNo);
+            const myIndex = allSiblings.findIndex(c => c.childId === data.childId) + 1;
+            const total = allSiblings.length + 1; // 모송장 포함 전체
+
+            let childCardBg = 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700';
+            if (data.status === '완료') {
+                childCardBg = 'bg-gray-100 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600';
+            }
+
+            return `
+                <div class="child-card ml-6 mb-2 ${childCardBg} border rounded-xl p-3" data-child-id="${data.childId}" data-parent-no="${data.parentNo}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg font-bold text-indigo-600 dark:text-indigo-300">${data.parentNo} <span class="text-sm font-medium text-gray-500 dark:text-gray-400">(${myIndex + 1}/${total})</span></span>
+                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">${formatHawbNoForDisplay(data.hawbNo)}</span>
+                        </div>
+                        <input type="checkbox" data-action="toggle-hawb-confirm" data-no="${data.no}" data-child-id="${data.childId}" ${data.isHawbConfirmed ? 'checked' : ''} class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-500 rounded"/>
+                    </div>
+                    ${data.status === '완료' ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">완료: ${formatCompletionTime(data.deliveryCompletionTime)}</p>` : ''}
+                    <div class="flex space-x-2 mt-2">
+                        <button data-action="delete-child" data-child-id="${data.childId}" data-parent-no="${data.parentNo}"
+                            class="flex-1 py-1.5 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600">삭제</button>
+                        <button data-action="complete-child" data-child-id="${data.childId}" data-parent-no="${data.parentNo}"
+                            class="flex-1 py-1.5 rounded-lg bg-green-500 text-white text-sm font-semibold hover:bg-green-600 ${data.status === '완료' ? 'opacity-50 cursor-not-allowed' : ''}" ${data.status === '완료' ? 'disabled' : ''}>완료</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ── 모송장 카드 렌더링 ──
         const selectedMap = localStorage.getItem('selectedMap') || 'naver';
         const mapButtonClass = selectedMap === 'naver' ? 'naver' : 'kakao';
         const isPhoneNumberInvalid = !isValidPhoneNumber(data.receiverTelephoneNo);
@@ -2450,10 +2574,15 @@ const getCleanPhoneNumber = (phoneNumber) => {
             ? `<span class="block text-sm font-medium text-purple-600 dark:text-purple-400 -mt-1">(${data.distanceFromMe.toFixed(2)} km)</span>`
             : '';
         
-        // ▼▼▼ [추가된 로직] 특별 주소 체크 ▼▼▼
         const isSpecial = SPECIAL_ADDRESSES.some(addr => data.baseAddress && data.baseAddress.includes(addr));
         const specialClass = isSpecial ? 'special-addr-bg' : '';
-        // ▲▲▲ [추가 끝] ▲▲▲
+
+        // 자송장 개수에 따른 순번 표시
+        const myChildren = getChildrenOfParent(data.no);
+        const totalCount = myChildren.length + 1;
+        const noDisplay = myChildren.length > 0
+            ? `${data.no} <span class="text-base font-medium text-gray-500 dark:text-gray-400">(1/${totalCount})</span>`
+            : `${data.no}`;
 
         let cardClasses = '';
         let headerBorder = 'border-gray-200 dark:border-gray-600';
@@ -2478,12 +2607,10 @@ const getCleanPhoneNumber = (phoneNumber) => {
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22a1 1 0 0 1-1-1v-4a1 1 0 0 1 .445-.832l3-2a1 1 0 0 1 1.11 0l3 2A1 1 0 0 1 22 17v4a1 1 0 0 1-1 1z"/><path d="M18 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 .601.2"/><path d="M18 22v-3"/><circle cx="10" cy="10" r="3"/></svg>
                 </button>
                 <div class="pt-0.5">
-                    <!-- ▼▼▼ [수정된 부분] p 태그 클래스에 ${specialClass} 적용 ▼▼▼ -->
                     <p class="text-base font-semibold ${currentFilter !== '배송중' ? 'cursor-pointer' : ''} ${data.isAddressValidated === false ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'} ${specialClass}"
                        ${currentFilter !== '배송중' ? `data-action="open-smart-edit" data-no="${data.no}"` : ''}>
                         ${fullAddress.trim() ? fullAddress : '<span class="text-red-500 dark:text-red-400 cursor-pointer underline font-medium">[주소 없음 (터치하여 입력)]</span>'}
                     </p>
-                    <!-- ▲▲▲ [수정 끝] ▲▲▲ -->
                     ${data.original_ocr_address ? `<p class="text-xs text-gray-500 dark:text-gray-400">(${data.original_ocr_address})</p>` : ''}
                 </div>
             </div>
@@ -2562,11 +2689,16 @@ const getCleanPhoneNumber = (phoneNumber) => {
                         <div class="flex justify-between items-start w-full">
                             <div class="flex items-start space-x-4">
                                 <div>
-                                    <h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${data.no}</h3>
+                                    <h3 class="text-3xl font-semibold text-red-500 dark:text-red-400">${noDisplay}</h3>
                                     ${distanceInfo}
                                 </div>
-                                <div class="pt-1.5">
+                                <div class="pt-1.5 flex items-center space-x-2">
                                     <span data-action="copy-hawb" data-hawb-no="${data.hawbNo}" data-no="${data.no}" class="text-base font-bold text-gray-600 dark:text-gray-300 whitespace-nowrap">${highlightHawbNo(data.hawbNo, searchTerm)}</span>
+                                    <button data-action="open-child-scanner" data-no="${data.no}"
+                                        class="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white hover:bg-indigo-600 flex-shrink-0"
+                                        title="자송장 추가">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                    </button>
                                 </div>
                             </div>
                             <div class="pt-1.5">
@@ -3790,34 +3922,125 @@ if (!tempApiKeyForLocalTest) {
             updateFilterCounts();
             
             const urlParamsForCheck = new URLSearchParams(window.location.search);
-            if (!urlParamsForCheck.has('hawb') && !urlParamsForCheck.has('filter')) {
+            if (!urlParamsForCheck.has('hawb') && !urlParamsForCheck.has('filter') && !urlParamsForCheck.has('parentNo')) {
                 const lastFilter = localStorage.getItem('lastActiveFilter') || '배송준비';
                 changeFilter(lastFilter, '', true);
             }
 
-            const handleUrlParams = (url) => {
+            // ★ 디버그 로그 헬퍼
+            const dbg = (msg) => {
+                console.log(msg);
+                const panel = document.getElementById('debug-panel');
+                const log = document.getElementById('debug-log');
+                if (panel && log) {
+                    panel.style.display = 'block';
+                    const line = document.createElement('div');
+                    line.style.borderBottom = '1px solid #333';
+                    line.style.paddingBottom = '2px';
+                    line.style.marginBottom = '2px';
+                    line.textContent = new Date().toLocaleTimeString('ko-KR') + ' ' + msg;
+                    log.appendChild(line);
+                    panel.scrollTop = panel.scrollHeight;
+                }
+            };
+
+            // ★ window에 노출 — launchQueue(비동기) 및 외부에서도 호출 가능하게
+            window.handleUrlParams = (url) => {
                 const urlParams = new URLSearchParams(url.search);
                 const hawbFromUrl = urlParams.get('hawb');
-                if (hawbFromUrl) {
+                const parentNoFromUrl = urlParams.get('parentNo');
+
+                dbg(`[handleUrlParams] URL: ${url.toString()}`);
+                dbg(`[handleUrlParams] hawb=${hawbFromUrl} / parentNo=${parentNoFromUrl}`);
+
+                // 자송장 생성 처리 (parentNo가 있을 때 반드시 먼저)
+                if (hawbFromUrl && parentNoFromUrl) {
+                    dbg('[분기] 자송장 생성 경로 진입');
+                    const pNo = parseInt(parentNoFromUrl, 10);
+                    const parentItem = deliveryItems.find(item => item.no === pNo && !item.isChild);
+
+                    if (parentItem) {
+                        dbg(`[자송장] 모송장 찾음: no=${pNo}`);
+                        const isDuplicate = deliveryItems.some(
+                            item => item.isChild && item.parentNo === pNo && item.hawbNo === hawbFromUrl
+                        );
+                        if (isDuplicate) {
+                            dbg('[자송장] 중복 송장번호');
+                            showToastMessage('이미 등록된 송장번호입니다.', 3000);
+                        } else {
+                            const newChildId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                            const newChild = {
+                                ...JSON.parse(JSON.stringify(parentItem)),
+                                childId: newChildId,
+                                hawbNo: hawbFromUrl,
+                                isChild: true,
+                                parentNo: pNo,
+                                status: '배송전',
+                                isHawbConfirmed: false,
+                                deliveryCompletionTime: null,
+                                completionType: null,
+                                completionDetail: null,
+                                addressLocation: null,
+                                isStruckThrough: false
+                            };
+                            deliveryItems.push(newChild);
+                            saveDeliveryItemsToLocalStorage();
+                            updateFilterCounts();
+                            dbg(`[자송장] 카드 생성 완료: ${hawbFromUrl}`);
+                            showToastMessage(`${pNo}번에 자송장이 추가되었습니다.`);
+                        }
+                    } else {
+                        dbg(`[자송장] 모송장 못 찾음: no=${pNo} / deliveryItems 수=${deliveryItems.length}`);
+                        showToastMessage('해당 모송장을 찾을 수 없습니다.', 3000);
+                    }
+
+                    window.history.replaceState({}, '', window.location.pathname);
+                    const filterToUse = activeFilter || localStorage.getItem('lastActiveFilter') || '전체';
+                    if (!activeFilter) changeFilter(filterToUse, '', true);
+                    else renderDeliveryCards(activeFilter);
+
+                } else if (hawbFromUrl) {
+                    dbg('[분기] 검색 경로 진입 (parentNo 없음)');
                     changeFilter('전체', '', true);
                     searchTerm = hawbFromUrl;
                     invoiceNumberInput.value = hawbFromUrl;
                     renderDeliveryCards('전체');
                     const cleanUrl = `${window.location.origin}${window.location.pathname}`;
                     window.history.replaceState({}, '', cleanUrl);
+                } else {
+                    dbg('[분기] hawb 없음 — 아무것도 안 함');
                 }
             };
 
             if ('launchQueue' in window) {
+                dbg('[초기화] launchQueue 감지됨 — 컨슈머 등록');
                 window.launchQueue.setConsumer(launchParams => {
+                    dbg(`[launchQueue] 콜백 실행 / targetURL: ${launchParams.targetURL}`);
                     if (launchParams.targetURL) {
                         const url = new URL(launchParams.targetURL);
-                        handleUrlParams(url);
+                        const tryHandle = () => {
+                            if (deliveryItems !== undefined) {
+                                window.handleUrlParams(url);
+                            } else {
+                                dbg('[launchQueue] deliveryItems 미로드 — 50ms 후 재시도');
+                                setTimeout(tryHandle, 50);
+                            }
+                        };
+                        tryHandle();
                     }
                 });
+                // ★ launchQueue가 있어도 페이지가 새로 로드된 경우
+                // (PWA가 launchQueue 콜백 대신 새 페이지 로드로 처리할 때)
+                // URL에 파라미터가 이미 있으면 직접 처리
+                const currentUrl = new URL(window.location.href);
+                if (currentUrl.searchParams.get('hawb') || currentUrl.searchParams.get('parentNo')) {
+                    dbg('[초기화] launchQueue지만 URL에 파라미터 발견 — 직접 처리');
+                    window.handleUrlParams(currentUrl);
+                }
             } else {
+                dbg('[초기화] launchQueue 없음 — window.location 직접 처리');
                 const url = new URL(window.location.href);
-                handleUrlParams(url);
+                window.handleUrlParams(url);
             }
             // --- AI 기반 CSV/텍스트 임포트 로직 시작 ---
             const csvAiImportButton = document.getElementById('csv-ai-import-button');
@@ -3951,6 +4174,94 @@ if (!tempApiKeyForLocalTest) {
             }
             // --- AI 기반 CSV/텍스트 임포트 로직 끝 ---
         });
+
+        // ===== PWA 디버그 오버레이 =====
+        (function() {
+            // 디버그 패널 생성
+            const panel = document.createElement('div');
+            panel.id = 'debug-panel';
+            panel.style.cssText = `
+                position: fixed; bottom: 0; left: 0; right: 0; z-index: 99999;
+                background: rgba(0,0,0,0.85); color: #0f0; font-size: 11px;
+                font-family: monospace; max-height: 40vh; overflow-y: auto;
+                padding: 6px; display: none;
+            `;
+
+            const toolbar = document.createElement('div');
+            toolbar.style.cssText = 'display:flex; justify-content:space-between; margin-bottom:4px;';
+            toolbar.innerHTML = `
+                <span style="color:#ff0; font-weight:bold;">🐛 DEBUG LOG</span>
+                <span>
+                    <button onclick="document.getElementById('debug-panel').querySelector('#debug-log').innerHTML=''" 
+                        style="margin-right:6px; background:#555; color:#fff; border:none; padding:2px 6px; border-radius:3px;">지우기</button>
+                    <button onclick="document.getElementById('debug-panel').style.display='none'" 
+                        style="background:#c00; color:#fff; border:none; padding:2px 6px; border-radius:3px;">닫기</button>
+                </span>
+            `;
+
+            const log = document.createElement('div');
+            log.id = 'debug-log';
+
+            panel.appendChild(toolbar);
+            panel.appendChild(log);
+            document.body.appendChild(panel);
+
+            // 디버그 토글 버튼 (화면 우하단)
+            const toggleBtn = document.createElement('button');
+            toggleBtn.textContent = '🐛';
+            toggleBtn.style.cssText = `
+                position: fixed; bottom: 70px; right: 10px; z-index: 99998;
+                width: 36px; height: 36px; border-radius: 50%;
+                background: #333; color: #0f0; border: 1px solid #0f0;
+                font-size: 16px; cursor: pointer; opacity: 0.7;
+            `;
+            toggleBtn.onclick = () => {
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            };
+            document.body.appendChild(toggleBtn);
+
+            // 전역 디버그 로그 함수
+            window.dbg = (msg, color) => {
+                const line = document.createElement('div');
+                line.style.color = color || '#0f0';
+                const time = new Date().toLocaleTimeString('ko-KR');
+                line.textContent = `[${time}] ${msg}`;
+                log.appendChild(line);
+                log.scrollTop = log.scrollHeight;
+                console.log(`[DBG] ${msg}`);
+            };
+
+            // 초기 정보 출력
+            window.dbg('=== 디버그 시작 ===', '#ff0');
+            window.dbg('URL: ' + window.location.href, '#0ff');
+            window.dbg('launchQueue: ' + ('launchQueue' in window), '#0ff');
+
+            // launchQueue 감시
+            if ('launchQueue' in window) {
+                window.launchQueue.setConsumer(params => {
+                    window.dbg('★ launchQueue 콜백 실행!', '#ff0');
+                    window.dbg('targetURL: ' + params.targetURL, '#ff0');
+                    if (params.targetURL) {
+                        const u = new URL(params.targetURL);
+                        window.dbg('hawb: ' + u.searchParams.get('hawb'), '#0f0');
+                        window.dbg('parentNo: ' + u.searchParams.get('parentNo'), '#0f0');
+                        window.dbg('handleUrlParams 타입: ' + typeof window.handleUrlParams, '#0f0');
+                        if (typeof window.handleUrlParams === 'function') {
+                            window.handleUrlParams(u);
+                        } else {
+                            window.dbg('❌ handleUrlParams 없음!', '#f00');
+                        }
+                    }
+                });
+                window.dbg('launchQueue 컨슈머 등록 완료', '#0ff');
+            } else {
+                window.dbg('launchQueue 없음 → 일반 URL 처리', '#aaa');
+                const u = new URL(window.location.href);
+                window.dbg('hawb: ' + u.searchParams.get('hawb'), '#0f0');
+                window.dbg('parentNo: ' + u.searchParams.get('parentNo'), '#0f0');
+            }
+        })();
+        // ===== PWA 디버그 오버레이 끝 =====
     </script>
 </body>
 </html>
