@@ -825,10 +825,10 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         **FIX BROKEN ROAD NAMES (CRITICAL):**
 - Detect road/street name suffixes split across lines:
   suffixes: "-ro", "-gil", "-beongil", "-daero", "-dong", "-ri", "-si", "-gu" etc.
-- If a line starts with a road suffix fragment 
-  (e.g., "ON-RO", "IL-GIL", "ERO"),
+  regardless of how many letters precede the suffix,
   concatenate directly WITHOUT a space to the previous line.
 - Example: "PUNGDEOKCHE" + "ON-RO" → "PUNGDEOKCHEON-RO"
+- Example: "TANCHEONSAN" + "G-RO" → "TANCHEONSAN G-RO" (X) → "TANCHEONSANG-RO" (O)
 
     *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
         - Translate English words to Korean equivalents
@@ -1047,7 +1047,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "프롬프트수정(줄바꿈띄어쓰기 방지)";
+                const changelog = "프롬프트수정2(줄바꿈띄어쓰기방지)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
