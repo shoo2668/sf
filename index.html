@@ -822,6 +822,14 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - Example: "Jamsildong2" + "7" → "Jamsildong27"
         - Example: "525-" + "309" → "525-309"
 
+        **FIX BROKEN ROAD NAMES (CRITICAL):**
+- Detect road/street name suffixes split across lines:
+  suffixes: "-ro", "-gil", "-beongil", "-daero", "-dong", "-ri", "-si", "-gu" etc.
+- If a line starts with a road suffix fragment 
+  (e.g., "ON-RO", "IL-GIL", "ERO"),
+  concatenate directly WITHOUT a space to the previous line.
+- Example: "PUNGDEOKCHE" + "ON-RO" → "PUNGDEOKCHEON-RO"
+
     *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
         - Translate English words to Korean equivalents
         - Preserve ALL numbers and symbols exactly
@@ -1037,7 +1045,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0.0.beta";
-                const changelog = "프롬프트추가(지곶)";
+                const changelog = "프롬프트수정(줄바꿈띄어쓰기 방지)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
