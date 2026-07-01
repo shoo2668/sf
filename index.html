@@ -1022,7 +1022,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0 BETA";
-                const changelog = "이미지업로드 버그수정 및 1.0";
+                const changelog = "이미지업로드 버그수정";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
@@ -1288,7 +1288,7 @@ const sendCompletionNotification = (item) => {
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 resolve({ file, data: dataUrl.split(',')[1] });
             };
             img.onerror = (error) => reject(error);
