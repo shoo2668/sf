@@ -808,6 +808,8 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
 - Example: "PUNGDEOKCHE" + "ON-RO" → "PUNGDEOKCHEON-RO"
 - Example: "TANCHEONSAN" + "G-RO" → "TANCHEONSAN G-RO" (X) → "TANCHEONSANG-RO" (O)
 - **SAFETY NET (CRITICAL):** If it is NOT clear whether a fragment is a broken road-name suffix, do NOT discard it and do NOT force-merge it. KEEP the fragment exactly as-is, unmerged, in the output. NEVER drop or omit any fragment under any circumstance.
+- **TYPO-TOLERANT SUFFIX MATCHING (CRITICAL):** The original printed invoice itself may contain a missing/dropped letter in a suffix (e.g., "-gil" printed as "-gi" or "-gll" due to poor print quality). If a number is immediately followed by a short alphabet fragment (1-3 letters) that closely resembles one of the known suffixes above (off by one missing/altered letter), treat it as that suffix (most commonly "-gil"), NOT as a standalone word or a building number. Example: "783beon-gi" → treat as "783beon-gil" (783번길), not as the building number "783".
+- Example: "Sinsu-ro 783beon-gi" → "신수로783번길" (road name), NOT "신수로 783" (road name + building number).
 
     *   **STEP 2 (LITERAL TRANSLATION):** Perform STRICT, LITERAL TRANSLATION of "rawOcrAddress"
         - Translate English words to Korean equivalents
@@ -1030,7 +1032,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0 BETA";
-                const changelog = "프롬프트수정";
+                const changelog = "프롬프트수정2(오탈자보정)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
