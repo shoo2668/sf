@@ -839,6 +839,7 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "jigot" -> "지곶"
         - "songok" -> "손곡"
         - "guseong" -> "구성"
+        - "sunoeul" -> "수노을"
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -1032,7 +1033,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0 BETA";
-                const changelog = "프롬프트수정2(오탈자보정)";
+                const changelog = "도로명주소추가(수노을)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
