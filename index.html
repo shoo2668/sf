@@ -840,6 +840,8 @@ const GEMINI_PROMPT = `Analyze the provided images (one or more) containing deli
         - "songok" -> "손곡"
         - "guseong" -> "구성"
         - "sunoeul" -> "수노을"
+        - "3.1 manse" -> "3.1만세"
+        - "samam" -> "삼암"
 
     *   **STEP 3 (PROVEN ADDRESS ASSEMBLY):** From translated address, assemble "baseAddressKorean" and "detailAddressKorean"
 
@@ -1033,7 +1035,7 @@ const sendCompletionNotification = (item) => {
 
         const setVersionInfo = () => {
             const version = "2.0 BETA";
-                const changelog = "도로명주소추가(수노을)";
+                const changelog = "도로명주소추가(3.1만세로,삼암길)";
             if (versionText) versionText.textContent = version;
             if (versionChangelog) versionChangelog.textContent = changelog;
         };
